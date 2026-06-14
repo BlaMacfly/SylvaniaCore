@@ -347,7 +347,7 @@ void LFGMgr::Update(uint32 diff)
     if (lastProposalId != m_lfgProposalId)
     {
         // FIXME lastProposalId ? lastProposalId +1 ?
-        for (LfgProposalContainer::const_iterator itProposal = ProposalsStore.find(m_lfgProposalId); itProposal != ProposalsStore.end(); ++itProposal)
+        for (LfgProposalContainer::const_iterator itProposal = ProposalsStore.upper_bound(lastProposalId); itProposal != ProposalsStore.end(); ++itProposal)
         {
             uint32 proposalId = itProposal->first;
             LfgProposal& proposal = ProposalsStore[proposalId];
@@ -1089,7 +1089,7 @@ void LFGMgr::UpdateProposal(uint32 proposalId, ObjectGuid guid, bool accept)
         if (itPlayers->second.accept != LFG_ANSWER_AGREE)   // No answer (-1) or not accepted (0)
             allAnswered = false;
 
-    if (!sLFGMgr->IsTesting() && !allAnswered)
+    if (!allAnswered) // SYLVANIA: bypass testing retire - en solo allAnswered est deja vrai ; en groupe chacun doit accepter
     {
         for (LfgProposalPlayerContainer::const_iterator it = proposal.players.begin(); it != proposal.players.end(); ++it)
             SendLfgUpdateProposal(it->first, proposal);

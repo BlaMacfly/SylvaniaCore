@@ -19,6 +19,8 @@
 #include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
 #include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
+#include "CellImpl.h"
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellHistory.h"

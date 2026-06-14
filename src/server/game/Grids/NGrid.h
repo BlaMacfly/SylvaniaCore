@@ -174,7 +174,7 @@ class NGrid
         }
 
     private:
-        uint32 i_gridId;
+        mutable uint32 i_gridId;
         GridInfo i_GridInfo;
         GridReference<NGrid<N, ACTIVE_OBJECT, WORLD_OBJECT_TYPES, GRID_OBJECT_TYPES> > i_Reference;
         int32 i_x;

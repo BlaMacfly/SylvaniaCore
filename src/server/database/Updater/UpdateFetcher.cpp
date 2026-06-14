@@ -24,6 +24,7 @@
 #include "Util.h"
 #include "SHA1.h"
 #include <boost/filesystem/operations.hpp>
+#include <chrono>
 #include <fstream>
 #include <sstream>
 
