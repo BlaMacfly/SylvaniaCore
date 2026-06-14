@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="contrib/ArgusCore-Logo.png" alt="ArgusCore" width="420"/>
+  <img src="contrib/SylvaniaCore-Logo.png" alt="SylvaniaCore" width="420"/>
 </p>
 
-<h1 align="center">ArgusCore</h1>
+<h1 align="center">SylvaniaCore</h1>
 <p align="center"><b>WoW Emulator Project &mdash; World of Warcraft: Legion (7.3.5, build 26972)</b></p>
 
 --------------
@@ -19,20 +19,20 @@
 
 ## Introduction
 
-**ArgusCore** is an open-source *MMORPG* server framework written mostly in C++,
+**SylvaniaCore** is an open-source *MMORPG* server framework written mostly in C++,
 targeting **World of Warcraft: Legion** (client build **7.3.5.26972**).
 
 It is a community project maintained by the team behind *The Kingdom of Sylvania*.
 
 ## Lineage
 
-ArgusCore stands on the shoulders of the projects it derives from:
+SylvaniaCore stands on the shoulders of the projects it derives from:
 
 ```
-TrinityCore  ->  AshamaneCore (Legion 7.3.5)  ->  ArgusCore
+TrinityCore  ->  AshamaneCore (Legion 7.3.5)  ->  SylvaniaCore
 ```
 
-All upstream work remains under the **GPL-2.0** license. ArgusCore keeps the
+All upstream work remains under the **GPL-2.0** license. SylvaniaCore keeps the
 original copyrights and credits intact and tracks AshamaneCore as `upstream`
 so blizzlike fixes can be merged.
 
@@ -57,7 +57,7 @@ A working local deployment (server + frFR client) is documented in the project n
 
 ## Reporting issues
 
-Open an issue on the [ArgusCore GitHub repository](https://github.com/BlaMacfly/ArgusCore/issues).
+Open an issue on the [SylvaniaCore GitHub repository](https://github.com/BlaMacfly/SylvaniaCore/issues).
 
 ## Submitting fixes
 
@@ -67,13 +67,13 @@ C++ fixes are submitted as pull requests via GitHub. For SQL-only fixes, open a 
 
 License: **GPL-2.0**. Read the [COPYING](COPYING) file.
 
-ArgusCore is based on [AshamaneCore](https://github.com/AshamaneProject/AshamaneCore)
+SylvaniaCore is based on [AshamaneCore](https://github.com/AshamaneProject/AshamaneCore)
 and [TrinityCore](https://www.trinitycore.org/); their copyrights and the
 [THANKS](THANKS) credits are preserved.
 
 ## Links
 
-* [ArgusCore (GitHub)](https://github.com/BlaMacfly/ArgusCore)
+* [SylvaniaCore (GitHub)](https://github.com/BlaMacfly/SylvaniaCore)
 * [AshamaneCore (upstream)](https://github.com/AshamaneProject/AshamaneCore)
 * [TrinityCore](https://www.trinitycore.org/)
 </content>

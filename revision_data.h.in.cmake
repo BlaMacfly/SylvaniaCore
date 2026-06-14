@@ -11,8 +11,8 @@
  #define _MYSQL_EXECUTABLE          R"(@MYSQL_EXECUTABLE@)"
  #define _FULL_DATABASE             "ADB_world_735.00.sql"
  #define _HOTFIXES_DATABASE         "ADB_hotfixes_735.00.sql"
- #define VER_COMPANYNAME_STR        "ArgusCore"
- #define VER_LEGALCOPYRIGHT_STR     "(c) 2026 ArgusCore - based on AshamaneCore / TrinityCore (GPL-2.0)"
+ #define VER_COMPANYNAME_STR        "SylvaniaCore"
+ #define VER_LEGALCOPYRIGHT_STR     "(c) 2026 SylvaniaCore - based on AshamaneCore / TrinityCore (GPL-2.0)"
  #define VER_FILEVERSION            0,0,0
  #define VER_FILEVERSION_STR        "@rev_hash@ @rev_date@ (@rev_branch@ branch)"
  #define VER_PRODUCTVERSION         VER_FILEVERSION

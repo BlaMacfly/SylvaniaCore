@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2008-2018 TrinityCore <https://www.trinitycore.org/>
  * Copyright (C) 2017-2018 AshamaneProject <https://github.com/AshamaneProject>
- * Copyright (C) 2026 ArgusCore <https://github.com/BlaMacfly/ArgusCore>
+ * Copyright (C) 2026 SylvaniaCore <https://github.com/BlaMacfly/SylvaniaCore>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -31,7 +31,7 @@ void Trinity::Banner::Show(char const* applicationName, void(*log)(char const* t
     log(R"BNR( / ___ \|  _ <| |_| | |_| |___) | | |__| |_| |  _ <| |___ )BNR");
     log(R"BNR(/_/   \_\_| \_\\____|\___/|____/   \____\___/|_| \_\_____|)BNR");
     log("              W o W   E m u l a t o r   P r o j e c t\n");
-    log("https://github.com/BlaMacfly/ArgusCore   (based on AshamaneCore / TrinityCore)\n");
+    log("https://github.com/BlaMacfly/SylvaniaCore   (based on AshamaneCore / TrinityCore)\n");
 
     if (logExtraInfo)
         logExtraInfo();
