@@ -21,6 +21,7 @@ void AddSC_custom_npcs();
 // ADM declaration begin
 void AddSC_solocraft();
 void AddSC_sololfg();
+void AddSC_instance_broken_shore();
 // ADM declaration end
 
 // The name of this function should match:
@@ -32,5 +33,6 @@ void AddCustomScripts()
     // ADM call begin
     AddSC_solocraft();
     AddSC_sololfg();
+        AddSC_instance_broken_shore();
     // ADM call end
 }
