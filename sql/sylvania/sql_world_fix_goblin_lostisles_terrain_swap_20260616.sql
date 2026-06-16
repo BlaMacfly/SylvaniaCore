@@ -1,0 +1,15 @@
+-- ============================================================================
+-- CORRECTIF durable — fix deconnexion streaming (WOW51900322) a la connexion
+-- d un GOBELIN (zone de depart Lost Isles, map 648). 2026-06-16. Meme bug que
+-- le worgen (terrain swap parasite par defaut).
+--
+-- Map 648 avait 2 terrain_swap PAR DEFAUT (659, 661) que la ref CPP n a PAS
+-- (CPP = 0 swap par defaut sur 648) -> mauvais terrain force a tous ceux qui
+-- entrent -> le client streame un terrain invalide -> ejection. Le gobelin
+-- spawn en zone 4737 (Lost Isles) area 4765 ; la base de map 648 (149 tuiles)
+-- couvre deja ce terrain -> aucun swap par defaut necessaire. Aligne sur CPP.
+-- Necessite RESTART. Idempotent.
+-- NB : maps 860 (MoP) / 1220 (Legion) ont aussi des swaps absents du CPP, mais
+-- CPP (4.3.4) ne couvre PAS ces extensions -> NON juges ici (possiblement legit).
+-- ============================================================================
+DELETE FROM terrain_swap_defaults WHERE MapId=648 AND TerrainSwapMap IN (659,661);
