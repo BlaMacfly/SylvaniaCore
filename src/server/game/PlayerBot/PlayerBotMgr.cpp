@@ -924,6 +924,8 @@ void PlayerBotMgr::UpdateLastAccountIndex(std::string& username)
 
 void PlayerBotMgr::SupplementAccount()
 {
+    if (!sConfigMgr->GetIntDefault("pbotall", 1))   // SylvaniaCore: serveur sans bots -> pas de comptes PLAYERBOT
+        return;
     uint32 needAccount = m_BotAccountAmount * 2 - m_idPlayerBotBase.size();
     if (needAccount <= 0)
         return;
@@ -3327,6 +3329,8 @@ uint32 PlayerBotMgr::GetOnlineBotCount2(TeamId team, bool hasReal)
 
 void PlayerBotMgr::Update()
 {
+    if (!sConfigMgr->GetIntDefault("pbotall", 1))   // SylvaniaCore: serveur sans bots -> tick bot inerte (evite crash #56 sur file BG/arene)
+        return;
 
     OnlinePlayerBotByGUIDQueue();
 

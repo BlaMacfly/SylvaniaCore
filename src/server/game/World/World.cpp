@@ -2670,8 +2670,12 @@ void World::SetInitialWorldSettings()
 
     uint32 startupDuration = GetMSTimeDiffToNow(startupBegin);
 
-    sPlayerBotMgr->UpAllPlayerBotSession();
-    sPlayerBotMgr->SupplementOneRandomPlayerBotPerAccount();
+    // SylvaniaCore: serveur blizzlike sans PlayerBots. pbotall=0 desactive toute creation/session de bot au demarrage.
+    if (sConfigMgr->GetIntDefault("pbotall", 1))
+    {
+        sPlayerBotMgr->UpAllPlayerBotSession();
+        sPlayerBotMgr->SupplementOneRandomPlayerBotPerAccount();
+    }
 
     TC_LOG_INFO("server.worldserver", "World initialized in %u minutes %u seconds", (startupDuration / 60000), ((startupDuration % 60000) / 1000));
 
