@@ -266,7 +266,13 @@ uint32 Quest::XPValue(uint32 playerLevel) const
 
         float multiplier = 1.0f;
         if (questLevel != playerLevel)
-            multiplier = sXpGameTable.GetRow(std::min(playerLevel, questLevel))->Divisor / sXpGameTable.GetRow(playerLevel)->Divisor;
+        {
+            // SylvaniaCore: GetRow() rend nullptr hors-borne (ex. perso niveau > cap GameTable XP, ~110) -> evite le crash (segfault dans Quest::XPValue au dialogue d un donneur de quete)
+            GtXpEntry const* questXpRow = sXpGameTable.GetRow(std::min(playerLevel, questLevel));
+            GtXpEntry const* playerXpRow = sXpGameTable.GetRow(playerLevel);
+            if (questXpRow && playerXpRow && playerXpRow->Divisor)
+                multiplier = questXpRow->Divisor / playerXpRow->Divisor;
+        }
 
         int32 diffFactor = 2 * (questLevel - playerLevel) + 20;
         if (diffFactor < 1)
