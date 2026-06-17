@@ -1,0 +1,17 @@
+#!/bin/bash
+# ROLLBACK vers ArgusCore (ancien stack intact, bases auth/characters/world figees).
+set -x
+touch /home/ubuntu/scripts/world-watchdog.disabled /home/ubuntu/scripts/bnet-watchdog.disabled
+tmux kill-session -t world 2>/dev/null; pkill -f 'dc-server/bin/worldserver' 2>/dev/null
+pkill -x bnetserver 2>/dev/null; sleep 4
+# restaurer watchdogs ArgusCore
+[ -f /home/ubuntu/scripts/world-watchdog.sh.arguscore ] && cp /home/ubuntu/scripts/world-watchdog.sh.arguscore /home/ubuntu/scripts/world-watchdog.sh
+[ -f /home/ubuntu/scripts/bnet-watchdog.sh.arguscore ]  && cp /home/ubuntu/scripts/bnet-watchdog.sh.arguscore  /home/ubuntu/scripts/bnet-watchdog.sh
+# restaurer site
+[ -f /var/www/html/config/secrets.php.precutover ] && sudo cp /var/www/html/config/secrets.php.precutover /var/www/html/config/secrets.php
+# relancer ANCIEN stack
+cd /home/ubuntu/server/bin && setsid ./bnetserver > /home/ubuntu/bnet.log 2>&1 < /dev/null &
+tmux new-session -d -s world "cd /home/ubuntu/server/bin && ./worldserver 2>&1 | tee -a /home/ubuntu/world.log"
+# reactiver watchdogs (ArgusCore)
+rm -f /home/ubuntu/scripts/world-watchdog.disabled /home/ubuntu/scripts/bnet-watchdog.disabled
+echo "ROLLBACK fait : ArgusCore relance, site repointe, watchdogs ArgusCore ON."
