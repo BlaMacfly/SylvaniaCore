@@ -19565,8 +19565,22 @@ void Player::LoadCorpse(PreparedQueryResult result)
         if (result && !HasAtLoginFlag(AT_LOGIN_RESURRECT))
         {
             Field* fields = result->Fetch();
-            _corpseLocation.WorldRelocate(fields[0].GetUInt16(), fields[1].GetFloat(), fields[2].GetFloat(), fields[3].GetFloat(), fields[4].GetFloat());
-            ApplyModFlag(PLAYER_FIELD_LOCAL_FLAGS, PLAYER_LOCAL_FLAG_RELEASE_TIMER, !sMapStore.LookupEntry(_corpseLocation.GetMapId())->Instanceable());
+            uint16 corpseMapId = fields[0].GetUInt16();
+            uint32 corpseInstanceId = fields[5].GetUInt32();
+            MapEntry const* corpseMapEntry = sMapStore.LookupEntry(corpseMapId);
+            // SylvaniaCore: cadavre orphelin (instance reset/disparue) -> evite le blocage du fantome a l'esprit guerisseur
+            if (corpseMapEntry && corpseMapEntry->Instanceable() && corpseInstanceId && !sInstanceSaveMgr->GetInstanceSave(corpseInstanceId))
+            {
+                CharacterDatabasePreparedStatement* delCorpseStmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CORPSE);
+                delCorpseStmt->setUInt64(0, GetGUID().GetCounter());
+                CharacterDatabase.Execute(delCorpseStmt);
+                ResurrectPlayer(0.5f);
+            }
+            else
+            {
+                _corpseLocation.WorldRelocate(corpseMapId, fields[1].GetFloat(), fields[2].GetFloat(), fields[3].GetFloat(), fields[4].GetFloat());
+                ApplyModFlag(PLAYER_FIELD_LOCAL_FLAGS, PLAYER_LOCAL_FLAG_RELEASE_TIMER, !corpseMapEntry->Instanceable());
+            }
         }
         else
             ResurrectPlayer(0.5f);
