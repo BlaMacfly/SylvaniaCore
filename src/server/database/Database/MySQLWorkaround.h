@@ -23,4 +23,11 @@
 #endif
 #include <mysql.h>
 
+// SylvaniaCore/MariaDB compat: CR_INVALID_CONN_HANDLE is a MySQL-only client error
+// code (value 2048 upstream), absent from MariaDB Connector/C errmsg.h. Define it so
+// the connection-loss switch in MySQLConnection.cpp builds against MariaDB.
+#ifndef CR_INVALID_CONN_HANDLE
+#define CR_INVALID_CONN_HANDLE 2048
+#endif
+
 #endif // MySQLWorkaround_h__
