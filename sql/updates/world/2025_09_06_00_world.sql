@@ -1,0 +1,2 @@
+/*Command Table npcflag 137438953472*/
+ UPDATE `creature_template` SET `npcflag`=137438953472,`unit_flags`=768,`unit_flags2`=67143680,`type_flags`=1611792400 WHERE `entry` IN (81546,84224,84698,80432,86031,85805);
