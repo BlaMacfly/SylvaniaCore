@@ -972,6 +972,15 @@ void Spell::CalculateJumpSpeeds(SpellEffectInfo const* effInfo, float dist, floa
         height = Movement::gravity * durationSqr / 8;
 
     speedZ = std::sqrt(2 * Movement::gravity * height);
+
+    // Bond heroique (94954, cf. spell_warr_heroic_leap) : la formule generique
+    // donne un saut un peu mou ; on rehausse legerement l arc et la vitesse
+    // horizontale pour le ressenti voulu (n affecte que ce sort).
+    if (m_spellInfo->Id == 94954)
+    {
+        speedXY *= 1.25f;   // +25% de vitesse horizontale (reste sous le plafond de course)
+        speedZ  *= 1.15f;   // hauteur d arc ~+32% (h proportionnel a speedZ^2)
+    }
 }
 
 void Spell::EffectTeleportToLFG(SpellEffIndex /*effIndex*/)
