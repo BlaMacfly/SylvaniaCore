@@ -945,14 +945,33 @@ void Spell::EffectJumpDest(SpellEffIndex effIndex)
 
 void Spell::CalculateJumpSpeeds(SpellEffectInfo const* effInfo, float dist, float& speedXY, float& speedZ)
 {
-    if (effInfo->MiscValue)
-        speedZ = float(effInfo->MiscValue) / 10;
-    else if (effInfo->MiscValueB)
-        speedZ = float(effInfo->MiscValueB) / 10;
-    else
-        speedZ = 10.0f;
+    // SpellEffect DB2 stores arc heights (in 1/10 yards), not a raw vertical speed:
+    //   MiscValue  = minimum arc height, MiscValueB = maximum arc height.
+    // Derive a horizontal speed from run speed, clamp the arc height, then convert
+    // the chosen height into the vertical speed expected by MotionMaster::MoveJump.
+    float runSpeed = m_caster->IsControlledByPlayer() ? playerBaseMoveSpeed[MOVE_RUN] : baseMoveSpeed[MOVE_RUN];
+    if (Creature* creature = m_caster->ToCreature())
+        runSpeed *= creature->GetCreatureTemplate()->speed_run;
 
-    speedXY = dist * 10.0f / speedZ;
+    float multiplier = effInfo->Amplitude;
+    if (multiplier <= 0.0f)
+        multiplier = 1.0f;
+
+    speedXY = std::min(runSpeed * 3.0f * multiplier, std::max(28.0f, m_caster->GetSpeed(MOVE_RUN) * 4.0f));
+
+    float duration = dist / speedXY;
+    float durationSqr = duration * duration;
+    float minHeight = effInfo->MiscValue  ? effInfo->MiscValue  / 10.0f : 0.5f;    // Lowest height
+    float maxHeight = effInfo->MiscValueB ? effInfo->MiscValueB / 10.0f : 1000.0f; // Highest height
+    float height;
+    if (durationSqr < minHeight * 8 / Movement::gravity)
+        height = minHeight;
+    else if (durationSqr > maxHeight * 8 / Movement::gravity)
+        height = maxHeight;
+    else
+        height = Movement::gravity * durationSqr / 8;
+
+    speedZ = std::sqrt(2 * Movement::gravity * height);
 }
 
 void Spell::EffectTeleportToLFG(SpellEffIndex /*effIndex*/)
