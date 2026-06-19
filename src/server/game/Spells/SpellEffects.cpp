@@ -51,6 +51,7 @@
 #include "Map.h"
 #include "MiscPackets.h"
 #include "MotionMaster.h"
+#include "Config.h"
 #include "ObjectMgr.h"
 #include "Opcodes.h"
 #include "OutdoorPvPMgr.h"
@@ -978,8 +979,11 @@ void Spell::CalculateJumpSpeeds(SpellEffectInfo const* effInfo, float dist, floa
     // horizontale pour le ressenti voulu (n affecte que ce sort).
     if (m_spellInfo->Id == 94954)
     {
-        speedXY *= 1.25f;   // +25% de vitesse horizontale (reste sous le plafond de course)
-        speedZ  *= 1.15f;   // hauteur d arc ~+32% (h proportionnel a speedZ^2)
+        // Reglable a chaud (worldserver.conf + .reload config), sans redemarrage :
+        //   HeroicLeap.SpeedMult  = facteur de vitesse horizontale (defaut 1.7)
+        //   HeroicLeap.HeightMult = facteur de hauteur d arc        (defaut 2.5)
+        speedXY *= sConfigMgr->GetFloatDefault("HeroicLeap.SpeedMult", 1.7f);
+        speedZ  *= std::sqrt(sConfigMgr->GetFloatDefault("HeroicLeap.HeightMult", 2.5f));
     }
 }
 
