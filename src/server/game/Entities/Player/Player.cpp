@@ -19583,7 +19583,7 @@ void Player::LoadCorpse(PreparedQueryResult result)
             uint32 corpseInstanceId = fields[5].GetUInt32();
             MapEntry const* corpseMapEntry = sMapStore.LookupEntry(corpseMapId);
             // SylvaniaCore: cadavre orphelin (instance reset/disparue) -> evite le blocage du fantome a l'esprit guerisseur
-            if (corpseMapEntry && corpseMapEntry->Instanceable() && corpseInstanceId && !sInstanceSaveMgr->GetInstanceSave(corpseInstanceId))
+            if (corpseMapEntry && corpseMapEntry->Instanceable() && (!corpseInstanceId || !sInstanceSaveMgr->GetInstanceSave(corpseInstanceId)))
             {
                 CharacterDatabasePreparedStatement* delCorpseStmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CORPSE);
                 delCorpseStmt->setUInt64(0, GetGUID().GetCounter());
