@@ -3300,6 +3300,20 @@ void Player::RemoveTalent(TalentEntry const* talent)
 
 bool Player::AddSpell(uint32 spellId, bool active, bool learning, bool dependent, bool disabled, bool loading /*= false*/, int32 fromSkill /*= 0*/, bool battlePet /*= false*/)
 {
+    // SylvaniaCore: gating Blizzlike de Sombre Course (68992) et Deux Formes (68996), que
+    // le core accorde a tort des la creation. Bloque ici tant que la quete d'intro de
+    // Gilneas correspondante n'est pas RENDUE : Sombre Course = Last Stand (14222,
+    // transformation worgen) ; Deux Formes = Last Chance at Humanity (14375, controle).
+    // loading=true (chargement DB d'un perso existant) passe. custom_worgen_racials.cpp
+    // les accorde au rendu de quete. Filet anti-blocage : debloque a partir du niveau 25.
+    if (!loading && getRace() == RACE_WORGEN)
+    {
+        if (spellId == 68992 && !GetQuestRewardStatus(14222) && getLevel() < 25)
+            return false;
+        if (spellId == 68996 && !GetQuestRewardStatus(14375) && getLevel() < 25)
+            return false;
+    }
+
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
     if (!spellInfo)
     {
@@ -25640,6 +25654,15 @@ void Player::LearnSkillRewardedSpells(uint32 skillId, uint32 skillValue)
         if (!spellInfo)
             continue;
 
+        // SylvaniaCore: gating Blizzlike des racials worgen (pas d'auto-apprentissage
+        // a la creation via skill-line). Reaccordes aux jalons de Gilneas par
+        // custom_worgen_racials.cpp. Evite aussi le crash client worgen-druide #132.
+        if (getRace() == RACE_WORGEN &&
+            (ability->Spell == 68975 || ability->Spell == 68976 || ability->Spell == 68978 ||
+             ability->Spell == 68992 || ability->Spell == 68996 || ability->Spell == 87840 ||
+             ability->Spell == 94293))
+            continue;
+
         if (ability->AcquireMethod != SKILL_LINE_ABILITY_LEARNED_ON_SKILL_VALUE && ability->AcquireMethod != SKILL_LINE_ABILITY_LEARNED_ON_SKILL_LEARN)
             continue;
 
@@ -26868,7 +26891,11 @@ void Player::UpdateAreaDependentAuras()
         {
             // use m_zoneUpdateId for speed: UpdateArea called from UpdateZone or instead UpdateZone in both cases m_zoneUpdateId up-to-date
             SpellCastResult scr = iter->second->GetSpellInfo()->CheckLocation(GetMapId(), GetZoneId(), GetAreaId(), this);
-            if (scr != SPELL_CAST_OK && !PlayerBotSetting::IsBotFlyMountAura(iter->first))
+            // Sylvania 2026-06-20: ne pas retirer les auras de monture/vol au changement de zone.
+            // CheckLocation echoue sur la restriction de vol -> aura monture retiree -> demontage
+            // en plein vol -> chute (bug "lache en plein vol"). Carve-out bot etendu aux joueurs.
+            bool isMountOrFlyAura = iter->second->HasEffectType(SPELL_AURA_MOUNTED) || iter->second->HasEffectType(SPELL_AURA_FLY);
+            if (scr != SPELL_CAST_OK && !PlayerBotSetting::IsBotFlyMountAura(iter->first) && !isMountOrFlyAura)
                 RemoveOwnedAura(iter);
             else
                 ++iter;
