@@ -84,6 +84,12 @@ public:
             return false;
         }
 
+        // SO_REUSEADDR : autorise le rebind immediat d un port encore en TIME_WAIT
+        // (evite "Address already in use" / bind-fail au redemarrage rapide).
+        _acceptor.set_option(boost::asio::socket_base::reuse_address(true), errorCode);
+        if (errorCode)
+            TC_LOG_INFO("network", "Failed to set SO_REUSEADDR on acceptor %s", errorCode.message().c_str());
+
         _acceptor.bind(_endpoint, errorCode);
         if (errorCode)
         {
