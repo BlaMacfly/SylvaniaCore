@@ -974,10 +974,10 @@ void Spell::CalculateJumpSpeeds(SpellEffectInfo const* effInfo, float dist, floa
 
     speedZ = std::sqrt(2 * Movement::gravity * height);
 
-    // Bond heroique (94954, cf. spell_warr_heroic_leap) : la formule generique
-    // donne un saut un peu mou ; on rehausse legerement l arc et la vitesse
-    // horizontale pour le ressenti voulu (n affecte que ce sort).
-    if (m_spellInfo->Id == 94954)
+    // Bond heroique : le saut EFFECTIF est porte par SPELL_EFFECT_DASH (eff 254)
+    // du sort 6544 (phase HIT) qui ecrase le JUMP_DEST de 94954 (phase LAUNCH) ;
+    // on boote donc les DEUX ids pour un ressenti coherent.
+    if (m_spellInfo->Id == 94954 || m_spellInfo->Id == 6544)
     {
         // Reglable a chaud (worldserver.conf + .reload config), sans redemarrage :
         //   HeroicLeap.SpeedMult  = facteur de vitesse horizontale (defaut 1.7)
