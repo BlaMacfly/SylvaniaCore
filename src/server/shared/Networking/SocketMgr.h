@@ -70,7 +70,10 @@ public:
 
     virtual void StopNetwork()
     {
-        _acceptor->Close();
+        // _acceptor est nul si StartNetwork n a jamais reussi (ex. ToolSocketMgr
+        // jamais demarre) -> ne pas dereferencer, sinon SIGSEGV a l extinction.
+        if (_acceptor)
+            _acceptor->Close();
 
         if (_threadCount != 0)
             for (int32 i = 0; i < _threadCount; ++i)
