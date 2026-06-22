@@ -585,6 +585,20 @@ void LootTemplate::CopyConditions(LootItem* li) const
 // Rolls for every item in the template and adds the rolled items the the loot
 void LootTemplate::Process(Loot& loot, bool rate, uint16 lootMode, uint8 groupId, Player const* player /*= nullptr*/, bool specOnly /*= false*/) const
 {
+    // Sylvania: guard against cyclic loot references (e.g. a reference_loot_template
+    // entry that references itself). Without this, such a cycle recurses until the
+    // worldserver stack overflows and crashes (observed on ICC loot, ref 104). The
+    // load-time loot verification of this core does not reject self/cyclic references,
+    // so we cap recursion defensively. No legitimate loot chain nests this deep.
+    static uint32 const MAX_LOOT_REFERENCE_DEPTH = 50;
+    static thread_local uint32 lootProcessDepth = 0;
+    struct DepthGuard { uint32& d; explicit DepthGuard(uint32& r) : d(r) { ++d; } ~DepthGuard() { --d; } } depthGuard(lootProcessDepth);
+    if (lootProcessDepth > MAX_LOOT_REFERENCE_DEPTH)
+    {
+        TC_LOG_ERROR("sql.sql", "LootTemplate::Process: loot reference recursion exceeded %u levels (likely a self-referencing or cyclic reference_loot_template entry) - aborting to prevent a stack-overflow crash", MAX_LOOT_REFERENCE_DEPTH);
+        return;
+    }
+
     if (groupId)                                            // Group reference uses own processing of the group
     {
         if (groupId > Groups.size())

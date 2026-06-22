@@ -421,7 +421,7 @@ class boss_ragnaros_firelands: public CreatureScript
                 Creature* smash;
                 Creature* splitting;
                 uint8 sonOfFlameCount;
-                bool HeartCheck, introDone, intermission1, intermission1InProgress, intermission2, intermission2InProgress, phase3, inMeleeRange, heroicPhase, died;
+                bool HeartCheck, introDone, intermission1, intermission1InProgress, intermission2, intermission2InProgress, phase3, inMeleeRange, heroicPhase, heroicPhaseFour, died;
 
                 void Reset() override
                 {
@@ -454,6 +454,7 @@ class boss_ragnaros_firelands: public CreatureScript
                     phase3                  = false;
                     inMeleeRange            = false;
                     heroicPhase             = false;
+                    heroicPhaseFour         = false;
                     died                    = false;
                     sonOfFlameCount         = 0;
 
@@ -705,6 +706,42 @@ class boss_ragnaros_firelands: public CreatureScript
                         Talk(SAY_HEROIC_PHASE);
                         events.ScheduleEvent(EVENT_PHASE_FOUR, 1000);
                         heroicPhase = true;
+                    }
+                    // Sylvania fix: heroic phase 4 ("True Power of the Firelord") previously
+                    // had NO completion path, leaving Ragnaros unkillable in heroic Firelands
+                    // (every SetData(DONE)/EVENT_DIE site lived only in the !IsHeroic() branch).
+                    // Mirror the normal-mode death once phase 4 is actually underway so the
+                    // encounter completes (me->Kill -> _JustDied -> SetBossState DONE) and
+                    // credit/achievement/loot are granted. Gated on heroicPhaseFour (set after
+                    // the phase-4 heal) so a sub-10% burst during the ~1s entry window cannot
+                    // short-circuit phase 4.
+                    else if (HealthBelowPct(10) && IsHeroic() && heroicPhaseFour && !died)
+                    {
+                        Talk(SAY_DEATH_H);
+
+                        me->AttackStop();
+                        me->CastStop();
+                        me->SetReactState(REACT_PASSIVE);
+                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
+                        me->RemoveAllAuras();
+                        if (instance->GetData(DATA_TEAM) == ALLIANCE)
+                        {
+                            me->SummonGameObject(GO_CACHE_OF_THE_FIRELORD, 1016.043f, -57.436f, 55.333f, 3.151f, QuaternionData(), 30000);
+                        }
+                        else
+                        {
+                            me->SummonGameObject(GO_CACHE_OF_THE_FIRELORD_H, 1016.043f, -57.436f, 55.333f, 3.151f, QuaternionData(), 30000);
+                        }
+
+                        if (instance)
+                        {
+                            instance->SetData(DATA_RAGNAROS, DONE);
+                            instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me); // Remove
+                        }
+
+                        events.ScheduleEvent(EVENT_DIE, 2000);
+                        me->HandleEmoteCommand(EMOTE_ONESHOT_SUBMERGE);
+                        died = true;
                     }
 
                     events.Update(diff);
@@ -1032,6 +1069,7 @@ class boss_ragnaros_firelands: public CreatureScript
                                 Talk(SAY_PHASE_HEROIC_TEXT);
                                 me->RemoveAurasDueToSpell(SPELL_BASE_VISUAL);
                                 me->SetHealth(me->GetMaxHealth() / 2);
+                                heroicPhaseFour = true;                 // Sylvania: phase 4 is now active -> arm the heroic death check
                                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_REMOVE_CLIENT_CONTROL);
                                 me->SetObjectScale(1.2f);
                                 events.ScheduleEvent(EVENT_SUPERHEATED, 10000);
