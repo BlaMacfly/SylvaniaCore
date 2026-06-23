@@ -128,7 +128,30 @@ public:
             if (GameObject* Cage = me->FindNearestGameObject(GO_CAGE, 20))
                 Cage->SetGoState(GO_STATE_READY);
         }
+
+        // Relance l escorte si le joueur a deja la quete mais qu elle a ete interrompue
+        // (deconnexion / redemarrage serveur / sortie de portee) -> evite un blocage definitif
+        void StartEscortIfNeeded(Player* player)
+        {
+            if (HasEscortState(STATE_ESCORT_ESCORTING))
+                return;
+
+            me->setFaction(FACTION_QUEST_ESCAPE);
+            Start(true, false, player->GetGUID());
+        }
     };
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        // Si le joueur a la quete en cours, (re)lancer l escorte au lieu d un dialogue vide
+        if (player->GetQuestStatus(QUEST_ESCAPE_FROM_THE_CATACOMBS) == QUEST_STATUS_INCOMPLETE)
+        {
+            if (npc_ranger_lilathaAI* escortAI = CAST_AI(npc_ranger_lilatha::npc_ranger_lilathaAI, creature->AI()))
+                escortAI->StartEscortIfNeeded(player);
+            return true;
+        }
+        return false;
+    }
 
     bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest) override
     {
