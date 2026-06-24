@@ -8870,7 +8870,17 @@ void Unit::SetSpeedRate(UnitMoveType mtype, float rate)
         }
     }
 
-    if (Player* playerMover = GetPlayerBeingMoved()) // unit controlled by a player.
+    // Sylvania fix (Foncer/Hot Rod, quete 14071 Rolling with my Homies): route speed changes of a
+    // player-driven creature/vehicle to the controlling player via SMSG_MOVE_SET_*_SPEED instead of
+    // a spline override. GetPlayerBeingMoved() only resolves for actual Player units, so a driven
+    // vehicle would otherwise get SMSG_MOVE_SPLINE_SET_RUN_SPEED, which the client treats as the
+    // server seizing spline control -> the vehicle freezes (e.g. "Punch It" +50% speed aura).
+    // m_playerMovingMe (GetPlayerMovingMe) is set exactly for direct client control: vehicles/possess.
+    Player* playerMover = GetPlayerBeingMoved();
+    if (!playerMover)
+        playerMover = GetPlayerMovingMe(); // player-driven vehicle / possessed unit
+
+    if (playerMover) // unit controlled by a player.
     {
         // Send notification to self
         WorldPackets::Movement::MoveSetSpeed selfpacket(moveTypeToOpcode[mtype][1]);
