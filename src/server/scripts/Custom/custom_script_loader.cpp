@@ -18,14 +18,20 @@
 // This is where scripts' loading functions should be declared:
 
 void AddSC_custom_npcs();
+void AddSC_custom_worgen_racials();
 void AddSC_quest_conversation();
 void AddSC_solocraft();
 void AddLfgSoloScripts();
+void AddSC_custom_loot_packs();
+void AddSC_custom_qtest();
 
 void AddCustomScripts()
 {
-    AddSC_custom_npcs(); 
+    AddSC_custom_npcs();
+    AddSC_custom_worgen_racials();
     AddSC_quest_conversation();
     AddSC_solocraft();
-	AddLfgSoloScripts();
+    AddLfgSoloScripts();
+    AddSC_custom_loot_packs();
+    AddSC_custom_qtest();
 }
