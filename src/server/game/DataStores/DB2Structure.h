@@ -166,8 +166,6 @@ struct AreaTableEntry
     // helpers
     bool IsSanctuary() const
     {
-        if (ContinentID == 609)
-            return true;
         return (Flags[0] & AREA_FLAG_SANCTUARY) != 0;
     }
 
