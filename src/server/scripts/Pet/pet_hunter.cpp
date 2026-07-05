@@ -181,8 +181,65 @@ public:
     }
 };
 
+// Dire Beast (120679) summoned "Beast" - order the summoned beast to attack the hunter's target.
+// Same proven pattern as npc_pet_hunter_snake_trap, without the snake-specific health/poison
+// (dire beasts are level 1 -> the snake health formula would underflow).
+class npc_pet_hun_dire_beast : public CreatureScript
+{
+    public:
+        npc_pet_hun_dire_beast() : CreatureScript("npc_pet_hun_dire_beast") { }
+
+        struct npc_pet_hun_dire_beastAI : public ScriptedAI
+        {
+            npc_pet_hun_dire_beastAI(Creature* creature) : ScriptedAI(creature) { }
+
+            void EnterCombat(Unit* /*who*/) override { }
+
+            void Reset() override
+            {
+                // On spawn, engage the summoner's current target (or its attacker).
+                if (!me->GetVictim() && me->IsSummon())
+                    if (Unit* owner = me->ToTempSummon()->GetSummoner())
+                    {
+                        if (Unit* target = owner->GetVictim())
+                            AttackStart(target);
+                        else if (Unit* attacker = owner->getAttackerForHelper())
+                            AttackStart(attacker);
+                    }
+            }
+
+            // Pick up a closer target if the owner switches while the beast is out.
+            void MoveInLineOfSight(Unit* who) override
+            {
+                if (!me->GetVictim() && me->CanCreatureAttack(who))
+                {
+                    if (me->GetDistanceZ(who) > CREATURE_Z_ATTACK_RANGE)
+                        return;
+
+                    float attackRadius = me->GetAttackDistance(who);
+                    if (me->IsWithinDistInMap(who, attackRadius) && me->IsWithinLOSInMap(who))
+                        AttackStart(who);
+                }
+            }
+
+            void UpdateAI(uint32 /*diff*/) override
+            {
+                if (!UpdateVictim() || !me->GetVictim())
+                    return;
+
+                DoMeleeAttackIfReady();
+            }
+        };
+
+        CreatureAI* GetAI(Creature* creature) const override
+        {
+            return new npc_pet_hun_dire_beastAI(creature);
+        }
+};
+
 void AddSC_hunter_pet_scripts()
 {
     new npc_pet_hunter_snake_trap();
     new npc_pet_hunter_hati();
+    new npc_pet_hun_dire_beast();
 }
