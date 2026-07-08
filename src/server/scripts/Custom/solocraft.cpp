@@ -40,6 +40,7 @@ namespace {
 
         void OnMapChanged(Player* player) override
         {
+            TC_LOG_INFO("server.worldserver", "[SoloDBG] OnMapChanged player=%s mapId=%u maxHP=%u", player->GetName().c_str(), player->GetMapId(), (uint32)player->GetMaxHealth());
             if (sConfigMgr->GetBoolDefault("Solocraft.Enable", false))
             {
                 Map* map = player->GetMap();
@@ -49,23 +50,38 @@ namespace {
             }
         }
 
+        void OnLogout(Player* player) override
+        {
+            // Les modificateurs de stats (TOTAL_PCT) sont remis a 1.0 a chaque login,
+            // mais _unitDifficulty (statique) survivait a la deconnexion. Un ClearBuffs
+            // ulterieur retrouvait alors une entree fantome et DIVISAIT des stats jamais
+            // buffees (perso niveau 1 rabaisse a 20% de ses stats -> 28 PV, cf. bug Selena).
+            _unitDifficulty.erase(player->GetGUID());
+        }
+
     private:
         std::map<uint64, float> _unitDifficulty;
-
-        // Get difficulty values from config
-        const float D5 = sConfigMgr->GetFloatDefault("Solocraft.Dungeon", 5.0);
-        const float D5H = sConfigMgr->GetFloatDefault("Solocraft.Heroic", 10.0);
-        const float D10 = sConfigMgr->GetFloatDefault("Solocraft.Raid10", 10.0);
-        const float D25 = sConfigMgr->GetFloatDefault("Solocraft.Raid25", 25.0);
-        const float D30 = sConfigMgr->GetFloatDefault("Solocraft.Raid30", 30.0);
-        const float D40 = sConfigMgr->GetFloatDefault("Solocraft.Raid40", 40.0);
 
         // Set the instance difficulty
         float CalculateDifficulty(Map* map, Player* player)
         {
+            // Valeurs lues a CHAQUE changement de carte (evenement peu frequent) plutot qu'une seule fois
+            // au boot -> 'reload config' (tmux: reload config) suffit desormais pour tuner, sans restart.
+            const float D5  = sConfigMgr->GetFloatDefault("Solocraft.Dungeon", 5.0f);
+            const float D5H = sConfigMgr->GetFloatDefault("Solocraft.Heroic", 10.0f);
+            const float D10 = sConfigMgr->GetFloatDefault("Solocraft.Raid10", 10.0f);
+            const float D25 = sConfigMgr->GetFloatDefault("Solocraft.Raid25", 25.0f);
+            const float D30 = sConfigMgr->GetFloatDefault("Solocraft.Raid30", 30.0f);
+            const float D40 = sConfigMgr->GetFloatDefault("Solocraft.Raid40", 40.0f);
             float difficulty = 1.0;
             if (map)
             {
+                // Pas de Solocraft en Mythique / Mythique+ : Map::IsMythic() couvre le donjon Mythique (23),
+                // la clef Mythique+ (DIFFICULTY_MYTHIC_KEYSTONE 8) et le raid Mythique. Contenu reserve au groupe.
+                // On retourne 0 (aucun buff) ; ApplyBuffs/ClearBuffs retirera tout buff Solocraft anterieur.
+                if (map->IsMythic())
+                    return 0.0f;
+
                 if (map->IsRaid())
                 {
                     switch (map->GetMapDifficulty()->MaxPlayers)
@@ -125,11 +141,13 @@ namespace {
 
                 // Adjust player stats
                 _unitDifficulty[player->GetGUID()] = difficulty;
+                TC_LOG_INFO("server.worldserver", "[SoloDBG] ApplyBuffs player=%s diff=%.2f stamPctBefore=%.3f maxHPbefore=%u", player->GetName().c_str(), difficulty, player->GetModifierValue(UNIT_MOD_STAT_STAMINA, TOTAL_PCT), (uint32)player->GetMaxHealth());
                 for (int32 i = STAT_STRENGTH; i < MAX_STATS; ++i)
                 {
                     // Buff the player
                     player->HandleStatModifier(UnitMods(UNIT_MOD_STAT_START + i), TOTAL_PCT, difficulty * 100.0, true);
                 }
+                TC_LOG_INFO("server.worldserver", "[SoloDBG] ApplyBuffs DONE player=%s stamPctAfter=%.3f maxHPafter=%u", player->GetName().c_str(), player->GetModifierValue(UNIT_MOD_STAT_STAMINA, TOTAL_PCT), (uint32)player->GetMaxHealth());
 
                 // Set player health
                 player->SetFullHealth();
@@ -144,6 +162,7 @@ namespace {
         void ClearBuffs(Player* player, Map* map)
         {
             std::map<uint64, float>::iterator unitDifficultyIterator = _unitDifficulty.find(player->GetGUID());
+            TC_LOG_INFO("server.worldserver", "[SoloDBG] ClearBuffs player=%s found=%d stamPct=%.3f maxHP=%u", player->GetName().c_str(), unitDifficultyIterator != _unitDifficulty.end() ? 1 : 0, player->GetModifierValue(UNIT_MOD_STAT_STAMINA, TOTAL_PCT), (uint32)player->GetMaxHealth());
             if (unitDifficultyIterator != _unitDifficulty.end())
             {
                 float difficulty = unitDifficultyIterator->second;
