@@ -30771,6 +30771,13 @@ void Player::RemoveSpecializationSpells()
 
 void Player::RemoveEquipedSpecializationItems()
 {
+    // Sous le niveau de specialisation (MIN_SPECIALIZATION_LEVEL=10), un perso n'a pas
+    // de vraie spe : ne pas desequiper. InitTalentForLevel() rappelle
+    // ResetTalentSpecialization() a CHAQUE montee de niveau sous 10, ce qui deshabillait
+    // tout le stuff vers les sacs (non-blizzlike ; cf. signalement #8 "draeneï").
+    if (getLevel() < MIN_SPECIALIZATION_LEVEL)
+        return;
+
     for (uint8 i = EQUIPMENT_SLOT_START; i < EQUIPMENT_SLOT_END; i++)
         if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, i))
             if (!item->GetTemplate()->IsUsableBySpecialization(GetSpecializationId(), getLevel(), false) || CanUseItem(item) != EQUIP_ERR_OK)
