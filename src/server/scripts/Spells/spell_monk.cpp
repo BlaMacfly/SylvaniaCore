@@ -4038,6 +4038,9 @@ void AddSC_monk_spell_scripts()
     new spell_monk_jab();
     new spell_monk_jade_serpent_statue();
     new spell_monk_keg_smash();
+    new spell_monk_mastery_combo_strikes();
+    new spell_monk_mastery_combo_strikes_periodic_auras();
+    new spell_monk_mastery_combo_strikes_periodic_triggers();
     new spell_monk_legacy_of_the_emperor();
     new spell_monk_lifecycles();
     new spell_monk_life_cocoon();
