@@ -22,6 +22,7 @@
 #include "ScriptMgr.h"
 #include "SpellAuraEffects.h"
 #include "SpellHistory.h"
+#include <set>
 #include "SpellMgr.h"
 #include "SpellPackets.h"
 #include "SpellScript.h"
@@ -1027,11 +1028,25 @@ public:
                     if (Unit* target = GetHitUnit())
                     {
                         _player->CastSpell(target, SPELL_MONK_KEG_SMASH_VISUAL, true);
-                        _player->CastSpell(target, SPELL_MONK_WEAKENED_BLOWS, true);
-                        _player->CastSpell(_player, SPELL_MONK_KEG_SMASH_ENERGIZE, true);
-                        // Prevent to receive 2 CHI more than once time per cast
-                        _player->GetSpellHistory()->AddCooldown(SPELL_MONK_KEG_SMASH_ENERGIZE, 0, std::chrono::seconds(1));
-                        _player->CastSpell(target, SPELL_MONK_DIZZYING_HAZE, true);
+
+                        // Legion : Keg Smash reduit de 4 s la recharge des breuvages.
+                        // Ironskin (115308) + Purifying (119582) partagent une categorie de charges ;
+                        // Black Ox (115399) + Fortifying (115203) sont sur cooldown classique.
+                        static uint32 const brews[4] = { 115308, 119582, 115399, 115203 };
+                        std::set<uint32> doneCategories;
+                        for (uint32 brew : brews)
+                        {
+                            SpellInfo const* brewInfo = sSpellMgr->GetSpellInfo(brew);
+                            if (!brewInfo)
+                                continue;
+                            if (brewInfo->ChargeCategoryId)
+                            {
+                                if (doneCategories.insert(brewInfo->ChargeCategoryId).second)
+                                    _player->GetSpellHistory()->ModifyChargeRecoveryTime(brewInfo->ChargeCategoryId, std::chrono::milliseconds(-4000));
+                            }
+                            else
+                                _player->GetSpellHistory()->ModifyCooldown(brew, -4000);
+                        }
                     }
                 }
             }
@@ -2073,6 +2088,10 @@ public:
                 return;
 
             int32 staggerPct = GetSpellInfo()->GetEffect(EFFECT_8)->CalcValue(GetCaster());
+            // Ironskin Brew (buff 215479) augmente le Stagger de +35% (effet 0) tant qu'il est actif.
+            if (Aura* ironskin = caster->GetAura(215479))
+                if (AuraEffect const* isbEff = ironskin->GetEffect(EFFECT_0))
+                    staggerPct += isbEff->GetAmount();
             int32 staggerAmount = CalculatePct(dmgInfo.GetDamage(), staggerPct);
 
             absorbAmount = staggerAmount;
@@ -2431,11 +2450,9 @@ public:
             {
                 if (roll_chance_i(comboBreaker->GetAmount()))
                 {
-                    uint32 spellId = 116768;
-                    if (roll_chance_i(50))
-                        spellId = 118864;
-
-                    caster->CastSpell(caster, spellId, true);
+                    // Legion : Combo Breaker ne proc que Blackout Kick! (116768).
+                    // L'ancien 118864 (Tiger Palm MoP) est absent du client 7.3.5 -> proc perdu 1 fois sur 2.
+                    caster->CastSpell(caster, 116768, true);
                 }
             }
         }
@@ -3954,6 +3971,31 @@ class spell_monk_tiger_palm : public SpellScript
     }
 };
 
+// Ironskin Brew - 115308 : applique/prolonge le buff 215479 (+35% Stagger), cumul de duree cap 3x.
+class spell_monk_ironskin_brew : public SpellScript
+{
+    PrepareSpellScript(spell_monk_ironskin_brew);
+
+    void HandleAfterCast()
+    {
+        Unit* caster = GetCaster();
+        SpellInfo const* buff = sSpellMgr->GetSpellInfo(215479);
+        if (!caster || !buff)
+            return;
+
+        int32 base = buff->GetMaxDuration();
+        if (Aura* aura = caster->GetAura(215479))
+            aura->SetDuration(std::min<int32>(aura->GetDuration() + base, base * 3));
+        else
+            caster->CastSpell(caster, 215479, true);
+    }
+
+    void Register() override
+    {
+        AfterCast += SpellCastFn(spell_monk_ironskin_brew::HandleAfterCast);
+    }
+};
+
 void AddSC_monk_spell_scripts()
 {
     RegisterAreaTriggerAI(at_monk_gift_of_the_ox_sphere);
@@ -4034,6 +4076,7 @@ void AddSC_monk_spell_scripts()
     new playerScript_monk_whirling_dragon_punch();
     RegisterAuraScript(spell_monk_whirling_dragon_punch);
     RegisterSpellScript(spell_monk_tiger_palm);
+    RegisterSpellScript(spell_monk_ironskin_brew);
 
     RegisterCreatureAI(npc_monk_sef_spirit);
     RegisterCreatureAI(npc_monk_xuen);

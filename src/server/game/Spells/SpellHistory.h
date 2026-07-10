@@ -102,6 +102,7 @@ public:
     void AddCooldown(uint32 spellId, uint32 itemId, Clock::time_point cooldownEnd, uint32 categoryId, Clock::time_point categoryEnd, bool onHold = false);
     void ModifyCooldown(uint32 spellId, int32 cooldownModMs);
     void ModifyCooldown(uint32 spellId, Clock::duration cooldownMod);
+    void ModifyChargeRecoveryTime(uint32 chargeCategoryId, Clock::duration offset);
     void ResetCooldown(uint32 spellId, bool update = false);
     void ResetCooldown(CooldownStorageType::iterator& itr, bool update = false);
     template<typename Predicate>
