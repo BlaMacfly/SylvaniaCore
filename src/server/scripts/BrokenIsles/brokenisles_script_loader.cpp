@@ -40,6 +40,7 @@ void AddSC_class_hall_druid();
 void AddSC_class_hall_hunter();
 void AddSC_class_hall_mage();
 void AddSC_class_hall_monk();
+void AddSC_class_hall_artifact_choices();
 void AddSC_class_hall_paladin();
 void AddSC_class_hall_priest();
 void AddSC_class_hall_rogue();
@@ -246,6 +247,7 @@ void AddBrokenIslesScripts()
     AddSC_class_hall_hunter();
     AddSC_class_hall_mage();
     AddSC_class_hall_monk();
+    AddSC_class_hall_artifact_choices();
     AddSC_class_hall_paladin();
     AddSC_class_hall_priest();
     AddSC_class_hall_rogue();
