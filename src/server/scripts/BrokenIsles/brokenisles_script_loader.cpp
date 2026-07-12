@@ -216,6 +216,7 @@ void AddSC_scenario_artifact_brokenshore();
 void AddSC_scenario_artifact_tirisfal_glades();
 void AddSC_scenario_the_violet_hold_dh();
 void AddSC_scenario_mage_art();
+void AddSC_scenario_monk_serenitys_end();
 
 // The name of this function should match:
 // void Add${NameOfDirectory}Scripts()
@@ -413,4 +414,5 @@ void AddBrokenIslesScripts()
     AddSC_scenario_artifact_tirisfal_glades();
     AddSC_scenario_the_violet_hold_dh();
     AddSC_scenario_mage_art();
+    AddSC_scenario_monk_serenitys_end();
 }

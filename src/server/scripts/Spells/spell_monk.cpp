@@ -1243,7 +1243,13 @@ public:
                         _player->SaveRecallPosition();
                         //Class Order Hall
                         if (_player->getLevel() >= 98)
-                            _player->TeleportTo(1514, 882.933f, 3605.61f, 192.218f, _player->GetOrientation());
+                        {
+                            // Pendant la quete 12103 (Before the Storm), le pelerinage mene au pic de la Serenite assiege (scenario 943)
+                            if (_player->GetQuestStatus(12103) == QUEST_STATUS_INCOMPLETE)
+                                _player->TeleportTo(1014, 3819.2f, 1793.27f, 950.35f, _player->GetOrientation());
+                            else
+                                _player->TeleportTo(1514, 882.933f, 3605.61f, 192.218f, _player->GetOrientation());
+                        }
                         else
                             _player->TeleportTo(870, 3818.55f, 1793.18f, 950.35f, _player->GetOrientation());
                     }

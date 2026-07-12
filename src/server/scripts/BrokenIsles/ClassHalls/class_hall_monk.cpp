@@ -17,6 +17,9 @@
  */
 
 #include "ScriptMgr.h"
+#include "Player.h"
+#include "ObjectMgr.h"
+#include "ScriptedCreature.h"
 enum
 {
     ///MONK Quest
@@ -61,7 +64,52 @@ private:
     bool SayHi;
 };
 
+enum MonkArtifactChoice
+{
+    PLAYER_CHOICE_MONK_ARTIFACT = 242,
+    RESPONSE_MONK_MISTWEAVER    = 241,
+    RESPONSE_MONK_BREWMASTER    = 242,
+    RESPONSE_MONK_WINDWALKER    = 243,
+    QUEST_WINDWALKER_CHOSEN     = 40638,
+    QUEST_MISTWEAVER_CHOSEN     = 40639,
+    QUEST_BREWMASTER_CHOSEN     = 40640,
+};
+
+// Choix d artefact au gossip de Ponshu (sort 198902 -> PlayerChoice 242) :
+// accorde et recompense la quete de la spe choisie, qui donne l arme prodigieuse.
+class monk_artifact_player_choice : public PlayerScript
+{
+public:
+    monk_artifact_player_choice() : PlayerScript("monk_artifact_player_choice") { }
+
+    void OnPlayerChoiceResponse(Player* player, uint32 choiceId, uint32 responseId) override
+    {
+        if (player->getClass() != CLASS_MONK || choiceId != PLAYER_CHOICE_MONK_ARTIFACT)
+            return;
+
+        uint32 questId = 0;
+        switch (responseId)
+        {
+            case RESPONSE_MONK_MISTWEAVER: questId = QUEST_MISTWEAVER_CHOSEN; break;
+            case RESPONSE_MONK_BREWMASTER: questId = QUEST_BREWMASTER_CHOSEN; break;
+            case RESPONSE_MONK_WINDWALKER: questId = QUEST_WINDWALKER_CHOSEN; break;
+            default: return;
+        }
+
+        if (player->GetQuestStatus(questId) != QUEST_STATUS_NONE)
+            return;
+
+        if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
+        {
+            player->AddQuest(quest, nullptr);
+            player->CompleteQuest(questId);
+            player->RewardQuest(quest, 0, player, true);
+        }
+    }
+};
+
 void AddSC_class_hall_monk()
 {
     RegisterCreatureAI(npc_initiate_da_nel);
+    new monk_artifact_player_choice();
 }
