@@ -339,9 +339,13 @@ public:
     {
         player->PlayerTalkClass->ClearMenus();
 
-        //214608
-        player->KilledMonsterCredit(creature->GetEntry());
-        player->CastSpell(player, 216356, false); //scene
+        player->PlayerTalkClass->SendCloseGossip();
+        // Embarquement pour la Rive Brisee : credit du bateau puis entree dans le scenario 786 (map 1460)
+        if (player->GetQuestStatus(42740) == QUEST_STATUS_INCOMPLETE)
+        {
+            player->KilledMonsterCredit(creature->GetEntry());
+            player->TeleportTo(1460, 443.8f, 2076.1f, 1.2f, 0.4f);
+        }
 
         return true;
     };
