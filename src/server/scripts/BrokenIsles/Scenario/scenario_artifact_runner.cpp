@@ -250,4 +250,6 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1480);
     // Paladin Sacre - The Silver Hand (Espoir de Lumiere)
     REGISTER_ARTIFACT_RUNNER(1611);
+    // DK Impie - Apocalypse (monastere Ecarlate)
+    REGISTER_ARTIFACT_RUNNER(1618);
 }
