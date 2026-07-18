@@ -252,4 +252,8 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1611);
     // DK Impie - Apocalypse (monastere Ecarlate)
     REGISTER_ARTIFACT_RUNNER(1618);
+    // Voleur Finesse - Fangs of the Devourer (Akaari)
+    REGISTER_ARTIFACT_RUNNER(1607);
+    // Demoniste Destruction - Scepter of Sargeras (Tol Barad)
+    REGISTER_ARTIFACT_RUNNER(1630);
 }
