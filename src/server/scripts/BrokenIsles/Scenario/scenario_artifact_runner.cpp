@@ -256,4 +256,8 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1607);
     // Demoniste Destruction - Scepter of Sargeras (Tol Barad)
     REGISTER_ARTIFACT_RUNNER(1630);
+    // Chaman Elementaire - Fist of Ra-den (pic du Vortex)
+    REGISTER_ARTIFACT_RUNNER(1602);
+    // Chasseur BM - Titanstrike (temple des Orages)
+    REGISTER_ARTIFACT_RUNNER(1609);
 }
