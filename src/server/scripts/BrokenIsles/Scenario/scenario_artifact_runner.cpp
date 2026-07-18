@@ -246,4 +246,8 @@ void AddSC_scenario_artifact_runner()
 {
     // Marche-vent moine - « The Thundering Heavens » (Skywall, boss Typhinius)
     REGISTER_ARTIFACT_RUNNER(1528);
+    // DK Givre - The Blades of the Fallen Prince (Couronne de glace)
+    REGISTER_ARTIFACT_RUNNER(1480);
+    // Paladin Sacre - The Silver Hand (Espoir de Lumiere)
+    REGISTER_ARTIFACT_RUNNER(1611);
 }
