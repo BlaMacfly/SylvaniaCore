@@ -264,4 +264,8 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1620);
     // Arcway (Suramar) - Duskwatch
     REGISTER_ARTIFACT_RUNNER(1632);
+    // Niskara - invasion (monde de la Legion)
+    REGISTER_ARTIFACT_RUNNER(1604);
+    // Terres de Feu - la Fournaise
+    REGISTER_ARTIFACT_RUNNER(1605);
 }
