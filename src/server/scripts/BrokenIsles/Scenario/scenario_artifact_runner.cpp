@@ -260,4 +260,8 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1602);
     // Chasseur BM - Titanstrike (temple des Orages)
     REGISTER_ARTIFACT_RUNNER(1609);
+    // Voleur Assassinat - Kingslayers (manoir Ravenholdt)
+    REGISTER_ARTIFACT_RUNNER(1620);
+    // Arcway (Suramar) - Duskwatch
+    REGISTER_ARTIFACT_RUNNER(1632);
 }
