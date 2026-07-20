@@ -268,4 +268,8 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1604);
     // Terres de Feu - la Fournaise
     REGISTER_ARTIFACT_RUNNER(1605);
+    // Chasseur BM - Thunder of the Titans (Ulduar)
+    REGISTER_ARTIFACT_RUNNER(1579);
+    // DK - Rescue Koltira
+    REGISTER_ARTIFACT_RUNNER(1617);
 }
