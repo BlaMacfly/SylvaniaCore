@@ -19,6 +19,7 @@
 #include "Player.h"
 #include "DatabaseEnv.h"
 #include "TaskScheduler.h"
+#include "CreatureTextMgr.h"
 #include <unordered_map>
 
 namespace ArtifactRunner
@@ -171,6 +172,9 @@ struct scenario_artifact_runner : public InstanceScript
                         summon->SetLevel(s.level);
                         summon->SetFullHealth();
                     }
+                    // cri d apparition des boss (groupe 0 si defini en creature_text)
+                    if (s.level >= 102 && sCreatureTextMgr->TextExist(s.entry, 0))
+                        summon->AI()->Talk(0);
                     stageEntries.insert(s.entry);
                     ++aliveCount;
                 }
