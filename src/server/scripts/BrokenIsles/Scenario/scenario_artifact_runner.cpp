@@ -276,4 +276,8 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1540);
     // Mage Givre - Ebonchill (2 zones)
     REGISTER_ARTIFACT_RUNNER(1616);
+    // Guerrier Fureur - Warswords (Helheim)
+    REGISTER_ARTIFACT_RUNNER(1511);
+    // Chaman Amelioration - Doomhammer
+    REGISTER_ARTIFACT_RUNNER(1503);
 }
