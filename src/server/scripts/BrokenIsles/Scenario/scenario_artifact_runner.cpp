@@ -280,4 +280,11 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1511);
     // Chaman Amelioration - Doomhammer
     REGISTER_ARTIFACT_RUNNER(1503);
+    // Lot final : Gloaming Reef, Maelstrom titan, Chaman intro, Netherlight, Shadowgore, Hall du Gardien
+    REGISTER_ARTIFACT_RUNNER(1553);
+    REGISTER_ARTIFACT_RUNNER(1580);
+    REGISTER_ARTIFACT_RUNNER(1572);
+    REGISTER_ARTIFACT_RUNNER(1512);
+    REGISTER_ARTIFACT_RUNNER(1502);
+    REGISTER_ARTIFACT_RUNNER(1513);
 }
