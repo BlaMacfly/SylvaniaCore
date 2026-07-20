@@ -272,4 +272,8 @@ void AddSC_scenario_artifact_runner()
     REGISTER_ARTIFACT_RUNNER(1579);
     // DK - Rescue Koltira
     REGISTER_ARTIFACT_RUNNER(1617);
+    // Druide - Revechemin corrompu
+    REGISTER_ARTIFACT_RUNNER(1540);
+    // Mage Givre - Ebonchill (2 zones)
+    REGISTER_ARTIFACT_RUNNER(1616);
 }
