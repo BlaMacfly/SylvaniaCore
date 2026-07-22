@@ -870,14 +870,19 @@ void WorldSession::HandleContinuePlayerLogin()
     std::shared_ptr<LoginQueryHolder> holder = std::make_shared<LoginQueryHolder>(GetAccountId(), m_playerLoading);
     if (!holder->Initialize())
     {
+        TC_LOG_ERROR("server.worldserver", "QA-BOTLOG2: holder Initialize KO compte %u", GetAccountId()); // QA-BOTLOG2
         m_playerLoading.Clear();
         return;
     }
+    if (IsBotSession())
+        TC_LOG_ERROR("server.worldserver", "QA-BOTLOG2: holder pose compte %u", GetAccountId());
 
     SendPacket(WorldPackets::Auth::ResumeComms(CONNECTION_TYPE_INSTANCE).Write());
 
     AddQueryHolderCallback(CharacterDatabase.DelayQueryHolder(holder)).AfterComplete([this](SQLQueryHolderBase const& holder)
     {
+        if (IsBotSession())
+            TC_LOG_ERROR("server.worldserver", "QA-BOTLOG2: callback holder compte %u", GetAccountId());
         HandlePlayerLogin(dynamic_cast<LoginQueryHolder const&>(holder));
     });
 }
@@ -910,6 +915,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder const& holder)
     // "GetAccountId() == db stored account id" checked in LoadFromDB (prevent login not own character using cheating tools)
     if (!pCurrChar->LoadFromDB(playerGuid, holder))
     {
+        TC_LOG_ERROR("server.worldserver", "QA-BOTLOG3: LoadFromDB KO pour %s compte %u", playerGuid.ToString().c_str(), GetAccountId()); // QA-BOTLOG3
         SetPlayer(NULL);
         KickPlayer();                                       // disconnect client, player no set to session and it will not deleted or saved at kick
         delete pCurrChar;                                   // delete it manually

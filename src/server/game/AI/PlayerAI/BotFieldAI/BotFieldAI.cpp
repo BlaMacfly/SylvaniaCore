@@ -16,6 +16,7 @@
  */
 
 #include "BotFieldAI.h"
+#include "Config.h"
 #include "MoveSplineInit.h"
 #include "BotBGAIMovement.h"
 #include "PlayerBotMgr.h"
@@ -269,8 +270,12 @@ bool BotFieldAI::ProcessGroupInvite()
 		return false;
 	if (me->IsInWorld() && me->GetMap()->IsDungeon())
 	{
-		BotUtility::TryTeleportHome(this);
-		return true;
+		// pbotqa=1 : harnais QA, autorise les bots field a rester en instance
+		if (!sConfigMgr->GetIntDefault("pbotqa", 0))
+		{
+			BotUtility::TryTeleportHome(this);
+			return true;
+		}
 	}
 	Group* pGroup = me->GetGroupInvite();
 	if (!pGroup)

@@ -163,6 +163,15 @@ void PlayerBotSession::ProcessNoWorld(uint32 diff)
     if (!player)
         return;
 
+    // Un client reel confirme le changement de monde par MSG_MOVE_WORLDPORT_ACK ;
+    // sans cette simulation, un bot en jeu vise par .tele reste bloque sur le semaphore.
+    if (player->IsBeingTeleportedFar())
+    {
+        HandleMoveWorldportAck();
+        m_NoWorldTick = 500;
+        return;
+    }
+
     if (player->IsInWorld())
     {
         m_NoWorldTick = 0;
@@ -226,6 +235,7 @@ void PlayerBotSession::CastSchedule(uint32 diff)
 		break;
 	case BGSType_Online_GUID:
 		result = ProcessOnlineByGUID(schedule);
+		TC_LOG_ERROR("server.worldserver", "QA-BOTLOG: ProcessOnlineByGUID resultat=%d", (int)result); // QA-BOTLOG
 		break;
 	case BGSType_Offline:
 		result = ProcessOffline(schedule);

@@ -99,6 +99,7 @@ struct scenario_artifact_runner : public InstanceScript
     {
         SetBossNumber(12);
         config = ArtifactRunner::GetConfig(instance->GetId());
+        TC_LOG_ERROR("server.worldserver", "QA-RUNLOG: Initialize map %u config=%d", instance->GetId(), config ? 1 : 0); // QA-RUNLOG
         stage = 0;
         aliveCount = 0;
         introDone = false;
@@ -109,6 +110,7 @@ struct scenario_artifact_runner : public InstanceScript
         InstanceScript::OnPlayerEnter(player);
         PhasingHandler::AddPhase(player, 169, true);
 
+        TC_LOG_ERROR("server.worldserver", "QA-RUNLOG: OnPlayerEnter map %u introDone=%d config=%d", instance->GetId(), (int)introDone, config ? 1 : 0);
         if (!introDone && config)
         {
             introDone = true;
@@ -144,6 +146,7 @@ struct scenario_artifact_runner : public InstanceScript
             return;
         }
 
+        TC_LOG_ERROR("server.worldserver", "QA-RUNLOG: StartStage %u map %u", (uint32)newStage, instance->GetId());
         stage = newStage;
         aliveCount = 0;
         stageEntries.clear();
@@ -162,11 +165,21 @@ struct scenario_artifact_runner : public InstanceScript
             }
             for (uint8 i = 0; i < s.count; ++i)
             {
-                float dx = (i % 3) * 6.0f - 6.0f;
-                float dy = (i / 3) * 6.0f - 3.0f;
-                Position pos = { s.x + dx + 12.0f, s.y + dy + 8.0f, s.z, s.o };
-                if (TempSummon* summon = instance->SummonCreature(s.entry, pos))
+                float dx = (i % 3) * 4.0f - 4.0f;
+                float dy = (i / 3) * 4.0f - 2.0f;
+                Position pos = { s.x + dx + 6.0f, s.y + dy + 4.0f, s.z, s.o };
+                // cale le Z au sol : les ancres sont sures mais les offsets peuvent sortir des plateformes
+                float gz = instance->GetHeight(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + 8.0f, true, 60.0f);
+                if (gz > INVALID_HEIGHT && std::abs(gz - s.z) < 25.0f)
+                    pos.m_positionZ = gz + 0.5f;
+                else
+                    pos.Relocate(s.x, s.y, s.z); // repli : pile sur l ancre officielle
+                TempSummon* summon = instance->SummonCreature(s.entry, pos);
+                if (!summon)
+                    TC_LOG_ERROR("server.worldserver", "QA-RUNLOG: summon KO entry %u map %u", s.entry, instance->GetId());
+                if (summon)
                 {
+                    TC_LOG_ERROR("server.worldserver", "QA-RUNLOG: summon POS entry %u (%.1f, %.1f, %.1f)", s.entry, summon->GetPositionX(), summon->GetPositionY(), summon->GetPositionZ());
                     if (s.level)
                     {
                         summon->SetLevel(s.level);

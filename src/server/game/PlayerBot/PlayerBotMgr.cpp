@@ -1722,9 +1722,15 @@ bool PlayerBotMgr::LoginBotByAccountIndex(uint32 account, uint32 index)
 #ifndef INCOMPLETE_BOT
     PlayerBotBaseInfo* botInfo = GetPlayerBotAccountInfo(account);
     if (!botInfo)
+    {
+        TC_LOG_ERROR("server.worldserver", "QA-BOTLOG: pas de botInfo pour compte %u", account); // QA-BOTLOG
         return false;
+    }
     if (index >= botInfo->characters.size())
+    {
+        TC_LOG_ERROR("server.worldserver", "QA-BOTLOG: compte %u index %u >= %u persos", account, index, (uint32)botInfo->characters.size());
         return false;
+    }
     for (auto itChar = botInfo->characters.begin();
         itChar != botInfo->characters.end();
         itChar++)
@@ -1738,7 +1744,15 @@ bool PlayerBotMgr::LoginBotByAccountIndex(uint32 account, uint32 index)
         WorldSession* pWorldSession = sWorld->FindSession(account);
         PlayerBotSession* pSession = dynamic_cast<PlayerBotSession*>(pWorldSession);
         if (!pSession || pSession->PlayerLoading() || pSession->HasSchedules() || pSession->GetPlayer())
+        {
+            TC_LOG_ERROR("server.worldserver", "QA-BOTLOG: compte %u session=%d cast=%d loading=%d schedules=%d player=%d",
+                account, pWorldSession ? 1 : 0, pSession ? 1 : 0,
+                pSession ? (int)pSession->PlayerLoading() : -1,
+                pSession ? (int)pSession->HasSchedules() : -1,
+                (pSession && pSession->GetPlayer()) ? 1 : 0);
             return false;
+        }
+        TC_LOG_ERROR("server.worldserver", "QA-BOTLOG: schedule Online_GUID pousse pour guid %u", (uint32)charInfo.guid);
         BotGlobleSchedule schedule1(BotGlobleScheduleType::BGSType_Online_GUID, charInfo.guid);
         pSession->PushScheduleToQueue(schedule1);
         return true;
