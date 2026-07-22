@@ -23,6 +23,7 @@
 #include "BotFieldAI.h"
 #include "LFGMgr.h"
 #include "CharacterPackets.h"
+#include "MovementPackets.h"
 #include "DB2Structure.h"
 #include "LFGPackets.h"
 #include "LFGPacketsCommon.h"
@@ -168,6 +169,17 @@ void PlayerBotSession::ProcessNoWorld(uint32 diff)
     if (player->IsBeingTeleportedFar())
     {
         HandleMoveWorldportAck();
+        m_NoWorldTick = 500;
+        return;
+    }
+
+    // idem pour un teleport proche (meme map) : un client reel repond CMSG_MOVE_TELEPORT_ACK
+    if (player->IsBeingTeleportedNear())
+    {
+        WorldPacket data(CMSG_MOVE_TELEPORT_ACK);
+        WorldPackets::Movement::MoveTeleportAck ack(std::move(data));
+        ack.MoverGUID = player->GetGUID();
+        HandleMoveTeleportAck(ack);
         m_NoWorldTick = 500;
         return;
     }

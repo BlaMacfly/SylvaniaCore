@@ -126,6 +126,30 @@ struct scenario_artifact_runner : public InstanceScript
     {
         InstanceScript::Update(diff);
         scheduler.Update(diff);
+        probeTimer += diff;
+        if (probeTimer >= 10000)
+        {
+            probeTimer = 0;
+            for (ObjectGuid const& g : summonGuids)
+            {
+                Creature* c = instance->GetCreature(g);
+                if (!c)
+                    TC_LOG_ERROR("server.worldserver", "QA-PROBE: summon %s DISPARU", g.ToString().c_str());
+                else
+                {
+                    TC_LOG_ERROR("server.worldserver", "QA-PROBE[m%u]: e%u alive=%d combat=%d victim=%d react=%d pos(%.0f,%.0f,%.0f)",
+                        instance->GetId(), c->GetEntry(), (int)c->IsAlive(), (int)c->IsInCombat(), c->GetVictim() ? 1 : 0, (int)c->GetReactState(),
+                        c->GetPositionX(), c->GetPositionY(), c->GetPositionZ());
+                    DoOnPlayers([c](Player* pl)
+                    {
+                        TC_LOG_ERROR("server.worldserver", "QA-PROBE[m%u]: joueur %s pos(%.0f,%.0f,%.0f) dist=%.1f mobVoitJoueur=%d joueurVoitMob=%d",
+                            c->GetMapId(), pl->GetName().c_str(), pl->GetPositionX(), pl->GetPositionY(), pl->GetPositionZ(),
+                            c->GetDistance(pl), (int)c->CanSeeOrDetect(pl), (int)pl->CanSeeOrDetect(c));
+                    });
+                    break;
+                }
+            }
+        }
     }
 
     void CompleteStep()
@@ -150,6 +174,7 @@ struct scenario_artifact_runner : public InstanceScript
         stage = newStage;
         aliveCount = 0;
         stageEntries.clear();
+        summonGuids.clear();
 
         bool teleported = false;
         for (ArtifactRunner::StageSpawn const& s : itr->second)
@@ -170,7 +195,7 @@ struct scenario_artifact_runner : public InstanceScript
                 Position pos = { s.x + dx + 6.0f, s.y + dy + 4.0f, s.z, s.o };
                 // cale le Z au sol : les ancres sont sures mais les offsets peuvent sortir des plateformes
                 float gz = instance->GetHeight(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + 8.0f, true, 60.0f);
-                if (gz > INVALID_HEIGHT && std::abs(gz - s.z) < 25.0f)
+                if (gz > INVALID_HEIGHT && std::abs(gz - s.z) < 60.0f)
                     pos.m_positionZ = gz + 0.5f;
                 else
                     pos.Relocate(s.x, s.y, s.z); // repli : pile sur l ancre officielle
@@ -185,10 +210,16 @@ struct scenario_artifact_runner : public InstanceScript
                         summon->SetLevel(s.level);
                         summon->SetFullHealth();
                     }
+                    // meme phase que les joueurs (OnPlayerEnter les met en 169)
+                    PhasingHandler::AddPhase(summon, 169, true);
+                    // les TempSummon de Map n aggro pas seuls : on engage la vague explicitement
+                    summon->SetReactState(REACT_AGGRESSIVE);
+                    summon->SetInCombatWithZone();
                     // cri d apparition des boss (groupe 0 si defini en creature_text)
                     if (s.level >= 102 && sCreatureTextMgr->TextExist(s.entry, 0))
                         summon->AI()->Talk(0);
                     stageEntries.insert(s.entry);
+                    summonGuids.push_back(summon->GetGUID());
                     ++aliveCount;
                 }
             }
@@ -247,6 +278,8 @@ private:
     uint8 stage = 0;
     uint32 aliveCount = 0;
     std::set<uint32> stageEntries;
+    std::vector<ObjectGuid> summonGuids;
+    uint32 probeTimer = 0;
     bool introDone = false;
     TaskScheduler scheduler;
 };
