@@ -24099,6 +24099,13 @@ bool Player::BuyItemFromVendorSlot(ObjectGuid vendorguid, uint32 vendorslot, uin
     // cheating attempt
     if (count < 1) count = 1;
 
+    // _StoreOrEquipNewItem() only accepts a uint8 count and silently truncates anything
+    // larger; clamp here so stock/price/extended-cost validation below checks the exact
+    // quantity that will actually be charged and delivered, not a larger one that later
+    // gets narrowed.
+    if (count > 0xFF)
+        count = 0xFF;
+
     // cheating attempt
     if (slot > MAX_BAG_SIZE && slot != NULL_SLOT)
         return false;
