@@ -476,6 +476,9 @@ void WorldSession::HandlePetSetAction(WorldPackets::Pet::PetSetAction& packet)
     }
 
     uint32 position = packet.Index;
+    // position vient du client (CMSG_PET_SET_ACTION) ; PetActionBar est un tableau fixe -> ecriture hors bornes (ArgusCore fec060ab)
+    if (position >= MAX_UNIT_ACTION_BAR_INDEX)
+        return;
     uint32 actionData = packet.Action;
 
     uint32 spell_id = UNIT_ACTION_BUTTON_ACTION(actionData);
@@ -596,7 +599,7 @@ void WorldSession::HandlePetAbandon(WorldPackets::Pet::PetAbandon& packet)
 
     // pet/charmed
     Creature* pet = ObjectAccessor::GetCreatureOrPetOrVehicle(*_player, packet.Pet);
-    if (pet && pet->ToPet() && pet->ToPet()->getPetType() == HUNTER_PET)
+    if (pet && pet->ToPet() && pet->ToPet()->getPetType() == HUNTER_PET && pet->GetOwnerGUID() == _player->GetGUID()) // proprietaire uniquement (ArgusCore fec060ab)
     {
         _player->RemovePet((Pet*)pet, PET_SAVE_AS_DELETED);
     }

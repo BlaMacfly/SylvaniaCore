@@ -222,6 +222,8 @@ void WorldSession::HandleLootMoneyOpcode(WorldPackets::Loot::LootMoney& /*packet
                     playersNear.push_back(member);
             }
 
+            if (playersNear.empty()) // division par zero si personne a portee (ArgusCore e8196eed)
+                return;
             uint32 goldPerPlayer = uint32((loot->gold) / (playersNear.size()));
 
             for (std::vector<Player*>::const_iterator i = playersNear.begin(); i != playersNear.end(); ++i)

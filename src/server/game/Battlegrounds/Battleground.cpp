@@ -860,9 +860,11 @@ void Battleground::EndBattleground(uint32 winner)
 
         if (isBattleground() && sWorld->getBoolConfig(CONFIG_BATTLEGROUND_STORE_STATISTICS_ENABLE))
         {
-            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_PVPSTATS_PLAYER);
             BattlegroundScoreMap::const_iterator score = PlayerScores.find(player->GetGUID());
+            if (score == PlayerScores.end()) // pas de score enregistre pour ce joueur (ArgusCore e875f9f4)
+                continue;
 
+            stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_PVPSTATS_PLAYER);
             stmt->setUInt32(0,  battlegroundId);
             stmt->setUInt64(1,  player->GetGUID().GetCounter());
             stmt->setBool  (2,  team == winner);

@@ -1573,6 +1573,14 @@ void Guild::HandleSetNewGuildMaster(WorldSession* session, std::string const& na
 
 void Guild::HandleSetBankTabInfo(WorldSession* session, uint8 tabId, std::string const& name, std::string const& icon)
 {
+    // seul le maitre de guilde peut renommer/re-iconer un onglet (comme l achat d onglet) (ArgusCore 2288f107)
+    if (GetLeaderGUID() != session->GetPlayer()->GetGUID())
+    {
+        TC_LOG_ERROR("guild", "Guild::HandleSetBankTabInfo: Joueur %s sans droits de chef a tente de modifier l onglet %u.",
+                       session->GetPlayerInfo().c_str(), tabId);
+        return;
+    }
+
     BankTab* tab = GetBankTab(tabId);
     if (!tab)
     {
@@ -1932,6 +1940,17 @@ void Guild::HandleSetMemberRank(WorldSession* session, ObjectGuid targetGuid, Ob
     {
         SendCommandResult(session, type, ERR_GUILD_PERMISSIONS);
         return;
+    }
+
+    // avoir PROMOTE/DEMOTE ne permet pas d agir sur un membre de rang egal/superieur, ni d attribuer un rang egal/superieur au sien (ArgusCore f94d82dc)
+    if (Member const* memberMe = GetMember(player->GetGUID()))
+    {
+        uint32 myRankId = memberMe->GetRankId();
+        if (member->GetRankId() <= myRankId || rank <= myRankId)
+        {
+            SendCommandResult(session, type, ERR_GUILD_RANK_TOO_HIGH_S);
+            return;
+        }
     }
 
     // Player cannot promote himself

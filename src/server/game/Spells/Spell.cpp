@@ -1533,7 +1533,12 @@ void Spell::SelectImplicitCasterDestTargets(SpellEffIndex effIndex, SpellImplici
 
 void Spell::SelectImplicitTargetDestTargets(SpellEffIndex effIndex, SpellImplicitTargetInfo const& targetType)
 {
-    ASSERT(m_targets.GetObjectTarget() && "Spell::SelectImplicitTargetDestTargets - no explicit object target available!");
+    // Un ligne spell_effect mal formee ne doit pas crasher le serveur : on log et on saute (ArgusCore a00b85b2)
+    if (!m_targets.GetObjectTarget())
+    {
+        TC_LOG_ERROR("spells", "Spell::SelectImplicitTargetDestTargets: spell %u effect %u sans cible objet explicite; selection de destination ignoree.", m_spellInfo->Id, uint32(effIndex));
+        return;
+    }
     WorldObject* target = m_targets.GetObjectTarget();
 
     SpellDestination dest(*target);

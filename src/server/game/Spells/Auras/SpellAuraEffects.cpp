@@ -5838,7 +5838,8 @@ void AuraEffect::HandlePeriodicDamageAurasTick(Unit* target, Unit* caster) const
         {
             WeaponAttackType attackType = GetSpellInfo()->GetAttackType();
 
-            int32 weaponDamage = CalculatePct(caster->CalculateDamage(attackType, false, true), GetAmount());
+            // le degat d arme exige un caster vivant ; s il a quitte la map, ce tick ne fait rien au lieu de crasher (ArgusCore b456b7f7)
+            int32 weaponDamage = caster ? CalculatePct(caster->CalculateDamage(attackType, false, true), GetAmount()) : 0;
 
             // Add melee damage bonuses (also check for negative)
             uint32 damageBonusDone = caster->MeleeDamageBonusDone(target, std::max(weaponDamage, 0), attackType, GetSpellInfo());
