@@ -174,6 +174,21 @@ void WorldSession::HandleCalendarAddEvent(WorldPackets::Calendar::CalendarAddEve
     sCalendarMgr->AddEvent(calendarEvent, CALENDAR_SENDTYPE_ADD);
 }
 
+namespace
+{
+    // Un evenement ne peut etre modifie (details, invites, statut d un invite) que par son
+    // proprietaire ou par un invite de rang moderateur (ArgusCore 0c2fed59).
+    bool CalendarEventEditableBy(CalendarEvent const* calendarEvent, ObjectGuid guid)
+    {
+        if (calendarEvent->GetOwnerGUID() == guid)
+            return true;
+        for (CalendarInvite* invite : sCalendarMgr->GetEventInvites(calendarEvent->GetEventId()))
+            if (invite->GetInviteeGUID() == guid && invite->GetRank() >= CALENDAR_RANK_MODERATOR)
+                return true;
+        return false;
+    }
+}
+
 void WorldSession::HandleCalendarUpdateEvent(WorldPackets::Calendar::CalendarUpdateEvent& calendarUpdateEvent)
 {
     ObjectGuid guid = _player->GetGUID();
@@ -186,6 +201,12 @@ void WorldSession::HandleCalendarUpdateEvent(WorldPackets::Calendar::CalendarUpd
 
     if (CalendarEvent* calendarEvent = sCalendarMgr->GetEvent(calendarUpdateEvent.EventInfo.EventID))
     {
+        if (!CalendarEventEditableBy(calendarEvent, guid))
+        {
+            sCalendarMgr->SendCalendarCommandResult(guid, CALENDAR_ERROR_PERMISSIONS);
+            return;
+        }
+
         oldEventTime = calendarEvent->GetDate();
 
         calendarEvent->SetType(CalendarEventType(calendarUpdateEvent.EventInfo.EventType));
@@ -298,6 +319,12 @@ void WorldSession::HandleCalendarEventInvite(WorldPackets::Calendar::CalendarEve
             {
                 // we can't invite guild members to guild events
                 sCalendarMgr->SendCalendarCommandResult(playerGuid, CALENDAR_ERROR_NO_GUILD_INVITES);
+                return;
+            }
+
+            if (!CalendarEventEditableBy(calendarEvent, playerGuid))
+            {
+                sCalendarMgr->SendCalendarCommandResult(playerGuid, CALENDAR_ERROR_PERMISSIONS);
                 return;
             }
 

@@ -61,8 +61,9 @@ void WorldSession::HandleLfgLeaveOpcode(WorldPackets::LFG::DFLeave& dfLeave)
     TC_LOG_DEBUG("lfg", "CMSG_DF_LEAVE %s in group: %u sent guid %s.",
         GetPlayerInfo().c_str(), group ? 1 : 0, dfLeave.Ticket.RequesterGuid.ToString().c_str());
 
-    // Check cheating - only leader can leave the queue
-    if (!group || group->GetLeaderGUID() == dfLeave.Ticket.RequesterGuid)
+    // Anti-triche : en groupe seul le chef quitte via son ticket ; en solo on ne peut
+    // quitter que SON PROPRE ticket, pas celui d un joueur arbitraire (ArgusCore 28b8d962)
+    if (group ? group->GetLeaderGUID() == dfLeave.Ticket.RequesterGuid : GetPlayer()->GetGUID() == dfLeave.Ticket.RequesterGuid)
         sLFGMgr->LeaveLfg(dfLeave.Ticket.RequesterGuid, dfLeave.Ticket.Id);
 }
 
