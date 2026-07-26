@@ -28368,7 +28368,15 @@ bool Player::IsAreaThatActivatesPvpTalents(AreaTableEntry const* area) const
 
 void Player::UpdateFallInformationIfNeed(MovementInfo const& minfo, uint16 opcode)
 {
-    if (m_lastFallTime >= minfo.jump.fallTime || m_lastFallZ <= minfo.pos.GetPositionZ() || opcode == CMSG_MOVE_FALL_LAND)
+    // minfo.jump.fallTime is entirely client-supplied. While actually airborne
+    // (MOVEMENTFLAG_FALLING), a modified client can repeatedly report a non-increasing
+    // fallTime to keep re-baselining m_lastFallZ to the current (still dropping) height,
+    // erasing the real fall distance by the time it lands and avoiding fall damage
+    // entirely. Only trust a fallTime reset as "not falling" when the player isn't
+    // actually flagged as falling; the height-increased and landing conditions below are
+    // still server-observed and safe on their own.
+    bool fallTimeReset = m_lastFallTime >= minfo.jump.fallTime && !minfo.HasMovementFlag(MOVEMENTFLAG_FALLING);
+    if (fallTimeReset || m_lastFallZ <= minfo.pos.GetPositionZ() || opcode == CMSG_MOVE_FALL_LAND)
         SetFallInformation(minfo.jump.fallTime, minfo.pos.GetPositionZ());
 }
 
