@@ -3717,6 +3717,27 @@ struct at_monk_song_of_chiji : AreaTriggerAI
     }
 };
 
+// Ring of Peace (116844) - AreaTrigger id 718.
+// Legion 7.3.5 : anneau de 8 s au sol ; tout ennemi qui ENTRE est ejecte (repousse hors de l anneau).
+struct at_monk_ring_of_peace : AreaTriggerAI
+{
+    at_monk_ring_of_peace(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+
+    void OnUnitEnter(Unit* unit) override
+    {
+        Unit* caster = at->GetCaster();
+        if (!caster || !unit || unit == caster)
+            return;
+        if (!caster->ToPlayer())
+            return;
+        if (!caster->IsValidAttackTarget(unit))
+            return;
+
+        // Ejecte l unite hors de l anneau : poussee horizontale depuis le centre de l areatrigger.
+        unit->KnockbackFrom(at->GetPositionX(), at->GetPositionY(), 15.0f, 5.0f);
+    }
+};
+
 //137639
 class spell_monk_storm_earth_and_fire : public AuraScript
 {
@@ -4009,6 +4030,7 @@ void AddSC_monk_spell_scripts()
     RegisterAreaTriggerAI(at_monk_chi_burst_damage);
     RegisterAreaTriggerAI(at_monk_chi_burst_heal);
     RegisterAreaTriggerAI(at_monk_song_of_chiji);
+    RegisterAreaTriggerAI(at_monk_ring_of_peace);
 
     new spell_monk_black_ox_brew();
     new spell_monk_blackout_kick();
