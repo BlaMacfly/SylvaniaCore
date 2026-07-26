@@ -28,12 +28,6 @@ public:
 
 void AddSC_custom_loot_packs()
 {
+    // les autres loot_item_* sont deja enregistres par World/item_scripts.cpp
     REGISTER_LOOT_PACK(loot_item_generic_pack);
-    REGISTER_LOOT_PACK(loot_item_leggings_of_the_foregone);
-    REGISTER_LOOT_PACK(loot_item_gloves_of_the_foregone);
-    REGISTER_LOOT_PACK(loot_item_shoulders_of_the_foreseen);
-    REGISTER_LOOT_PACK(loot_item_cloak_of_the_foreseen);
-    REGISTER_LOOT_PACK(loot_item_chest_of_the_foregone);
-    REGISTER_LOOT_PACK(loot_item_unsullied_plate_helmet);
-    REGISTER_LOOT_PACK(loot_item_champion_equipment_147432);
 }
