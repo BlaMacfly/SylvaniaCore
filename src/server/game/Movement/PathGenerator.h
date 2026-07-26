@@ -106,6 +106,13 @@ class TC_GAME_API PathGenerator
         void SetActualEndPosition(G3D::Vector3 const& point) { _actualEndPosition = point; }
         void NormalizePath();
 
+        // Apres la generation du chemin MMAP, valide chaque segment contre la collision vmap
+        // statique. Le MMAP ne modelise pas les objets fins (clotures, petites barrieres) : un
+        // chemin nav-mesh valide peut donc traverser une cloture. Si un segment est bloque, on
+        // tronque le chemin la et on marque PATHFIND_INCOMPLETE pour que l unite s arrete devant
+        // l obstacle au lieu de le traverser (ArgusCore d21a91eb).
+        void ValidatePathAgainstCollision();
+
         void Clear()
         {
             _polyLength = 0;

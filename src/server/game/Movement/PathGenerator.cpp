@@ -590,6 +590,8 @@ void PathGenerator::BuildPointPath(const float *startPoint, const float *endPoin
         _type = PathType(PATHFIND_NORMAL | PATHFIND_NOT_USING_PATH);
     }
 
+    ValidatePathAgainstCollision();
+
     TC_LOG_DEBUG("maps", "++ PathGenerator::BuildPointPath path type %d size %d poly-size %d\n", _type, pointCount, _polyLength);
 }
 
@@ -597,6 +599,42 @@ void PathGenerator::NormalizePath()
 {
     for (uint32 i = 0; i < _pathPoints.size(); ++i)
         _sourceUnit->UpdateAllowedPositionZ(_pathPoints[i].x, _pathPoints[i].y, _pathPoints[i].z);
+}
+
+void PathGenerator::ValidatePathAgainstCollision()
+{
+    // Raccourcis en ligne droite voulus (vol, nage, repli). Seuls les chemins sol MMAP sont valides.
+    if (_type & PATHFIND_NOT_USING_PATH)
+        return;
+    if (_pathPoints.size() < 2)
+        return;
+    // rayon leve a hauteur de torse pour accrocher une cloture et non le sol
+    float const halfHeight = 1.0f;
+    for (uint32 i = 0; i + 1 < _pathPoints.size(); ++i)
+    {
+        G3D::Vector3 const& from = _pathPoints[i];
+        G3D::Vector3 const& to   = _pathPoints[i + 1];
+        if (_sourceUnit->GetMap()->isInLineOfSight(_sourceUnit->GetPhaseShift(),
+                from.x, from.y, from.z + halfHeight, to.x, to.y, to.z + halfHeight,
+                VMAP::ModelIgnoreFlags::Nothing))
+            continue;
+        // segment bloque par une geometrie absente du navmesh (cloture) : on tronque
+        if (i == 0)
+        {
+            Clear();
+            _pathPoints.resize(2);
+            _pathPoints[0] = GetStartPosition();
+            _pathPoints[1] = GetStartPosition();
+            _type = PATHFIND_NOPATH;
+        }
+        else
+        {
+            _pathPoints.resize(i + 1);
+            SetActualEndPosition(_pathPoints.back());
+            _type = PathType(_type | PATHFIND_INCOMPLETE);
+        }
+        return;
+    }
 }
 
 void PathGenerator::BuildShortcut()
