@@ -452,6 +452,13 @@ bool BlackMarketEntry::ValidateBid(uint64 bid) const
     if (bid >= BMAH_MAX_BID)
         return false;
 
+    // GetMinIncrement() is 0 while _currentBid is still 0 (no bids placed yet), which
+    // otherwise lets any bid of 1 copper or more win a fresh auction outright, bypassing
+    // the auction's actual starting price.
+    if (BlackMarketTemplate const* templ = GetTemplate())
+        if (bid < templ->MinBid)
+            return false;
+
     return true;
 }
 
