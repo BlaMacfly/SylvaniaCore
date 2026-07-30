@@ -161,15 +161,36 @@ struct scenario_broken_shore_intro : public InstanceScript
             scenario->CompleteCurrStep();
     }
 
+    // Cale le Z au sol : les ancres officielles sont sures mais les offsets peuvent sortir du terrain.
+    void SnapToGround(Position& pos) const
+    {
+        float gz = instance->GetHeight(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + 8.0f, true, 60.0f);
+        if (gz > INVALID_HEIGHT && gz - pos.GetPositionZ() < 60.0f && pos.GetPositionZ() - gz < 60.0f)
+            pos.m_positionZ = gz + 0.5f;
+    }
+
+    // Toute invocation doit partager la phase des joueurs (OnPlayerEnter les met en 169),
+    // sinon elle est invisible/intangible : cible de quete introuvable, vague intuable.
+    // (defaut systemique detecte par le harnais bot le 26/07, deja corrige dans le runner d artefacts)
+    TempSummon* FinalizeSummon(TempSummon* summon) const
+    {
+        if (summon)
+            PhasingHandler::AddPhase(summon, PHASE_NORMAL, true);
+        return summon;
+    }
+
     TempSummon* Summon(uint32 entry, Position const& pos)
     {
-        return instance->SummonCreature(entry, pos);
+        Position p = pos;
+        SnapToGround(p);
+        return FinalizeSummon(instance->SummonCreature(entry, p));
     }
 
     TempSummon* SummonAt(uint32 entry, Position const& base, float dx, float dy)
     {
         Position pos = { base.GetPositionX() + dx, base.GetPositionY() + dy, base.GetPositionZ(), base.GetOrientation() };
-        return instance->SummonCreature(entry, pos);
+        SnapToGround(pos);
+        return FinalizeSummon(instance->SummonCreature(entry, pos));
     }
 
     void SummonWave(Position const& base, uint8 count)
@@ -179,7 +200,12 @@ struct scenario_broken_shore_intro : public InstanceScript
         {
             float dx = (i % 4) * 7.0f - 10.5f + (i >= 4 ? 3.5f : 0.0f);
             float dy = (i / 4) * 8.0f - 8.0f;
-            SummonAt(demons[i % 5], base, dx + 15.0f, dy + 15.0f);
+            if (TempSummon* demon = SummonAt(demons[i % 5], base, dx + 15.0f, dy + 15.0f))
+            {
+                // les TempSummon de Map n aggro pas seules : on engage la vague explicitement
+                demon->SetReactState(REACT_AGGRESSIVE);
+                demon->SetInCombatWithZone();
+            }
         }
     }
 

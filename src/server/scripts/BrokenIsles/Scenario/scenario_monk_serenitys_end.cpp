@@ -138,16 +138,38 @@ struct scenario_monk_serenitys_end : public InstanceScript
         }
     }
 
+    // Cale le Z au sol (les offsets peuvent sortir du terrain sur les terrasses du pic).
+    void SnapToGround(Position& pos) const
+    {
+        float gz = instance->GetHeight(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ() + 8.0f, true, 60.0f);
+        if (gz > INVALID_HEIGHT && gz - pos.GetPositionZ() < 60.0f && pos.GetPositionZ() - gz < 60.0f)
+            pos.m_positionZ = gz + 0.5f;
+    }
+
+    // Une invocation faite par la MAP n herite d aucune phase (contrairement a un summon
+    // fait par une creature) : sans ca elle est invisible/intangible pour le joueur, qui est
+    // place en phase 169 par OnPlayerEnter -> PNJ de quete introuvable, vague intuable.
+    // (defaut systemique detecte par le harnais bot le 26/07, deja corrige dans le runner d artefacts)
+    TempSummon* SummonPhased(uint32 entry, Position const& pos)
+    {
+        Position p = pos;
+        SnapToGround(p);
+        TempSummon* summon = instance->SummonCreature(entry, p);
+        if (summon)
+            PhasingHandler::AddPhase(summon, PHASE_NORMAL, true);
+        return summon;
+    }
+
     void SummonCouncil()
     {
-        if (Creature* hight = instance->SummonCreature(NPC_MASTER_HIGHT_COUNCIL, PosHight))
+        if (Creature* hight = SummonPhased(NPC_MASTER_HIGHT_COUNCIL, PosHight))
             hightGUID = hight->GetGUID();
-        instance->SummonCreature(NPC_IRON_BODY_PONSHU, PosPonshu);
-        instance->SummonCreature(NPC_JIA_COUNCIL, PosJiaCouncil);
-        instance->SummonCreature(NPC_MASTER_CHANG, PosChang);
-        instance->SummonCreature(NPC_MASTER_HWANG, PosHwang);
-        instance->SummonCreature(NPC_ASPIRING_MONK, PosMonkA);
-        instance->SummonCreature(NPC_ASPIRING_MONK, PosMonkB);
+        SummonPhased(NPC_IRON_BODY_PONSHU, PosPonshu);
+        SummonPhased(NPC_JIA_COUNCIL, PosJiaCouncil);
+        SummonPhased(NPC_MASTER_CHANG, PosChang);
+        SummonPhased(NPC_MASTER_HWANG, PosHwang);
+        SummonPhased(NPC_ASPIRING_MONK, PosMonkA);
+        SummonPhased(NPC_ASPIRING_MONK, PosMonkB);
     }
 
     void CompleteStep()
@@ -173,13 +195,13 @@ struct scenario_monk_serenitys_end : public InstanceScript
                     hight->AI()->Talk(1);
                     hight->GetScheduler().Schedule(Seconds(8), [this](TaskContext /*context*/)
                     {
-                        if (Creature* chuang = instance->SummonCreature(NPC_INITIATE_CHUANG, PosChuang))
+                        if (Creature* chuang = SummonPhased(NPC_INITIATE_CHUANG, PosChuang))
                             chuang->AI()->Talk(0);
                     }).Schedule(Seconds(12), [this](TaskContext /*context*/)
                     {
                         if (Creature* hight2 = instance->GetCreature(hightGUID))
                             hight2->AI()->Talk(2);
-                        if (Creature* destroyer = instance->SummonCreature(NPC_INFERNAL_DESTROYER, PosDestroyer))
+                        if (Creature* destroyer = SummonPhased(NPC_INFERNAL_DESTROYER, PosDestroyer))
                             destroyer->SetInCombatWithZone();
                     });
                 }
@@ -193,20 +215,20 @@ struct scenario_monk_serenitys_end : public InstanceScript
                     hight->AI()->Talk(3);
                 for (uint8 i = 0; i < 3; ++i)
                 {
-                    instance->SummonCreature(i < 2 ? NPC_CHAOS_MINION : NPC_EYE_OF_KELETRESS, PosPackA[i]);
-                    instance->SummonCreature(i < 2 ? NPC_CHAOS_MINION : NPC_FELBLADE_DESTROYER, PosPackB[i]);
+                    SummonPhased(i < 2 ? NPC_CHAOS_MINION : NPC_EYE_OF_KELETRESS, PosPackA[i]);
+                    SummonPhased(i < 2 ? NPC_CHAOS_MINION : NPC_FELBLADE_DESTROYER, PosPackB[i]);
                 }
-                if (Creature* keletress = instance->SummonCreature(NPC_LADY_KELETRESS, PosKeletress))
+                if (Creature* keletress = SummonPhased(NPC_LADY_KELETRESS, PosKeletress))
                 {
                     keletressGUID = keletress->GetGUID();
                     keletress->SetCanFly(true);
                     keletress->SetDisableGravity(true);
                     keletress->AI()->Talk(0);
                 }
-                if (Creature* jia = instance->SummonCreature(NPC_JIA_CRANE, PosJiaCrane))
+                if (Creature* jia = SummonPhased(NPC_JIA_CRANE, PosJiaCrane))
                 {
                     jiaGUID = jia->GetGUID();
-                    if (Creature* vizznak = instance->SummonCreature(NPC_VIZZNAK, PosVizznak))
+                    if (Creature* vizznak = SummonPhased(NPC_VIZZNAK, PosVizznak))
                     {
                         jia->AI()->Talk(0);
                         jia->AI()->AttackStart(vizznak);
@@ -229,20 +251,20 @@ struct scenario_monk_serenitys_end : public InstanceScript
             {
                 stage = DATA_STAGE_TIGER;
                 CompleteStep();
-                if (Creature* chen = instance->SummonCreature(NPC_CHEN_STORMSTOUT, PosChen))
+                if (Creature* chen = SummonPhased(NPC_CHEN_STORMSTOUT, PosChen))
                 {
                     chenGUID = chen->GetGUID();
                     chen->AI()->Talk(0);
                 }
                 for (uint8 i = 0; i < 3; ++i)
                 {
-                    instance->SummonCreature(NPC_JUNIOR_TRAINEE, PosTrainees[i]);
-                    if (Creature* hound = instance->SummonCreature(NPC_FELBLOOD_PACKHOUND, PosHounds[i]))
+                    SummonPhased(NPC_JUNIOR_TRAINEE, PosTrainees[i]);
+                    if (Creature* hound = SummonPhased(NPC_FELBLOOD_PACKHOUND, PosHounds[i]))
                         if (Creature* chen = instance->GetCreature(chenGUID))
                             hound->AI()->AttackStart(chen);
                 }
-                instance->SummonCreature(NPC_EREDAR_SUMMONER, PosSummoner);
-                instance->SummonCreature(NPC_MORVATH_THE_REAVER, PosMorvath);
+                SummonPhased(NPC_EREDAR_SUMMONER, PosSummoner);
+                SummonPhased(NPC_MORVATH_THE_REAVER, PosMorvath);
                 break;
             }
             case DATA_MORVATH_DEAD: // stage 4 -> 5 (escort back)
@@ -268,9 +290,9 @@ struct scenario_monk_serenitys_end : public InstanceScript
                 CompleteStep();
                 if (Creature* keletress = GetKeletress())
                     keletress->AI()->Talk(2);
-                if (Creature* hight = instance->SummonCreature(NPC_MASTER_HIGHT_PORTAL, PosHightPortal))
+                if (Creature* hight = SummonPhased(NPC_MASTER_HIGHT_PORTAL, PosHightPortal))
                     hightPortalGUID = hight->GetGUID();
-                if (Creature* jorvinax = instance->SummonCreature(NPC_PORTAL_MASTER_JORVINAX, PosJorvinax))
+                if (Creature* jorvinax = SummonPhased(NPC_PORTAL_MASTER_JORVINAX, PosJorvinax))
                     jorvinax->SetInCombatWithZone();
                 break;
             }
@@ -280,7 +302,7 @@ struct scenario_monk_serenitys_end : public InstanceScript
                 CompleteStep();
                 if (Creature* hight = instance->GetCreature(hightPortalGUID))
                     hight->AI()->Talk(0);
-                instance->SummonCreature(NPC_MASTER_FEL_STONE, PosFelStone);
+                SummonPhased(NPC_MASTER_FEL_STONE, PosFelStone);
                 break;
             }
             case DATA_FEL_STONE_DEAD: // scenario complete -> wake up at the Wandering Isle
