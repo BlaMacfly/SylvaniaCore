@@ -248,6 +248,13 @@ void PathGenerator::BuildPolyPath(G3D::Vector3 const& startPos, G3D::Vector3 con
         else
         {
             float closestPoint[VERTEX_SIZE];
+            // recale aussi le point de DEPART sur son poly quand l unite est au-dessus du navmesh
+            // (debout sur un GO : quai, caisse, plateforme) : sans ce recalage findPath part d un
+            // point errone et produit un chemin aberrant (LegionCore-Reforged 814091a)
+            if (distToStartPoly > 7.0f)
+                if (dtStatusSucceed(_navMeshQuery->closestPointOnPoly(startPoly, startPoint, closestPoint, NULL)))
+                    dtVcopy(startPoint, closestPoint);
+
             // we may want to use closestPointOnPolyBoundary instead
             if (dtStatusSucceed(_navMeshQuery->closestPointOnPoly(endPoly, endPoint, closestPoint, NULL)))
             {
