@@ -4702,3 +4702,15 @@ void Map::UpdateAreaDependentAuras()
             if (player->IsInWorld())
                 player->UpdateAreaDependentAuras();
 }
+
+void Map::ApplyOnEveryPlayer(std::function<void(Player*)> function)
+{
+    auto const& players = GetPlayers();
+    if (players.isEmpty())
+        return;
+
+    for (auto const& itr : players)
+        if (Player* player = itr.GetSource())
+            if (player->IsInWorld() && player->GetMap() == this)
+                function(player);
+}

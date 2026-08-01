@@ -19,6 +19,7 @@
 #define CREATUREAI_H
 
 #include "UnitAI.h"
+#include <initializer_list>
 #include "Common.h"
 #include "ObjectDefines.h"
 
@@ -100,6 +101,9 @@ class TC_GAME_API CreatureAI : public UnitAI
         virtual ~CreatureAI();
 
         void Talk(uint8 id, WorldObject const* whisperTarget = nullptr);
+        void Talk(uint8 id, ObjectGuid whisperGuid); // compat DestinyCoreNew
+        void ZoneTalk(uint8 id); // texte a toute la zone
+        void Talk(std::initializer_list<uint8> ids, ObjectGuid whisperGuid = ObjectGuid::Empty); // choix aleatoire
 
         void AddDelayedEvent(uint64 timeOffset, std::function<void()>&& function);
         void KillAllDelayedEvents();

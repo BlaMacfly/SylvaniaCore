@@ -1,161 +1,323 @@
 /*
- * Copyright (C) 2017-2018 AshamaneProject <https://github.com/AshamaneProject>
- *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program. If not, see <http://www.gnu.org/licenses/>.
- */
+    https://uwow.biz/
+*/
 
-#ifndef TOMB_OF_SARGERAS_H
-#define TOMB_OF_SARGERAS_H
+#ifndef TombOsSargeasH_
+#define TombOsSargeasH_
 
-#define DataHeader "TOS"
-#define TombOfSargerasScriptName "instance_tomb_of_sargeras"
-
-#include "InstanceScript.h"
-#include "AreaTriggerTemplate.h"
+#include "AreaTrigger.h"
 #include "AreaTriggerAI.h"
-#include "ScriptMgr.h"
-#include "SpellScript.h"
-#include "EventMap.h"
-#include "SpellAuras.h"
-#include "Unit.h"
 #include "GameObject.h"
-#include "ScriptedCreature.h"
-#include "Vehicle.h"
-#include "VehicleDefines.h"
-#include "MotionMaster.h"
-#include "ObjectAccessor.h"
-#include "TemporarySummon.h"
-#include "Player.h"
-#include "Map.h"
 #include "GameObjectAI.h"
-#include "MapManager.h"
-#include "GridNotifiers.h"
-#include "InstanceSaveMgr.h"
+#include "SpellAuras.h"
+#include "SpellScript.h"
+#include "ObjectAccessor.h"
 #include "ObjectMgr.h"
+#include "TemporarySummon.h"
+#include "MotionMaster.h"
+#include "Player.h"
 
-uint32 const EncounterCount = 10;
+#include "Spell.h"
+#include "SpellMgr.h"
+#include "SpellAuraEffects.h"
 
-enum tosDataTypes
+// Constantes uwow absentes de notre core (valeurs = SharedDefines de DestinyCoreNew).
+// Les hooks references sur ces valeurs ne matchent simplement pas si le client n a pas l effet.
+#define SPELL_AURA_FIXATE AuraType(128)
+#define SPELL_EFFECT_TELEPORT_L SpellEffectName(252)
+#define TARGET_UNIT_ENEMY_BETWEEN_DEST Targets(129)
+#define TARGET_UNIT_BETWEEN_ENEMY Targets(134)
+#define REACT_ATTACK_OFF REACT_PASSIVE
+#define UNIT_DYNFLAG_NOT_SELECTABLE_MODEL 0x0002
+#define CREATURE_SUMMON_GROUP_RESET 0
+
+enum eData
 {
-    DATA_GOROTH,
-    DATA_HARJATAN,
-    DATA_MISTRESS_SASSZINE,
-    DATA_ATRIGAN,
-    DATA_BELAC,
-    DATA_SISTERS_OF_THE_MOON,
-    DATA_THE_DESOLATE_HOST,
-    DATA_MAIDEN_OF_VIGILANCE,
-    DATA_FALLEN_AVATAR,
-    DATA_KILJAEDEN,
+    DATA_GOROTH                     = 0,
+    DATA_HARJATAN                   = 1,
+    DATA_MISTRESS_SASSZINE          = 2,
 
-    ENCOUNTER_COUNT,
+    DATA_DEMONIC_INQUISITION        = 3,
+    DATA_THE_DESOLATE_HOST          = 4,
+    DATA_SISTERS_OF_THEMOON         = 5,
+
+    DATA_MAIDEN_OF_VIGILANCE        = 6,
+    DATA_FALLEN_AVATAR              = 7,
+    DATA_KILJAEDEN                  = 8,
+
+    MAX_ENCOUNTER
 };
 
-enum Creatures
+enum eCreatures
 {
-    BOSS_GOROTH                     = 115844,
-    BOSS_ATRIGAN                    = 120996,
+    NPC_BREACH_IN_WINDOW            = 121605,
 
-    // Demonic Inquisition
-    BOSS_BELAC                      = 116691,
-    BOSS_HARJATAN                   = 116407,
-
-    // Sisters of the Moon
-    NPC_HUNTRESS_KASPARIAN          = 118523,
-    NPC_CAPTAIN_YATHAE_MOONSTRIKE   = 118374,
-    NPC_PRIESTESS_LUNASPYRE         = 118518,
-
-    NPC_SASSZINE                    = 115767,
-
-    // Desolate Host
-    NPC_ENGINE_OF_SOULS             = 118460,
-    NPC_SOUL_QUEEN_DEJAHNA          = 118462,
-    NPC_DESOLATE_HOST               = 119072,
-
-    NPC_MAIDEN_OF_VIGILANCE         = 118289,
-    NPC_FALLEN_AVATAR               = 120436,
-    NPC_KILJAEDEN                   = 117269,
-    NPC_RAZORJAW_WAVEMENDER         = 116569,
-    NPC_RAZORJAW_GLADIATOR          = 117596,
-    NPC_INFERNAL_CHAOSBRINGER       = 118022,
-    NPC_BRIMSTONE_INFERNAL          = 119950,
     NPC_KHADGAR                     = 119726,
     NPC_VELEN                       = 119728,
     NPC_ILLIDAN                     = 119729,
-    NPC_ATRIGAN                     = 120996,
+    NPC_MAEIV                       = 119730,
+    NPC_DURGAN                      = 119777,
+
+    NPC_EGIDA                       = 121630,
+    NPC_HAMMER_1                    = 121494,
+    NPC_HAMMER_2                    = 121111,
+    NPC_ELUNES_1                    = 121495, 
+    NPC_ELUNES_2                    = 121110,
+    NPC_GOLGANETH_1                 = 121496,
+    NPC_GOLGANETH_2                 = 121105,
+
+    NPC_EGVIN                       = 119723,
+
+    NPC_ATRIGAN_MISC                = 120996, //Not boss
+    NPC_SASSZINE_NPC_OUTRO          = 121190,
+    NPC_SASSZINE_MISC               = 121184,
+    NPC_LUNAR_ARCHER                = 120721,
+    NPC_GUARDIAN_SENTRY             = 120777,
+    NPC_TORMENTED_SOUL              = 117957,
+    NPC_FRAGMENT_SOUL               = 121138,
+
+    NPC_KILDJEDAN_AVATARA           = 120867,
+
+//! BOSSES
+
+    //Goroth
+    NPC_GOROTH                      = 115844,
+    NPC_EMBER_STALKER               = 115892,
+    NPC_INFERNAL_SPIKE              = 116976,
+    NPC_LAVA_STALKER                = 117931, //Heroic+
+    NPC_BRIMSTONE_INFERNAL          = 119950,
+
+    //Harajatan
+    NPC_HARJATAN                    = 116407,
+    NPC_EGGS                        = 120545,
+    NPC_ELDER                       = 121071,
+    NPC_TADPOLE_1                   = 120574,
+    NPC_TADPOLE_2                   = 121156,
+    NPC_TADPOLE_3                   = 121155,
+    NPC_EVENT_1                     = 121011,
+    NPC_EVENT_2                     = 117123,
+
+    //Mistress Sassz'ine
+    NPC_SASSZINE                    = 115767,
+    NPC_ABYSS_STALKER               = 115795,
+    NPC_TORNADO_TRIGGER             = 118286,
+    NPC_ELECTRIFYING_JELLYFISH      = 115896,
+    NPC_RAZORJAW_WAVERUNNER         = 115902,
+    NPC_SARUKEL_TRIGGER             = 116843,
+    NPC_OSSUNET_TRIGGER             = 116881,
+    NPC_PIRANHADO_TRIGGER           = 116841,
+    NPC_DELICIOUS_BUFFERFISH        = 119791, //Mythic
+    NPC_TIDESTONE_GOLGANNETH        = 121105, //Spawn after death boss
+
+    //Demonic Inquisitor
+    NPC_ATRIGAN                     = 116689,
+    NPC_BELAK                       = 116691,
+
+    NPC_ESSENCE_LIGHT               = 118640,
+    NPC_ESSENCE_FEL                 = 118643,
+    NPC_REMANENCE_LIGHT             = 119825,
+    NPC_REMANENCE_FEL               = 119826,
+
+    //Sisters of the Moon
+    NPC_MOON_STALKER                = 118182,
+    NPC_HUNTRESS_KASPARIAN          = 118523,
+    NPC_PRIESTESS_LUNASPYRE         = 118518,
+    NPC_CAPTAIN_YATHAE              = 118374,
+    NPC_MOONTALON                   = 119205,
+    NPC_GLAIVE_TARGET               = 119054,
+    NPC_SISTERS_ACH_ADD             = 121498,
+
+    //The Desolate Host
+    NPC_SWIRLING_SOULS_TRIG         = 120988, //Event Manager
+    NPC_DESOLATE_HOST               = 119072, //!Real world
+    NPC_ENGINE_OF_SOULS             = 118460,
+    NPC_REANIMATED_TEMPLAR          = 118715,
+    NPC_REANIMATED_TEMPLAR_MIRROR   = 119938, //Mythic
+    NPC_GHASTLY_BONEWARDEN          = 118728,
+    NPC_GHASTLY_BONEWARDEN_MIRROR   = 119939, //Mythic
+    NPC_TORMENTED_CRIES_TRIG        = 118924,
+    NPC_SOUL_QUEEN_DEJAHNA          = 118462, //!Spirit world
+    NPC_FALLEN_PRIESTESS            = 118729,
+    NPC_FALLEN_PRIESTESS_MIRROR     = 119940, //Mythic
+    NPC_SOUL_RESIDUE                = 118730,
+    NPC_SOUL_RESIDUE_MIRROR         = 119941, //Mythic
+    NPC_SPIRITUAL_FONT              = 118701, //!Other
+    NPC_SPIRITUAL_BARRIER_TRIG      = 118727,
+    NPC_TEARS_OF_ELUNE              = 121110, //Spawn After Dies Boss
+
+    //Avatara
+    NPC_FALLEN_AVATAR               = 116939,
+    NPC_CORRUPTED_BLADE             = 119158,
+    NPC_PILONES                     = 117279,
+    NPC_AVATARA_MAIDEN              = 117264,
+    NPC_BLACK_WINDS                 = 121294,
+    NPC_TOUCH_OF_SARGERAS           = 120838,
+
+    //Maiden of Vigilance
+    NPC_MAIDEN_OF_VIGILANCE         = 118289,
+
+    //Kil'jaeden <The Deceiver>
+    NPC_KILJAEDEN                   = 117269,
+    NPC_ARMAGEDDON_STALKER          = 120839,
+    NPC_ERUPTING_REFLECTION         = 119206,
+    NPC_WAILING_REFLECTION          = 119107, //Mythic
+    NPC_HOPELESS_REFLECTION         = 119663, //Mythic
+    NPC_SHADOWSOUL                  = 121193,
+    NPC_STAGE4_ILLIDAN_STORMRAGE    = 121227,
+    NPC_DEMONIC_OBELISK             = 120270,
+    NPC_NETHER_RIFT                 = 120390,
+    NPC_FLAMING_ORB                 = 120082, //Heroic+
 };
 
-enum CosmeticSpells
+enum eGameObjects
 {
-    SPELL_COSMETIC_TELEPORT         = 240923,   // Used by Kil'jaeden after Fallen Avatar activation
-    SPELL_AWAKEN                    = 240897,   // Kil'jaeden activate Fallen Avatar spell.
-    SPELL_FEL_INFUSION              = 236682,   // Used by Maiden of Valor.
+    GO_INTRODESTROY_1               = 269839,
+    GO_INTRODESTROY_2               = 269838,
+    GO_INTRODESTROY_3               = 269842,
+
+    GO_GOROTH_GATES                 = 272802,
+    GO_GOROTH_INFERNAL_SPIKE        = 266938, //LOS_BLOCKER
+
+    GO_SASSZINE_DOOR                = 269976,
+    GO_INQUISITION_DOOR             = 268579,
+    GO_INQUISITION_DOOR_INTRO       = 268580,
+    GO_SISTERS_MOON_DOOR            = 269045,
+
+    GO_HAMMER_THRONE                = 269780,
+    GO_ELUNES_THRONE                = 269779,
+    GO_GOLGANETH_THRONE             = 269782,
+
+    GO_MAIDEN_DOOR                  = 269988,
+    GO_ELEVATOR                     = 268574,
+
+    GO_AVATARA_FLOOR                = 267934,
+    GO_AVATARA_DOOR                 = 269262,
+
+    GO_DESOLATE_HOST_DOOR_1         = 268749,
+    GO_DESOLATE_HOST_DOOR_2         = 269781,
+
+    GO_KILJAEDEN_BRIDGE_1           = 271126,
+    GO_KILJAEDEN_BRIDGE_2           = 271127,
+    GO_KILJAEDEN_CHEST              = 271099,
 };
 
-enum tosSpells
+enum eSpells
 {
-    SPELL_SUMMON                = 241227,
-    SPELL_IMPACT                = 242924,
-    SPELL_PILLAR_COSMETIC       = 243149,
-    SPELL_GOROTH_INTRO          = 247931,
+    SPELL_INTRO_TELEPORT            = 241303,
 };
 
-enum tosSounds
+
+
+enum TosGenericActions
 {
-    SOUND_INTRO                 = 81787,
-    SOUND_GOROTH2               = 81789,
+    ACTION_NONE = 0,
+    ACTION_1 = 1,
+    ACTION_2,
+    ACTION_3,
+    ACTION_4,
+    ACTION_5,
+    ACTION_6,
+    ACTION_7,
+    ACTION_8,
+    ACTION_9,
+    ACTION_10,
+    ACTION_11,
+    ACTION_12,
+    ACTION_13,
+    ACTION_14,
+    ACTION_15,
+    ACTION_16,
+    ACTION_17,
+    ACTION_18,
+    ACTION_19,
+    ACTION_20,
+    ACTION_21,
+    ACTION_22,
+    ACTION_23,
+    ACTION_24,
+    ACTION_25,
+    ACTION_26,
+    ACTION_27,
+    ACTION_28,
+    ACTION_29,
+    ACTION_30,
+    ACTION_31,
+    ACTION_32,
+    ACTION_33,
+    ACTION_34,
+    ACTION_35,
+    ACTION_36,
+    ACTION_37,
+    ACTION_38,
+    ACTION_39,
+    ACTION_40,
+    ACTION_41,
+    ACTION_42,
+    ACTION_43,
+    ACTION_44,
+    ACTION_45,
+    ACTION_46,
+    ACTION_47,
+    ACTION_48,
+    ACTION_49,
+    ACTION_50,
 };
 
-enum Gameobjects
+// Enum generique d evenements (present dans l EventMap.h de DestinyCoreNew, module-local ici)
+enum TosGenericEvents
 {
-    GO_MOON_CHAMBER_WINDOW          = 269842,
-
-    GO_DOOR_ROOM_GOROTH_S           = 269974,
-    GO_DOOR_ROOM_GOROTH_N           = 269975,
-    GO_DOOR_ROOM_GOROTH_E           = 269973,
-    GO_DOOR_ROOM_GOROTH_4           = 268580,
-
-    GO_DOOR_HARJATAN_1 = 269120,
-    GO_DOOR_HARJATAN_2 = 269192,
-
-    GO_DOOR_AFTER_SASSZINE_1 = 268752,
-    GO_DOOR_SISTERS_OF_THE_MOON_1 = 268750,
-    GO_DOOR_SISTERS_OF_THE_MOON_2 = 268514,
-    GO_DOOR_SISTERS_OF_THE_MOON_3 = 268751,
-    GO_DOOR_SISTERS_OF_THE_MOON_4 = 268749,
-    GO_DOOR_DEMONIC_INQUISITION_1 = 268579,
-    GO_DOOR_MAIDEN_OF_VIGILANCE_1 = 269164,
-    GO_DOOR_MAIDEN_OF_VIGILANCE_2 = 269261,
-    GO_DOOR_MAIDEN_OF_VIGILANCE_3 = 269262,
-    GO_DOOR_FALLEN_AVATAR         = 267934,
-
-    GO_DOOR_FELSTORM_COLLISION_01 = 269987,
-    GO_DESTRUCTIBLE_1             = 269842,
-    GO_DESTRUCTIBLE_2             = 269839,
-    GO_DESTRUCTIBLE_3             = 269838,
-    GO_DOOR_TO_MISTRESS           = 269120,
-    GO_DOOR_TO_MISTRESS2          = 270940,
+    EVENT_1 = 1,
+    EVENT_2,
+    EVENT_3,
+    EVENT_4,
+    EVENT_5,
+    EVENT_6,
+    EVENT_7,
+    EVENT_8,
+    EVENT_9,
+    EVENT_10,
+    EVENT_11,
+    EVENT_12,
+    EVENT_13,
+    EVENT_14,
+    EVENT_15,
+    EVENT_16,
+    EVENT_17,
+    EVENT_18,
+    EVENT_19,
+    EVENT_20,
+    EVENT_21,
+    EVENT_22,
+    EVENT_23,
+    EVENT_24,
+    EVENT_25,
+    EVENT_26,
+    EVENT_27,
+    EVENT_28,
+    EVENT_29,
+    EVENT_30,
+    EVENT_31,
+    EVENT_32,
+    EVENT_33,
+    EVENT_34,
+    EVENT_35,
+    EVENT_36,
+    EVENT_37,
+    EVENT_38,
+    EVENT_39,
+    EVENT_40,
+    EVENT_41,
+    EVENT_42,
+    EVENT_43,
+    EVENT_44,
+    EVENT_45,
+    EVENT_46,
+    EVENT_47,
+    EVENT_48,
+    EVENT_49,
+    EVENT_50,
 };
 
-template<class AI>
-CreatureAI* GetTombOfSargerasAI(Creature* creature)
-{
-    if (InstanceMap* instance = creature->GetMap()->ToInstanceMap())
-        if (instance->GetInstanceScript())
-            if (instance->GetScriptId() == sObjectMgr->GetScriptId(TombOfSargerasScriptName))
-                return new AI(creature);
-    return NULL;
-}
+#define ToSScriptName "instance_tomb_of_sargeras"
 
 #endif

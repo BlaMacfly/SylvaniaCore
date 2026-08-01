@@ -1641,3 +1641,48 @@ void ScriptedAI::GetTalkData(uint32 eventId)
     }
     
 }
+
+bool ScriptedAI::CheckHomeDistToEvade(uint32 diff, float dist, float x, float y, float z, bool onlyZ)
+{
+    if (!me->IsInCombat())
+        return false;
+
+    bool evade = false;
+
+    if (_checkHomeTimer <= diff)
+    {
+        _checkHomeTimer = 1500;
+
+        if (onlyZ)
+        {
+            if ((me->GetPositionZ() > z + dist) || (me->GetPositionZ() < z - dist))
+                evade = true;
+        }
+        else if (x != 0.0f || y != 0.0f || z != 0.0f)
+        {
+            if (me->GetDistance(x, y, z) >= dist)
+                evade = true;
+        }
+        else if (me->GetDistance(me->GetHomePosition()) >= dist)
+            evade = true;
+
+        if (evade)
+        {
+            EnterEvadeMode();
+            return true;
+        }
+    }
+    else
+        _checkHomeTimer -= diff;
+
+    return false;
+}
+
+Creature* SummonList::GetCreature(uint32 entry)
+{
+    for (auto const& guid : *this)
+        if (Creature* summon = ObjectAccessor::GetCreature(*me, guid))
+            if (summon->GetEntry() == entry)
+                return summon;
+    return nullptr;
+}

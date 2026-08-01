@@ -3327,3 +3327,23 @@ void Creature::ReLoad(bool skipDB)
 
     TC_LOG_DEBUG("sql.sql", "Creature SpawnID (" SI64FMTD ") reloaded.", GetSpawnId());
 }
+
+void Creature::SetReactState(ReactStates st, uint32 delay)
+{
+    if (!delay)
+    {
+        SetReactState(st);
+        return;
+    }
+    AddDelayedEvent(delay, [this, st]() -> void { SetReactState(st); });
+}
+
+void Creature::StopAttack(bool clearMove /*= false*/, bool interruptSpells /*= false*/)
+{
+    SetReactState(REACT_PASSIVE);
+    AttackStop();
+    if (clearMove)
+        GetMotionMaster()->Clear();
+    if (interruptSpells)
+        InterruptNonMeleeSpells(false);
+}

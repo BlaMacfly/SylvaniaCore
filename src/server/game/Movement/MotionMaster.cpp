@@ -942,3 +942,28 @@ void MotionMaster::DelayedDelete(MovementGenerator* curr)
         _expireList = new ExpireList();
     _expireList->push_back(curr);
 }
+
+void MotionMaster::MoveSmoothFlyPath(uint32 pointId, G3D::Vector3 const* pathPoints, size_t pathSize)
+{
+    Movement::MoveSplineInit init(_owner);
+    init.SetSmooth();
+    init.SetFly();
+    init.SetUncompressed();
+    Movement::PointsArray path(pathPoints, pathPoints + pathSize);
+    init.MovebyPath(path);
+    init.Launch();
+    Mutate(new EffectMovementGenerator(pointId), MOTION_SLOT_ACTIVE);
+}
+
+void MotionMaster::MoveSmoothFlyPath(uint32 pointId, Position const position, float flightSpeed /*= 0.0f*/)
+{
+    Movement::MoveSplineInit init(_owner);
+    init.SetSmooth();
+    init.SetFly();
+    init.SetUncompressed();
+    init.MoveTo(position.m_positionX, position.m_positionY, position.m_positionZ, false, false);
+    if (flightSpeed > 0.0f)
+        init.SetVelocity(flightSpeed);
+    init.Launch();
+    Mutate(new EffectMovementGenerator(pointId), MOTION_SLOT_ACTIVE);
+}

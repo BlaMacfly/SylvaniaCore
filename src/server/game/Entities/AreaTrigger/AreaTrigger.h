@@ -80,6 +80,13 @@ class TC_GAME_API AreaTrigger : public WorldObject, public GridObject<AreaTrigge
 
         AreaTriggerMiscTemplate const* GetMiscTemplate() const { return _areaTriggerMiscTemplate; }
         AreaTriggerTemplate const* GetTemplate() const;
+        // compat DestinyCoreNew : rayon courant approxime par le rayon du template ;
+        // l animation de scale dynamique n est pas supportee par notre moteur (no-op)
+        float GetRadius() const;
+        void SetSphereScale(float /*scale*/, uint32 /*time*/ = 0, bool /*grow*/ = false) { }
+        bool isMoving() const { return false; } // compat : pas de suivi spline expose
+        void Despawn() { Remove(); }
+        float GetProgressCompat() const { return GetProgress(); }
         ObjectGuid::LowType GetSpawnId() const { return _spawnId; }
         uint32 GetScriptId() const;
 

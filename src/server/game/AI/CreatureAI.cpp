@@ -439,3 +439,24 @@ void CreatureAI::SetFlyMode(bool fly)
     else
         me->RemoveByteFlag(UNIT_FIELD_BYTES_1, 3, UNIT_BYTE1_FLAG_HOVER);
 }
+
+void CreatureAI::Talk(uint8 id, ObjectGuid whisperGuid)
+{
+    WorldObject const* target = nullptr;
+    if (!whisperGuid.IsEmpty())
+        target = ObjectAccessor::GetUnit(*me, whisperGuid);
+    Talk(id, target);
+}
+
+void CreatureAI::Talk(std::initializer_list<uint8> ids, ObjectGuid whisperGuid /*= ObjectGuid::Empty*/)
+{
+    if (ids.size() == 0)
+        return;
+    uint8 id = *(ids.begin() + urand(0, uint32(ids.size()) - 1));
+    Talk(id, whisperGuid);
+}
+
+void CreatureAI::ZoneTalk(uint8 id)
+{
+    sCreatureTextMgr->SendChat(me, id, nullptr, CHAT_MSG_ADDON, LANG_ADDON, TEXT_RANGE_ZONE);
+}

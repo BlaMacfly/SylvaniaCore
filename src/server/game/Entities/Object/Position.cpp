@@ -16,6 +16,7 @@
  */
 
 #include "Position.h"
+#include <cmath>
 #include "ByteBuffer.h"
 #include "GridDefines.h"
 #include "Random.h"
@@ -278,4 +279,74 @@ ByteBuffer& operator<<(ByteBuffer& buf, Position::ConstStreamer<Position::Packed
 {
     buf.appendPackXYZ(streamer.Pos->GetPositionX(), streamer.Pos->GetPositionY(), streamer.Pos->GetPositionZ());
     return buf;
+}
+
+void Position::SimplePosXYRelocationByAngle(Position& pos, float dist, float angle, bool relative /*= false*/) const
+{
+    if (!relative)
+        angle += GetOrientation();
+
+    pos.m_positionX = m_positionX + dist * std::cos(angle);
+    pos.m_positionY = m_positionY + dist * std::sin(angle);
+    pos.m_positionZ = m_positionZ;
+
+    if (!Trinity::IsValidMapCoord(pos.m_positionX, pos.m_positionY))
+    {
+        pos.Relocate(this);
+        return;
+    }
+
+    Trinity::NormalizeMapCoord(pos.m_positionX);
+    Trinity::NormalizeMapCoord(pos.m_positionY);
+    pos.SetOrientation(GetOrientation());
+}
+
+void Position::GenerateNonDuplicatePoints(std::list<Position>& randPosList, Position const& centerPos, uint8 maxPoint, float randMin, float randMax, float minDist) const
+{
+    Position pos;
+    uint8 traiCount = 0;
+
+    while (randPosList.size() < maxPoint)
+    {
+        bool badPos = false;
+        centerPos.SimplePosXYRelocationByAngle(pos, frand(randMin, randMax), frand(0.0f, 6.28f));
+        ++traiCount;
+
+        for (auto const& _pos : randPosList)
+        {
+            if (pos.GetExactDist(&_pos) <= minDist)
+            {
+                badPos = true;
+                break;
+            }
+        }
+
+        if (!badPos || traiCount > uint8(maxPoint * 10))
+            randPosList.push_back(pos);
+    }
+}
+
+bool Position::IsLinesCross(Position const& pos11, Position const& pos12, Position const& pos21, Position const& pos22, Position* dest /*= nullptr*/) const
+{
+    // intersection parametrique de deux segments 2D (sans G3D::LineSegment2D, absent de notre g3dlite)
+    float x1 = pos11.GetPositionX(), y1 = pos11.GetPositionY();
+    float x2 = pos12.GetPositionX(), y2 = pos12.GetPositionY();
+    float x3 = pos21.GetPositionX(), y3 = pos21.GetPositionY();
+    float x4 = pos22.GetPositionX(), y4 = pos22.GetPositionY();
+
+    float denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+    if (std::fabs(denom) < 1e-6f)
+        return false; // paralleles ou colineaires
+
+    float t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+    float u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
+    if (t < 0.0f || t > 1.0f || u < 0.0f || u > 1.0f)
+        return false; // intersection hors des segments
+
+    if (dest)
+    {
+        dest->m_positionX = x1 + t * (x2 - x1);
+        dest->m_positionY = y1 + t * (y2 - y1);
+    }
+    return true;
 }

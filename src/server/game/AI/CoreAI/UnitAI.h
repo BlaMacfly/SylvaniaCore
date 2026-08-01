@@ -23,6 +23,7 @@
 #include "EventMap.h"
 #include "ObjectGuid.h"
 #include "ThreatManager.h"
+#include "SpellAuraDefines.h"
 
 #define CAST_AI(a, b)   (dynamic_cast<a*>(b))
 #define ENSURE_AI(a,b)  (EnsureAI<a>(b))
@@ -224,6 +225,17 @@ class TC_GAME_API UnitAI
         // Note: it for recalculation damage or special reaction at damage
         // for attack reaction use AttackedBy called for not DOT damage in Unit::DealDamage also
         virtual void DamageTaken(Unit* /*attacker*/, uint32& /*damage*/) { }
+        // Hook generique guid->bool utilise par les scripts portes de DestinyCoreNew (uwow)
+        virtual bool GetObjectData(ObjectGuid const& /*guid*/, uint32 /*type*/) { return false; }
+        // Hooks de notification uwow : notre moteur ne les appelle pas (code mort tolere)
+        virtual void SpellFinishCast(SpellInfo const* /*spell*/) { }
+        virtual void OnApplyOrRemoveAura(uint32 /*spellId*/, AuraRemoveMode /*mode*/, bool /*apply*/) { }
+        virtual void OnRemoveAuraTarget(Unit* /*target*/, uint32 /*spellId*/, AuraRemoveMode /*mode*/) { }
+        virtual bool IsDisableGenerateLoot() { return false; }
+        virtual uint32 GetModifyedData(uint32 /*type*/) { return 0; }
+        virtual void OnAreaTriggerDespawn(uint32 /*spellId*/, Position /*pos*/, bool /*duration*/) { }
+        virtual void OnAreaTriggerCast(Unit* /*caster*/, Unit* /*target*/, uint32 /*spellId*/, uint32 /*atEntry*/) { }
+        virtual void OnInterruptCast(Unit* /*caster*/, uint32 /*spellId*/, uint32 /*curSpellID*/, uint32 /*schoolMask*/) { }
 
         // Called when the creature receives heal
         virtual void HealReceived(Unit* /*done_by*/, uint32& /*addhealth*/) { }
@@ -242,6 +254,7 @@ class TC_GAME_API UnitAI
         void DoCastToAllHostilePlayers(uint32 spellid, bool triggered = false);
         void DoCastSelf(uint32 spellId, bool triggered = false) { DoCast(me, spellId, triggered); }
         void DoCastVictim(uint32 spellId, bool triggered = false);
+        void DoCastTopAggro(uint32 spellId, bool triggered = false, bool onlyPlayer = true);
         void DoCastAOE(uint32 spellId, bool triggered = false);
         void DoCastRandom(uint32 spellId, float dist, bool triggered = false, int32 aura = 0, uint32 position = 0);
 

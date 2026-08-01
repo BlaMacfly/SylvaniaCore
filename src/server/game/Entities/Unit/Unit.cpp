@@ -15214,3 +15214,45 @@ void Unit::EmoteWithDelay(uint32 Delay, uint8 Id)
 
     m_Events.AddEvent(new EmoteWithDelay(this, Id, Delay), m_Events.CalculateTime(Delay));
 }
+
+void Unit::CastSpellDelay(Unit* victim, uint32 spellId, bool triggered, uint32 delay, Item* castItem, AuraEffect const* triggeredByAura, ObjectGuid originalCaster)
+{
+    if (m_cleanupDone)
+        return;
+
+    ObjectGuid targetGUID = victim->GetGUID();
+    AddDelayedCombat(delay, [this, spellId, triggered, castItem, triggeredByAura, originalCaster, targetGUID]() -> void
+    {
+        Unit* target = ObjectAccessor::GetUnit(*this, targetGUID);
+        if (!target)
+            return;
+
+        CastSpell(target, spellId, triggered ? TRIGGERED_FULL_MASK : TRIGGERED_NONE, castItem, triggeredByAura, originalCaster);
+    });
+}
+
+void Unit::CastSpellDelay(Position pos, uint32 spellId, bool triggered, uint32 delay)
+{
+    if (m_cleanupDone)
+        return;
+
+    if (!delay)
+        CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), spellId, triggered);
+    else
+        AddDelayedCombat(delay, [this, pos, spellId, triggered]() -> void
+        {
+            CastSpell(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), spellId, triggered);
+        });
+}
+
+Unit* Unit::GetAnyOwner() const
+{
+    if (GetCharmerGUID())
+        return GetCharmer();
+    if (ToTempSummon())
+        return ToTempSummon()->GetSummoner();
+    if (GetOwner())
+        return GetOwner();
+
+    return nullptr;
+}

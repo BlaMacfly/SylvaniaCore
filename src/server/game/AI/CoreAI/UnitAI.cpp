@@ -194,6 +194,12 @@ void UnitAI::DoCastVictim(uint32 spellId, bool triggered)
     me->CastSpell(me->GetVictim(), spellId, triggered);
 }
 
+void UnitAI::DoCastTopAggro(uint32 spellId, bool triggered, bool onlyPlayer /*= true*/)
+{
+    if (Unit* victim = SelectTarget(SELECT_TARGET_TOPAGGRO, 0, 100.0f, onlyPlayer))
+        me->CastSpell(victim, spellId, triggered);
+}
+
 void UnitAI::DoCastAOE(uint32 spellId, bool triggered)
 {
     if (!triggered && me->HasUnitState(UNIT_STATE_CASTING))

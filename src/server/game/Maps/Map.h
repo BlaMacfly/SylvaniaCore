@@ -32,6 +32,7 @@
 #include <bitset>
 #include <list>
 #include <memory>
+#include <functional>
 #include <mutex>
 #include <set>
 #include <unordered_set>
@@ -416,6 +417,7 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         bool IsMythic() const;
         bool Is25ManRaid() const;
         bool IsLFR() const;
+        bool IsHeroicPlusRaid() const { return IsHeroic() || IsMythic(); }
         bool IsChallengeMode()  const;
         bool IsBattleground() const;
         bool IsBattleArena() const;
@@ -443,6 +445,7 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
 
         typedef MapRefManager PlayerList;
         PlayerList const& GetPlayers() const { return m_mapRefManager; }
+        void ApplyOnEveryPlayer(std::function<void(Player*)> function);
 
         //per-map script storage
         void ScriptsStart(std::map<uint32, std::multimap<uint32, ScriptInfo> > const& scripts, uint32 id, Object* source, Object* target);

@@ -23,6 +23,21 @@
 class AreaTrigger;
 class Unit;
 
+
+// Moments d action des areatriggers (compat scripts DestinyCoreNew ; notre moteur
+// n appelle PAS IsValidTarget : le filtrage de cibles de ces scripts est inactif)
+enum AreaTriggerActionMoment
+{
+    AT_ACTION_MOMENT_ENTER          = 0x0001,
+    AT_ACTION_MOMENT_LEAVE          = 0x0002,
+    AT_ACTION_MOMENT_UPDATE_TARGET  = 0x0004,
+    AT_ACTION_MOMENT_DESPAWN        = 0x0008,
+    AT_ACTION_MOMENT_SPAWN          = 0x0010,
+    AT_ACTION_MOMENT_REMOVE         = 0x0020,
+    AT_ACTION_MOMENT_ON_THE_WAY     = 0x0040,
+    AT_ACTION_MOMENT_ON_STOP_MOVE   = 0x0080,
+};
+
 class TC_GAME_API AreaTriggerAI
 {
     protected:
@@ -63,6 +78,8 @@ class TC_GAME_API AreaTriggerAI
 
         // Called when the AreaTrigger is update target
         virtual void ActionOnUpdate(GuidList& affectedPlayers) {}
+        virtual bool IsValidTarget(Unit* /*caster*/, Unit* /*target*/, AreaTriggerActionMoment /*actionM*/) { return true; }
+        virtual bool CalculateSpline(Position const* /*pos*/, Position& /*startPos*/, Position& /*endPos*/, std::vector<Position>& /*path*/) { return false; }
 };
 
 class NullAreaTriggerAI : public AreaTriggerAI

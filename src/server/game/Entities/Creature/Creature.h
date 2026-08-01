@@ -106,6 +106,8 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool CanFly()  const override { return (GetCreatureTemplate()->InhabitType & INHABIT_AIR) != 0; }
 
         void SetReactState(ReactStates st) { m_reactState = st; }
+        void SetReactState(ReactStates st, uint32 delay); // variante differee (compat DestinyCoreNew)
+        void StopAttack(bool clearMove = false, bool interruptSpells = false);
         ReactStates GetReactState() const { return m_reactState; }
         bool HasReactState(ReactStates state) const { return (m_reactState == state); }
         void InitializeReactState();

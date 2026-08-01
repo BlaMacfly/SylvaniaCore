@@ -19,6 +19,7 @@
 #define Trinity_game_Position_h__
 
 #include "Define.h"
+#include <list>
 #include <string>
 #include <cmath>
 #include <G3D/Vector3.h>
@@ -103,6 +104,9 @@ public:
     float GetPositionY() const { return m_positionY; }
     float GetPositionZ() const { return m_positionZ; }
     float GetOrientation() const { return m_orientation; }
+    void SimplePosXYRelocationByAngle(Position& pos, float dist, float angle, bool relative = false) const;
+        void GenerateNonDuplicatePoints(std::list<Position>& randPosList, Position const& centerPos, uint8 maxPoint, float randMin, float randMax, float minDist) const;
+        bool IsLinesCross(Position const& pos11, Position const& pos12, Position const& pos21, Position const& pos22, Position* dest = nullptr) const;
 
     void GetPosition(float &x, float &y) const
     {

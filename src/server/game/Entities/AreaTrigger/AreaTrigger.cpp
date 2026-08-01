@@ -1001,3 +1001,10 @@ void AreaTrigger::AI_Destroy()
 {
     _ai.reset();
 }
+
+float AreaTrigger::GetRadius() const
+{
+    if (AreaTriggerTemplate const* t = GetTemplate())
+        return t->MaxSearchRadius;
+    return 0.0f;
+}

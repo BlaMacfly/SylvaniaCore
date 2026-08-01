@@ -86,6 +86,7 @@ public:
 
     void Summon(Creature const* summon);
     void Despawn(Creature const* summon);
+    Creature* GetCreature(uint32 entry);
     void DespawnEntry(uint32 entry);
     void DespawnAll();
 
@@ -347,6 +348,14 @@ struct TC_GAME_API ScriptedAI : public CreatureAI
     //   - for raid in mode 25-heroic
     // DO NOT USE to check raid in mode 25-normal.
     bool IsHeroic() const { return _isHeroic; }
+    bool IsHeroicRaid() const { return IsHeroic(); }
+    bool IsHeroicPlusRaid() const { return IsHeroic() || me->GetMap()->IsMythic(); }
+    bool IsMythicRaid() const { return me->GetMap()->IsMythic(); }
+    bool IsLfrRaid() const { return _difficulty == DIFFICULTY_LFR || _difficulty == DIFFICULTY_LFR_NEW; }
+    bool IsNormalRaid() const { return _difficulty == DIFFICULTY_NORMAL_RAID; }
+    // Evade si trop loin du point d ancrage (helper des scripts portes de DestinyCoreNew)
+    bool CheckHomeDistToEvade(uint32 diff, float dist = 0.0f, float x = 0.0f, float y = 0.0f, float z = 0.0f, bool onlyZ = false);
+    uint32 _checkHomeTimer = 1500;
 
     // return the dungeon or raid difficulty
     Difficulty GetDifficulty() const { return _difficulty; }

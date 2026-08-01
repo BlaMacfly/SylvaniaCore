@@ -1426,6 +1426,7 @@ class TC_GAME_API Unit : public WorldObject
         BrawlersGuild* GetBrawlerGuild();
 
         Unit* GetOwner() const;
+        Unit* GetAnyOwner() const; // charmeur > summoner > owner (compat DestinyCoreNew)
         Guardian* GetGuardianPet() const;
         Minion* GetFirstMinion() const;
         Unit* GetCharmer() const;
@@ -1702,6 +1703,9 @@ class TC_GAME_API Unit : public WorldObject
             m_Functions.KillAllFunctions();
         }
 
+        // Cast differe (helpers des scripts portes de DestinyCoreNew)
+        void CastSpellDelay(Unit* victim, uint32 spellId, bool triggered, uint32 delay, Item* castItem = nullptr, AuraEffect const* triggeredByAura = nullptr, ObjectGuid originalCaster = ObjectGuid::Empty);
+        void CastSpellDelay(Position pos, uint32 spellId, bool triggered, uint32 delay);
         void AddDelayedCombat(uint64 timeOffset, std::function<void()>&& function)
         {
             m_CombatFunctions.AddDelayedEvent(timeOffset, std::move(function));

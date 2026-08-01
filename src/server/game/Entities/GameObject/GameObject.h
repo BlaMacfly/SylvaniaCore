@@ -300,6 +300,18 @@ class TC_GAME_API GameObject : public WorldObject, public GridObject<GameObject>
 
         /// Event handler
         EventProcessor m_Events;
+        // compat DestinyCoreNew : evenement differe via m_Events (mis a jour dans GameObject::Update)
+        void AddDelayedEvent(uint64 timeOffset, std::function<void()>&& function)
+        {
+            class LambdaEvent : public BasicEvent
+            {
+                std::function<void()> _fn;
+            public:
+                explicit LambdaEvent(std::function<void()>&& fn) : _fn(std::move(fn)) { }
+                bool Execute(uint64, uint32) override { _fn(); return true; }
+            };
+            m_Events.AddEvent(new LambdaEvent(std::move(function)), m_Events.CalculateTime(timeOffset));
+        }
 
         uint32 GetWorldEffectID() const { return _worldEffectID; }
         void SetWorldEffectID(uint32 worldEffectID) { _worldEffectID = worldEffectID; }
