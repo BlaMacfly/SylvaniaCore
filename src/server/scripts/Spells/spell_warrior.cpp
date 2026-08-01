@@ -1833,7 +1833,7 @@ public:
 
         bool Validate(SpellInfo const* /*spellInfo*/) override
         {
-            if (!sSpellMgr->GetSpellInfo(SPELL_WARRIOR_HEROIC_LEAP_JUMP))
+            if (!sSpellMgr->GetSpellInfo(SPELL_WARRIOR_HEROIC_LEAP_JUMP) || !sSpellMgr->GetSpellInfo(SPELL_WARRIOR_HEROIC_LEAP_DAMAGE))
                 return false;
             return true;
         }
@@ -1878,6 +1878,13 @@ public:
             if (WorldLocation* dest = GetHitDest())
             {
                 GetCaster()->CastSpell(dest->GetPositionX(), dest->GetPositionY(), dest->GetPositionZ(), SPELL_WARRIOR_HEROIC_LEAP_JUMP, true);
+
+                // Degats de zone a l atterrissage (52174). En theorie data-driven via le
+                // TriggerSpell de l effet JUMP_DEST (JumpArrivalCastArgs), mais ce champ n est
+                // pas peuplé dans ce client : sans cast explicite, le bond ne fait AUCUN degat.
+                // Compromis assume : part au lancement plutot qu a l instant exact de l impact.
+                // (ArgusCore 32dfd577)
+                GetCaster()->CastSpell(dest->GetPositionX(), dest->GetPositionY(), dest->GetPositionZ(), SPELL_WARRIOR_HEROIC_LEAP_DAMAGE, true);
             }
 
             if (Unit* caster = GetCaster())

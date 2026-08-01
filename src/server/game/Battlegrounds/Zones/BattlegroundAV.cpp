@@ -1907,7 +1907,7 @@ void BattlegroundAV::ResetBGSubclass()
         m_Team_Scores[i] = scoreFinal;
         m_IsInformedNearVictory[i]=false;
         m_CaptainAlive[i] = true;
-        m_CaptainBuffTimer[i] = 120000 + urand(0, 4)* 60; //as far as i could see, the buff is randomly so i make 2minutes (thats the duration of the buff itself) + 0-4minutes @todo get the right times
+        m_CaptainBuffTimer[i] = 120000 + urand(0, 4)* 60000; // corrige : le facteur etait *60 (secondes) au lieu de *60000 (ms) -> buff capitaine quasi immediat au lieu de 2-6 min (ArgusCore a4f5083d) //as far as i could see, the buff is randomly so i make 2minutes (thats the duration of the buff itself) + 0-4minutes @todo get the right times
         m_Mine_Owner[i] = AV_NEUTRAL_TEAM;
         m_Mine_PrevOwner[i] = m_Mine_Owner[i];
     }
