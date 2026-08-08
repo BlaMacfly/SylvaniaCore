@@ -19294,7 +19294,6 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
                 break;
         }
 
-        SetCommandStatusOn(CHEAT_GOD);
     }
 
     // RaF stuff.
