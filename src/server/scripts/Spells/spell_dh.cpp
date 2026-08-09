@@ -1410,7 +1410,8 @@ public:
 
         void Register() override
         {
-            OnEffectProc += AuraEffectProcFn(spell_dh_demon_blades_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
+            // vrai 203555 EFFECT_0 = PROC_TRIGGER_SPELL [ArgusCore] — le talent ne proccait jamais
+            OnEffectProc += AuraEffectProcFn(spell_dh_demon_blades_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
         }
     };
 
@@ -1658,7 +1659,8 @@ public:
         void Register() override
         {
             OnEffectHitTarget += SpellEffectFn(spell_dh_annihilation_damage_SpellScript::HandleHit, EFFECT_0, SPELL_EFFECT_NORMALIZED_WEAPON_DMG);
-            OnEffectHitTarget += SpellEffectFn(spell_dh_annihilation_damage_SpellScript::HandleHit, EFFECT_1, SPELL_EFFECT_WEAPON_DAMAGE);
+            // vrai 201428/227518 EFFECT_1 = WEAPON_PERCENT_DAMAGE [ArgusCore]
+            OnEffectHitTarget += SpellEffectFn(spell_dh_annihilation_damage_SpellScript::HandleHit, EFFECT_1, SPELL_EFFECT_WEAPON_PERCENT_DAMAGE);
         }
     };
 
@@ -2250,8 +2252,10 @@ class spell_dh_metamorphosis_immunity : public SpellScript
 
     void Register() override
     {
-        OnEffectLaunch += SpellEffectFn(spell_dh_metamorphosis_immunity::PreventImmunity, EFFECT_1, SPELL_AURA_SCHOOL_IMMUNITY);
-        OnEffectHit    += SpellEffectFn(spell_dh_metamorphosis_immunity::PreventImmunity, EFFECT_1, SPELL_AURA_SCHOOL_IMMUNITY);
+        // vrai 201453 : l APPLY_AURA porteur de SCHOOL_IMMUNITY est sur EFFECT_0 ; et SpellEffectFn
+        // attend un TYPE D EFFET (APPLY_AURA=6), pas une valeur d aura (39 = coincidence avec LANGUAGE) [ArgusCore]
+        OnEffectLaunch += SpellEffectFn(spell_dh_metamorphosis_immunity::PreventImmunity, EFFECT_0, SPELL_EFFECT_APPLY_AURA);
+        OnEffectHit    += SpellEffectFn(spell_dh_metamorphosis_immunity::PreventImmunity, EFFECT_0, SPELL_EFFECT_APPLY_AURA);
     }
 };
 
