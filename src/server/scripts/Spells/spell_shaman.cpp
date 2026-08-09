@@ -2353,7 +2353,8 @@ class spell_sha_ancestral_guidance : public AuraScript
     void Register() override
     {
         DoCheckProc += AuraCheckProcFn(spell_sha_ancestral_guidance::CheckProc);
-        OnEffectProc += AuraEffectProcFn(spell_sha_ancestral_guidance::HandleEffectProc, EFFECT_0, SPELL_AURA_DUMMY);
+        // vrai 108281 EFFECT_0 = SPELL_AURA_PERIODIC_DUMMY [ArgusCore] — le proc ne partait jamais
+        OnEffectProc += AuraEffectProcFn(spell_sha_ancestral_guidance::HandleEffectProc, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
     }
 };
 

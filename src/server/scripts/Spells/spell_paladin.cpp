@@ -170,7 +170,7 @@ class spell_pal_beacon_of_virtue : public SpellScript
 
     void Register() override
     {
-        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_pal_beacon_of_virtue::FilterTargets, EFFECT_0, TARGET_UNIT_DEST_AREA_ALLY);
+        // EFFECT_0 de 200025 n utilise pas ce ciblage (hook mort au boot) — le ciblage natif suffit [ArgusCore 875ca905]
         OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_pal_beacon_of_virtue::FilterTargets, EFFECT_1, TARGET_UNIT_DEST_AREA_ALLY);
         OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_pal_beacon_of_virtue::FilterTargets, EFFECT_2, TARGET_UNIT_DEST_AREA_ALLY);
     }
