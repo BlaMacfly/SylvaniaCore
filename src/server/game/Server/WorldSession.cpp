@@ -251,8 +251,22 @@ void WorldSession::SendPacket(WorldPacket const* packet, bool forced /*= false*/
 
     if (!m_Socket[conIdx])
     {
-        TC_LOG_ERROR("network.opcode", "Prevented sending of %s to non existent socket %u to %s", GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str(), conIdx, GetPlayerInfo().c_str());
-        return;
+        // Le client moderne attend un second socket "instance" (SMSG_CONNECT_TO) pour une large
+        // classe d opcodes, dont certains a impact gameplay direct s ils sont jetes plutot que
+        // differes (SMSG_PET_SPELLS_MESSAGE/SMSG_PET_MODE/... : barre d action du familier jamais
+        // recue -> familier inerte). Le socket realm etant le seul garanti pour toute session
+        // connectee, s y replier vaut strictement mieux que jeter silencieusement le paquet.
+        // [porte d ArgusCore a7f5223f]
+        if (conIdx == CONNECTION_TYPE_INSTANCE && m_Socket[CONNECTION_TYPE_REALM])
+        {
+            TC_LOG_DEBUG("network.opcode", "WorldSession::SendPacket: %s had no instance socket, falling back to realm socket for %s", GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str(), GetPlayerInfo().c_str());
+            conIdx = CONNECTION_TYPE_REALM;
+        }
+        else
+        {
+            TC_LOG_ERROR("network.opcode", "Prevented sending of %s to non existent socket %u to %s", GetOpcodeNameForLogging(static_cast<OpcodeServer>(packet->GetOpcode())).c_str(), conIdx, GetPlayerInfo().c_str());
+            return;
+        }
     }
 
     if (!forced)
