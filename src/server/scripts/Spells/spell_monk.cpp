@@ -598,51 +598,10 @@ public:
 // Power Strikes - 121817
 // En attente
 
-// Crackling Jade Lightning - 117952
-class spell_monk_crackling_jade_lightning : public SpellScriptLoader
-{
-public:
-    spell_monk_crackling_jade_lightning() : SpellScriptLoader("spell_monk_crackling_jade_lightning") { }
-
-    class spell_monk_crackling_jade_lightning_AuraScript : public AuraScript
-    {
-        PrepareAuraScript(spell_monk_crackling_jade_lightning_AuraScript);
-
-        void OnTick(AuraEffect const* /* aurEff */)
-        {
-            if (Unit* caster = GetCaster())
-                if (roll_chance_i(25))
-                    caster->CastSpell(caster, SPELL_MONK_JADE_LIGHTNING_ENERGIZE, true);
-        }
-
-        void OnProc(AuraEffect const* /* aurEff */, ProcEventInfo& eventInfo)
-        {
-            PreventDefaultAction();
-
-            if (!GetCaster())
-                return;
-
-            if (eventInfo.GetActor()->GetGUID() != GetTarget()->GetGUID())
-                return;
-
-            /*if (GetCaster()->ToPlayer())
-            {
-                ;
-            }*/
-        }
-
-        void Register() override
-        {
-            OnEffectPeriodic += AuraEffectPeriodicFn(spell_monk_crackling_jade_lightning_AuraScript::OnTick, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
-            OnEffectProc += AuraEffectProcFn(spell_monk_crackling_jade_lightning_AuraScript::OnProc, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
-        }
-    };
-
-    AuraScript* GetAuraScript() const override
-    {
-        return new spell_monk_crackling_jade_lightning_AuraScript();
-    }
-};
+// Crackling Jade Lightning - 117952 : aucun script necessaire en 7.3.5 —
+// le proc de chi 123333 a 25%/tick etait un reliquat MoP (le canal Legion ne genere
+// aucune ressource, degats purs via spell data). Le knockback 117959 reste scripte
+// a part. [conclusion portee d ArgusCore 8ffc9d55, verifiee sur notre implementation]
 
 // Touch of Karma - 122470
 // En attente
@@ -2054,7 +2013,8 @@ public:
         void Register() override
         {
             //OnEffectApply += AuraEffectApplyFn(spell_monk_stagger_visual_AuraScript::HandleDummy1Apply, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL_OR_REAPPLY_MASK);
-            OnEffectRemove += AuraEffectRemoveFn(spell_monk_stagger_visual_AuraScript::HandleDummy1Remove, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE, AURA_EFFECT_HANDLE_REAL);
+            // stagger 124273/4/5 : la logique apply/remove vit sur EFFECT_1 (DUMMY), pas EFFECT_0 [ArgusCore]
+            OnEffectRemove += AuraEffectRemoveFn(spell_monk_stagger_visual_AuraScript::HandleDummy1Remove, EFFECT_1, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL);
         }
     };
 
@@ -2768,16 +2728,11 @@ public:
                     target = soothingMistTarget;
         }
 
-        void HandleDummy(SpellEffIndex effIndex)
-        {
-            PreventHitDefaultEffect(effIndex);
-            GetCaster()->CastSpell(GetHitUnit(), SPELL_MONK_SURGING_MIST_HEAL, true);
-        }
-
+        // 7.3.5 : 116694 (Effuse) soigne nativement via son effet HEAL — l ancien relais MoP
+        // (dummy -> cast 116995) etait un hook mort. On garde la redirection Soothing Mist.
         void Register() override
         {
             OnObjectTargetSelect += SpellObjectTargetSelectFn(spell_monk_surging_mist_SpellScript::SelectTarget, EFFECT_0, TARGET_UNIT_TARGET_ALLY);
-            OnEffectHitTarget += SpellEffectFn(spell_monk_surging_mist_SpellScript::HandleDummy, EFFECT_0, SPELL_EFFECT_DUMMY);
         }
     };
 
@@ -3882,7 +3837,8 @@ public:
         }
         void Register() override
         {
-            OnEffectProc += AuraEffectProcFn(spell_monk_healing_elixirs_aura_AuraScript::OnProc, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
+            // l effet reel de 122280 (EFFECT_0) est SPELL_AURA_DUMMY, pas PROC_TRIGGER_SPELL — le hook ne matchait jamais [porte d ArgusCore 603df7a1]
+            OnEffectProc += AuraEffectProcFn(spell_monk_healing_elixirs_aura_AuraScript::OnProc, EFFECT_0, SPELL_AURA_DUMMY);
         }
     };
     AuraScript* GetAuraScript() const override
@@ -4042,7 +3998,6 @@ void AddSC_monk_spell_scripts()
     new spell_monk_chi_wave_heal_missile();
     new spell_monk_chi_wave_healing_bolt();
     new spell_monk_crackling_jade_knockback();
-    new spell_monk_crackling_jade_lightning();
     new spell_monk_crackling_jade_lightning_knockback_proc_aura();
     new spell_monk_dampen_harm();
     RegisterSpellAndAuraScriptPair(spell_monk_disable, aura_monk_disable);
