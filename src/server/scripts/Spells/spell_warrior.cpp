@@ -946,7 +946,8 @@ public:
 
         void Register() override
         {
-            AfterEffectApply += AuraEffectRemoveFn(spell_warr_sudden_death_AuraScript::HandleApply, EFFECT_0, SPELL_AURA_DUMMY, AURA_EFFECT_HANDLE_REAL); // correct?
+            // vrai 52437 EFFECT_0 = ABILITY_IGNORE_AURASTATE [ArgusCore] — le reset de Colossus Smash ne partait jamais
+            AfterEffectApply += AuraEffectRemoveFn(spell_warr_sudden_death_AuraScript::HandleApply, EFFECT_0, SPELL_AURA_ABILITY_IGNORE_AURASTATE, AURA_EFFECT_HANDLE_REAL);
         }
     };
 
