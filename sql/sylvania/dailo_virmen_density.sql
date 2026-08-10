@@ -1,0 +1,11 @@
+-- =====================================================================
+-- Île Vagabonde : rééquilibrage de la ferme Dai-Lo (blizz adaptatif)
+-- 70 Vermines dodues (55483) posées à la main = multi-pulls inévitables
+-- (aggro ~17m, espacement < 10m par endroits). Dégâts des sorts créatures
+-- vérifiés AUTHENTIQUES (Back Kick 61 brut = ~23% vie d un joueur lvl 7,
+-- ratio MoP retail) -> on ne touche PAS aux dégâts, on ramène la densité
+-- au standard retail : 40 spawns à dispersion maximale (échantillonnage
+-- farthest-point, espacement minimal résultant 28m > rayon d aggro).
+-- Backup : db-backups/vermines-densite-20260810_210531.sql
+-- =====================================================================
+DELETE FROM creature WHERE id=55483 AND guid IN (21001023,21001028,21001029,21001074,21001075,21001101,21001103,21001117,21001126,21001131,21001141,21001144,21001145,21001146,21001147,21001149,21001157,21001163,21001164,21001168,21001170,21001172,21001174,21001178,21001181,21001182,21001184,21001186,21001205,21001277);
