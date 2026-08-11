@@ -3036,8 +3036,28 @@ bool PlayerBotMgr::CanReadyArenaByArenaTeamID(uint32 arenaTeamId)
     return true;
 }
 
+// SylvaniaCore (module BG BotFill): nombre de bots en cours d engagement (login /
+// re-level / inscription pas encore aboutis). Sert de garde-fou anti sur-provision :
+// tant que des bots sont en vol, le tick n en engage pas de nouveaux.
+uint32 PlayerBotMgr::GetScheduledBotCount()
+{
+    uint32 count = 0;
+    const SessionMap& allSession = sWorld->GetAllSessions();
+    for (SessionMap::const_iterator itSession = allSession.begin(); itSession != allSession.end(); itSession++)
+    {
+        if (!itSession->second || !itSession->second->IsBotSession())
+            continue;
+        PlayerBotSession* pSession = dynamic_cast<PlayerBotSession*>((WorldSession*)itSession->second);
+        if (pSession && !pSession->IsAccountBotSession() && pSession->HasSchedules())
+            ++count;
+    }
+    return count;
+}
+
 void PlayerBotMgr::QueryBattlegroundRequirement()
 {
+    if (GetScheduledBotCount() >= 8)
+        return;
     int32 teamSizeCap = sConfigMgr->GetIntDefault("pbotbg_maxperteam", 0);
     for (BattleGroundTypes::iterator itType = m_BGTypes.begin(); itType != m_BGTypes.end(); itType++)
     {

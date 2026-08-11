@@ -445,8 +445,9 @@ bool PlayerBotSession::ProcessInBGQueue(BotGlobleSchedule& schedule)
 
 	WorldPacket cmd(CMSG_BATTLEMASTER_JOIN);
 	WorldPackets::Battleground::BattlemasterJoin packet(std::move(cmd));
-	//packet.QueueID = MS::Battlegrounds::QueueOffsets::Battleground + MS::Battlegrounds::BattlegroundTypeId::BattlegroundRandom;
-	//packet.RolesMask = 14;
+	// SylvaniaCore (module BG BotFill): le QueueID n etait jamais renseigne (ligne commentee
+	// du portage) -> le handler recevait bgtype 0 et rejetait toutes les inscriptions bots
+	packet.QueueID = uint64(schedule.parameter1);
     HandleBattlemasterJoinOpcode(packet);
 	return false;
 }

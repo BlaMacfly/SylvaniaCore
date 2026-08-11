@@ -396,6 +396,7 @@ private:
     uint32 GetScheduleTalentByLFGRequirement(lfg::LfgRoles roles, uint32 botCls);
     void QueryBattlegroundRequirement();
     void UpdateIdleBotLogout();
+    uint32 GetScheduledBotCount();
     void QueryRatedArenaRequirement();
     void QueryNonRatedArenaRequirement();
     void OnlinePlayerBotByGUIDQueue();
