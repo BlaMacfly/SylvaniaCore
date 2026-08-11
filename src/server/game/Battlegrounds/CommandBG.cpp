@@ -53,8 +53,9 @@ void CommandBG::Initialize()
 
 void CommandBG::ReadyGame()
 {
+	TC_LOG_ERROR("server.worldserver", "BGF-DBG: CommandBG::ReadyGame team=%u etat=%u", uint32(m_TeamID), uint32(m_BGGC));
 	m_BGGC = BGGameCommand::BGGS_Ready;
-	//for (uint64 guid : m_PlayerGUIDs)
+	//for (ObjectGuid guid : m_PlayerGUIDs)
 	//{
 	//	if (UnitAI* pAI = GetPlayerAI(guid))
 	//	{
@@ -66,8 +67,9 @@ void CommandBG::ReadyGame()
 
 void CommandBG::StartGame()
 {
+	TC_LOG_ERROR("server.worldserver", "BGF-DBG: CommandBG::StartGame team=%u etat=%u", uint32(m_TeamID), uint32(m_BGGC));
 	m_BGGC = BGGameCommand::BGGS_Start;
-	//for (uint64 guid : m_PlayerGUIDs)
+	//for (ObjectGuid guid : m_PlayerGUIDs)
 	//{
 	//	if (UnitAI* pAI = GetPlayerAI(guid))
 	//	{
@@ -77,7 +79,7 @@ void CommandBG::StartGame()
 	//}
 }
 
-void CommandBG::OnPlayerDead(uint64 guid)
+void CommandBG::OnPlayerDead(ObjectGuid guid)
 {
 	PlayerStatus::iterator itGUID = m_PlayerGUIDs.find(guid);
 	if (itGUID == m_PlayerGUIDs.end())
@@ -87,6 +89,7 @@ void CommandBG::OnPlayerDead(uint64 guid)
 
 bool CommandBG::AddPlayerBot(Player* player, Battleground* pBG)
 {
+	TC_LOG_ERROR("server.worldserver", "BGF-DBG: CommandBG::AddPlayerBot %s team=%u etat=%u", player ? player->GetName().c_str() : "null", uint32(m_TeamID), uint32(m_BGGC));
 	if (!player || !pBG)
 		return false;
 	if (m_PlayerGUIDs.find(player->GetGUID()) != m_PlayerGUIDs.end())
@@ -142,6 +145,12 @@ void CommandBG::RemovePlayerBot(Player* player)
 
 void CommandBG::Update(uint32 diff)
 {
+	static uint32 s_dbgCount = 0;
+	if (++s_dbgCount % 97 == 0)
+		TC_LOG_ERROR("server.worldserver", "BGF-DBG: CmdUpdate this=%p inst=%u team=%u etat=%u model=%u statut=%u bots=%u",
+			(void*)this, m_pBattleground ? m_pBattleground->GetInstanceID() : 0u,
+			uint32(m_TeamID), uint32(m_BGGC), uint32(g_CommandModelType),
+			m_pBattleground ? uint32(m_pBattleground->GetStatus()) : 999u, uint32(m_PlayerGUIDs.size()));
 	if (m_BGGC != BGGS_None)
 	{
 		if (m_BGGC == BGGS_Init)
@@ -185,18 +194,18 @@ void CommandBG::Update(uint32 diff)
 	}
 }
 
-UnitAI* CommandBG::GetPlayerAI(uint64 guid)
+UnitAI* CommandBG::GetPlayerAI(ObjectGuid guid)
 {
 	PlayerStatus::iterator itGUID = m_PlayerGUIDs.find(guid);
 	if (itGUID == m_PlayerGUIDs.end())
 		return NULL;
-	Player* player = ObjectAccessor::FindPlayer(ObjectGuid::Create<HighGuid::Player>(guid));
+	Player* player = ObjectAccessor::FindPlayer(guid);
 	if (!player)
 		return NULL;
 	return player->GetAI();
 }
 
-BotBGAI* CommandBG::GetBotBGAI(uint64 guid)
+BotBGAI* CommandBG::GetBotBGAI(ObjectGuid guid)
 {
 	UnitAI* pAI = GetPlayerAI(guid);
 	if (!pAI)
@@ -204,12 +213,12 @@ BotBGAI* CommandBG::GetBotBGAI(uint64 guid)
 	return (dynamic_cast<BotBGAI*>(pAI));
 }
 
-Player* CommandBG::GetBGPlayer(uint64 guid)
+Player* CommandBG::GetBGPlayer(ObjectGuid guid)
 {
 	PlayerStatus::iterator itGUID = m_PlayerGUIDs.find(guid);
 	if (itGUID == m_PlayerGUIDs.end())
 		return NULL;
-	return ObjectAccessor::FindPlayer(ObjectGuid::Create<HighGuid::Player>(guid));
+	return ObjectAccessor::FindPlayer(guid);
 }
 
 Position CommandBG::GetNearTeleportPoint(Position& currentPos)
@@ -290,7 +299,7 @@ void CommandBG::ProcessGroupFocus(AIWaypoint* selfFocus, AIWaypoint* enemyFocus)
 	}
 }
 
-Position CommandBG::GetPositionByGuid(uint64 guid)
+Position CommandBG::GetPositionByGuid(ObjectGuid guid)
 {
 	ObjectGuid oGuid = ObjectGuid::Create<HighGuid::Player>(guid);
 	if (oGuid.IsPlayer())

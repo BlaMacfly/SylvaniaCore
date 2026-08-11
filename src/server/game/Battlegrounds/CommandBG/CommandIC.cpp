@@ -194,7 +194,7 @@ void CommandIC::ProcessICNodeRequirement(uint32 nodeType, AIWaypoint* waypoint, 
 	int32 canStealFlag = (nearEnemyCount == 0 && !flagIsOcupied) ? 1 : 0;
 	for (PlayerGUIDs::iterator itGuid = nodeNearPlayers.begin(); itGuid != nodeNearPlayers.end(); itGuid++)
 	{
-		uint64 guid = *itGuid;
+		ObjectGuid guid = *itGuid;
 		if (canStealFlag > 0)
 		{
 			if (!AcceptCommandByPlayerGUID(guid, pBGNode->GetGUID()))
@@ -211,7 +211,7 @@ void CommandIC::ProcessICNodeRequirement(uint32 nodeType, AIWaypoint* waypoint, 
 	while (needCount > 0 && !players.empty())
 	{
 		float minDistance = 99999;
-		uint64 minGUID = 0;
+		ObjectGuid minGUID;
 		for (PlayerGUIDs::iterator itGuid = players.begin(); itGuid != players.end(); itGuid++)
 		{
 			Position pos = GetPositionByGuid(*itGuid);
@@ -258,7 +258,7 @@ PlayerGUIDs CommandIC::GetICFlagRangePlayerByTeam(uint32 nodeType, TeamId team, 
 	return existPlayers;
 }
 
-bool CommandIC::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
+bool CommandIC::AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
 {
 	if (!targetAIWP)
 		return false;
@@ -269,7 +269,7 @@ bool CommandIC::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, b
 	return true;
 }
 
-bool CommandIC::AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag /* = false */)
+bool CommandIC::AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag /* = false */)
 {
 	if (flagGuid.IsEmpty())
 		return false;
@@ -280,7 +280,7 @@ bool CommandIC::AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool
 	return true;
 }
 
-void CommandIC::TryOccupiedICNode(uint64 guid)
+void CommandIC::TryOccupiedICNode(ObjectGuid guid)
 {
 	Player* player = GetBGPlayer(guid);
 	if (!player || player->HasUnitState(UNIT_STATE_CASTING))// || player->IsInCombat())

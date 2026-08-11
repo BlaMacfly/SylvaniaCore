@@ -52,10 +52,10 @@ private:
 	void ProcessEYPointRequirement(uint32 point, AIWaypoint* waypoint, PlayerGUIDs& players);
 	bool EYPointIsOccupied(uint32 point, TeamId team);
 	PlayerGUIDs GetEYPointRangePlayerByTeam(uint32 point, TeamId team);
-	bool AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag = false);
-	bool AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag = false);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag = false);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag = false);
 	uint32 GetEYPointIndexByTeam(uint32 index, TeamId team);
-	void TryPickStormFlag(uint64 guid);
+	void TryPickStormFlag(ObjectGuid guid);
 	void TryCaptureFlag(Player* player, AIWaypoint* pAIWP, uint32 point);
 	void ProcessFlagPicker(Player* player);
 	uint32 GetCaptureFlagPoint(uint32 index, TeamId team);

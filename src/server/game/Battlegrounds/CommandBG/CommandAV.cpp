@@ -365,7 +365,7 @@ void CommandAV::ProcessRequirementByNodeType(BattlegroundAV* pBattlegroundAV, BG
         uint32 canSteal = (enemyCount == 0) ? 3 : 0;
         for (PlayerGUIDs::iterator itGuid = selfPlayers.begin(); itGuid != selfPlayers.end(); itGuid++)
         {
-            uint64 guid = *itGuid;
+            ObjectGuid guid = *itGuid;
             if (canSteal > 0)
             {
                 if (!AcceptCommandByPlayerGUID(guid, waypoint, true))
@@ -386,7 +386,7 @@ void CommandAV::ProcessRequirementByNodeType(BattlegroundAV* pBattlegroundAV, BG
         while (needCount > 0 && !allPlayers.empty() && pBGNode)
         {
             float minDistance = 99999;
-            uint64 minGUID = 0;
+            ObjectGuid minGUID;
             for (PlayerGUIDs::iterator itGuid = allPlayers.begin(); itGuid != allPlayers.end(); itGuid++)
             {
                 Position pos = GetPositionByGuid(*itGuid);
@@ -421,7 +421,7 @@ void CommandAV::ProcessRequirementByCaptain(BattlegroundAV* pBattlegroundAV, Tea
 	uint32 needCount = enemyCount + 10;
 	for (PlayerGUIDs::iterator itGuid = selfPlayers.begin(); itGuid != selfPlayers.end(); itGuid++)
 	{
-		uint64 guid = *itGuid;
+		ObjectGuid guid = *itGuid;
 		if (!AcceptCommandByPlayerGUID(guid, waypoint))
 			continue;
 		allPlayers.erase(guid);
@@ -432,7 +432,7 @@ void CommandAV::ProcessRequirementByCaptain(BattlegroundAV* pBattlegroundAV, Tea
 	while (needCount > 0 && !allPlayers.empty())
 	{
 		float minDistance = 99999;
-		uint64 minGUID = 0;
+		ObjectGuid minGUID;
 		for (PlayerGUIDs::iterator itGuid = allPlayers.begin(); itGuid != allPlayers.end(); itGuid++)
 		{
 			Position pos = GetPositionByGuid(*itGuid);
@@ -485,7 +485,7 @@ PlayerGUIDs CommandAV::GetAVCaptainRangePlayerByTeam(BattlegroundAV* pBattlegrou
 	return existPlayers;
 }
 
-bool CommandAV::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
+bool CommandAV::AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
 {
 	if (!targetAIWP)
 		return false;
@@ -496,7 +496,7 @@ bool CommandAV::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, b
 	return true;
 }
 
-bool CommandAV::AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag /* = false */)
+bool CommandAV::AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag /* = false */)
 {
 	if (flagGuid.IsEmpty())
 		return false;
@@ -507,7 +507,7 @@ bool CommandAV::AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool
 	return true;
 }
 
-void CommandAV::TryOccupiedAVNode(BattlegroundAV* pBattlegroundAV, uint64 guid)
+void CommandAV::TryOccupiedAVNode(BattlegroundAV* pBattlegroundAV, ObjectGuid guid)
 {
 	Player* player = GetBGPlayer(guid);
 	if (!player || player->HasUnitState(UNIT_STATE_CASTING) || player->IsInCombat())

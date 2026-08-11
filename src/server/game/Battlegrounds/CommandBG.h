@@ -32,8 +32,8 @@ class BotBGAI;
 
 typedef std::vector<uint32> AIWPEntrys;
 typedef std::vector<AIWaypoint*> BGKeyPoints;
-typedef std::set<uint64> PlayerGUIDs;
-typedef std::map<uint64, bool> PlayerStatus;
+typedef std::set<ObjectGuid> PlayerGUIDs;
+typedef std::map<ObjectGuid, bool> PlayerStatus;
 
 enum CommandModel
 {
@@ -101,7 +101,7 @@ public:
 	virtual void Initialize();
 	virtual void ReadyGame();
 	virtual void StartGame();
-	virtual void OnPlayerDead(uint64 guid);
+	virtual void OnPlayerDead(ObjectGuid guid);
 	virtual bool AddPlayerBot(Player* player, Battleground* pBG);
 	void RemovePlayerBot(Player* player);
 	virtual AIWaypoint* GetReadyPosition() { return NULL; }
@@ -111,9 +111,9 @@ public:
 	virtual bool CanUpMount(Player* player) { return true; }
 	virtual bool CanDireFlee() { return true; }
 
-	UnitAI* GetPlayerAI(uint64 guid);
-	BotBGAI* GetBotBGAI(uint64 guid);
-	Player* GetBGPlayer(uint64 guid);
+	UnitAI* GetPlayerAI(ObjectGuid guid);
+	BotBGAI* GetBotBGAI(ObjectGuid guid);
+	Player* GetBGPlayer(ObjectGuid guid);
 	Position GetNearTeleportPoint(Position& currentPos);
 	void UpdateBelongBattleground(Battleground* pBG) { m_pBattleground = pBG; }
 	void ClearPlayerGUIDs() { m_PlayerGUIDs.clear(); }
@@ -122,7 +122,7 @@ protected:
 	bool GroupAllPlayerReadyToWayPoint(AIWaypoint* pKeyPoint);
 	void ProcessGroupFocus(AIWaypoint* selfFocus, AIWaypoint* enemyFocus);
 
-	Position GetPositionByGuid(uint64 guid);
+	Position GetPositionByGuid(ObjectGuid guid);
 
 protected:
 	BGGameCommand m_BGGC;

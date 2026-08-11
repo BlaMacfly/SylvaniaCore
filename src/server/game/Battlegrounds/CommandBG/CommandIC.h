@@ -54,9 +54,9 @@ private:
 private:
 	void ProcessICNodeRequirement(uint32 nodeType, AIWaypoint* waypoint, uint32 baseCount, PlayerGUIDs& players);
 	PlayerGUIDs GetICFlagRangePlayerByTeam(uint32 nodeType, TeamId team, float range = 40);
-	bool AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag = false);
-	bool AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag = false);
-	void TryOccupiedICNode(uint64 guid);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag = false);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag = false);
+	void TryOccupiedICNode(ObjectGuid guid);
 	uint32 GetICNodeObjectType(uint32 index, TeamId team);
 
 private:

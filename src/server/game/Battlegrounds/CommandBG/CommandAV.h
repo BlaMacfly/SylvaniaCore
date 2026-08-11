@@ -70,9 +70,9 @@ private:
 	void ProcessRequirementByCaptain(BattlegroundAV* pBattlegroundAV, TeamId team, AIWaypoint* waypoint, PlayerGUIDs& allPlayers, bool attOrDef);
 	PlayerGUIDs GetAVFlagRangePlayerByTeam(BattlegroundAV* pBattlegroundAV, BG_AV_Nodes nodeType, TeamId team);
 	PlayerGUIDs GetAVCaptainRangePlayerByTeam(BattlegroundAV* pBattlegroundAV, Creature const* pCaptain, TeamId team);
-	bool AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag = false);
-	bool AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag = false);
-	void TryOccupiedAVNode(BattlegroundAV* pBattlegroundAV, uint64 guid);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag = false);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag = false);
+	void TryOccupiedAVNode(BattlegroundAV* pBattlegroundAV, ObjectGuid guid);
 
 private:
 	int32 lastUpdateTick;

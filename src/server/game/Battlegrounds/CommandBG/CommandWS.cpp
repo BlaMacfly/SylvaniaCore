@@ -185,7 +185,7 @@ void CommandWS::ProcessRegulation()
     }
 }
 
-void CommandWS::TryPickEnemyFlag(uint64 guid)
+void CommandWS::TryPickEnemyFlag(ObjectGuid guid)
 {
     if (!m_pBattleground)
         return;
@@ -225,7 +225,7 @@ void CommandWS::TryPickEnemyFlag(uint64 guid)
     pObject->Use(player);
 }
 
-void CommandWS::TryPickSelfFlag(uint64 guid)
+void CommandWS::TryPickSelfFlag(ObjectGuid guid)
 {
     if (!m_pBattleground)
         return;
@@ -254,7 +254,7 @@ void CommandWS::TryPickSelfFlag(uint64 guid)
     pObject->Use(player);
 }
 
-void CommandWS::TryCaptureFlag(uint64 guid)
+void CommandWS::TryCaptureFlag(ObjectGuid guid)
 {
     if (!m_pBattleground)
         return;
@@ -593,7 +593,7 @@ ObjectGuid CommandWS::GetBGFlagFromEnemy()
     return ObjectGuid::Empty;
 }
 
-GameObject* CommandWS::SearchDropedFlag(uint64 guid, TeamId team)
+GameObject* CommandWS::SearchDropedFlag(ObjectGuid guid, TeamId team)
 {
     BotBGAI* pBotAI = GetBotBGAI(guid);
     if (!pBotAI)

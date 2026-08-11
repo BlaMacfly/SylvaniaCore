@@ -261,7 +261,7 @@ void CommandEY::ProcessEYPointRequirement(uint32 point, AIWaypoint* waypoint, Pl
 	int32 needCount = int32(enemyCount) + (flagIsOvvupied ? 1 : 3);
 	for (PlayerGUIDs::iterator itGuid = nodeNearPlayers.begin(); itGuid != nodeNearPlayers.end(); itGuid++)
 	{
-		uint64 guid = *itGuid;
+		ObjectGuid guid = *itGuid;
 		if (!AcceptCommandByPlayerGUID(guid, waypoint))
 			continue;
 		players.erase(guid);
@@ -272,7 +272,7 @@ void CommandEY::ProcessEYPointRequirement(uint32 point, AIWaypoint* waypoint, Pl
 	while (needCount > 0 && !players.empty())
 	{
 		float minDistance = 99999;
-		uint64 minGUID = 0;
+		ObjectGuid minGUID;
 		for (PlayerGUIDs::iterator itGuid = players.begin(); itGuid != players.end(); itGuid++)
 		{
 			Position pos = GetPositionByGuid(*itGuid);
@@ -323,7 +323,7 @@ PlayerGUIDs CommandEY::GetEYPointRangePlayerByTeam(uint32 point, TeamId team)
 	return existPlayers;
 }
 
-bool CommandEY::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
+bool CommandEY::AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
 {
 	if (!targetAIWP)
 		return false;
@@ -334,7 +334,7 @@ bool CommandEY::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, b
 	return true;
 }
 
-bool CommandEY::AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag /* = false */)
+bool CommandEY::AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag /* = false */)
 {
 	if (flagGuid.IsEmpty())
 		return false;
@@ -361,7 +361,7 @@ uint32 CommandEY::GetEYPointIndexByTeam(uint32 index, TeamId team)
 	return (team == TEAM_ALLIANCE) ? EYBattlegroundPoints::MAGE_TOWER : EYBattlegroundPoints::BLOOD_ELF;
 }
 
-void CommandEY::TryPickStormFlag(uint64 guid)
+void CommandEY::TryPickStormFlag(ObjectGuid guid)
 {
 	if (!m_pBattleground)
 		return;

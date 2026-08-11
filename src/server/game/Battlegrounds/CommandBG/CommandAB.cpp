@@ -191,7 +191,7 @@ void CommandAB::ProcessABNodeRequirement(uint32 abNode, AIWaypoint* waypoint, Pl
 	int32 needCount = int32(enemyCount) + (flagIsOvvupied ? 2 : 4);
 	for (PlayerGUIDs::iterator itGuid = nodeNearPlayers.begin(); itGuid != nodeNearPlayers.end(); itGuid++)
 	{
-		uint64 guid = *itGuid;
+		ObjectGuid guid = *itGuid;
 		if (canStealFlag)
 		{
 			if (!AcceptCommandByPlayerGUID(guid, pBGNode->GetGUID()))
@@ -208,7 +208,7 @@ void CommandAB::ProcessABNodeRequirement(uint32 abNode, AIWaypoint* waypoint, Pl
 	while (needCount > 0 && !players.empty())
 	{
 		float minDistance = 99999;
-		uint64 minGUID = 0;
+		ObjectGuid minGUID;
 		for (PlayerGUIDs::iterator itGuid = players.begin(); itGuid != players.end(); itGuid++)
 		{
 			Position pos = GetPositionByGuid(*itGuid);
@@ -278,7 +278,7 @@ PlayerGUIDs CommandAB::GetABFlagRangePlayerByTeam(uint32 abNode, TeamId team)
 	return existPlayers;
 }
 
-bool CommandAB::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
+bool CommandAB::AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag /* = false */)
 {
 	if (!targetAIWP)
 		return false;
@@ -289,7 +289,7 @@ bool CommandAB::AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, b
 	return true;
 }
 
-bool CommandAB::AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag /* = false */)
+bool CommandAB::AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag /* = false */)
 {
 	if (flagGuid.IsEmpty())
 		return false;
@@ -300,7 +300,7 @@ bool CommandAB::AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool
 	return true;
 }
 
-void CommandAB::TryOccupiedABNode(uint64 guid)
+void CommandAB::TryOccupiedABNode(ObjectGuid guid)
 {
 	Player* player = GetBGPlayer(guid);
 	if (!player || player->HasUnitState(UNIT_STATE_CASTING) || player->IsInCombat())

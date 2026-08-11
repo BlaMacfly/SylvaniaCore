@@ -55,9 +55,9 @@ private:
 	void ProcessABNodeRequirement(uint32 abNode, AIWaypoint* waypoint, PlayerGUIDs& players);
 	bool ABFlagIsOccupied(uint32 abNode, TeamId team);
 	PlayerGUIDs GetABFlagRangePlayerByTeam(uint32 abNode, TeamId team);
-	bool AcceptCommandByPlayerGUID(uint64 guid, AIWaypoint* targetAIWP, bool isFlag = false);
-	bool AcceptCommandByPlayerGUID(uint64 guid, ObjectGuid flagGuid, bool isFlag = false);
-	void TryOccupiedABNode(uint64 guid);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, AIWaypoint* targetAIWP, bool isFlag = false);
+	bool AcceptCommandByPlayerGUID(ObjectGuid guid, ObjectGuid flagGuid, bool isFlag = false);
+	void TryOccupiedABNode(ObjectGuid guid);
 	uint32 GetABNodeIndexByTeam(uint32 index, TeamId team);
 
 private:

@@ -54,15 +54,15 @@ private:
 	void ProcessAllAttack(ObjectGuid& attackGuid);
 	void ProcessAttackAndGuard(ObjectGuid attackGuid, ObjectGuid guaredGuid);
 
-	void TryPickEnemyFlag(uint64 guid);
-	void TryPickSelfFlag(uint64 guid);
-	void TryCaptureFlag(uint64 guid);
+	void TryPickEnemyFlag(ObjectGuid guid);
+	void TryPickSelfFlag(ObjectGuid guid);
+	void TryCaptureFlag(ObjectGuid guid);
 	ObjectGuid SelfBGFlagPicker();
 	ObjectGuid EnemyBGFlagPicker();
 	ObjectGuid GetBGFlagFromSelf();
 	ObjectGuid GetBGFlagFromEnemy();
 
-	GameObject* SearchDropedFlag(uint64 guid, TeamId team);
+	GameObject* SearchDropedFlag(ObjectGuid guid, TeamId team);
 
 private:
 	int32 lastUpdateTick;
