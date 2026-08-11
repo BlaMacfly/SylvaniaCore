@@ -491,6 +491,15 @@ inline void Battleground::_ProcessJoin(uint32 diff)
         SetStatus(STATUS_IN_PROGRESS);
         SetStartDelayTime(StartDelayTimes[BG_STARTING_EVENT_FOURTH]);
 
+        // SylvaniaCore (module BG BotFill): a l ouverture des portes, passer l IA des bots
+        // en mode combat (StartCommander n avait aucun site d appel : les bots restaient
+        // figes a la position de preparation pendant tout le match)
+        if (m_Map)
+        {
+            m_Map->InsureCommander(GetTypeID());
+            m_Map->StartCommander();
+        }
+
         // Remove preparation
         if (isArena())
         {
