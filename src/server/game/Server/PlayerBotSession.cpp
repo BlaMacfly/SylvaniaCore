@@ -509,8 +509,9 @@ bool PlayerBotSession::ProcessEnterBG(BotGlobleSchedule& schedule)
 
                 WorldPacket cmd(CMSG_BATTLEFIELD_PORT);
                 WorldPackets::Battleground::BattlefieldPort packet(std::move(cmd));
-				packet.Ticket.Id = schedule.parameter1;
-				packet.Ticket.RequesterGuid = schedule.playerGUID;
+				// SylvaniaCore (module BG BotFill): le handler attend le slot de file
+				packet.Ticket.Id = i;
+				packet.Ticket.RequesterGuid = player->GetGUID();
 				packet.Ticket.Type = WorldPackets::LFG::RideType::Battlegrounds;
 				packet.Ticket.Time = time(0);
 				packet.AcceptedInvite = true;
