@@ -18624,8 +18624,11 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     m_name = fields[2].GetString();
 
     // check name limitations
-    if (ObjectMgr::CheckPlayerName(m_name, GetSession()->GetSessionDbcLocale()) != CHAR_NAME_SUCCESS ||
-        (!GetSession()->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_CHARACTER_CREATION_RESERVEDNAME) && sObjectMgr->IsReservedName(m_name)))
+    // SylvaniaCore (module BG BotFill): les sessions bots ne sont pas soumises au check de
+    // nom - sinon echec de login silencieux (return false) + flag rename pose en boucle
+    if (!GetSession()->IsBotSession() &&
+        (ObjectMgr::CheckPlayerName(m_name, GetSession()->GetSessionDbcLocale()) != CHAR_NAME_SUCCESS ||
+        (!GetSession()->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_CHARACTER_CREATION_RESERVEDNAME) && sObjectMgr->IsReservedName(m_name))))
     {
         CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_UPD_ADD_AT_LOGIN_FLAG);
         stmt->setUInt16(0, uint16(AT_LOGIN_RENAME));
