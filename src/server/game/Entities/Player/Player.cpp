@@ -16000,7 +16000,11 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
 
     sScriptMgr->OnQuestStatusChange(this, quest_id);
     sScriptMgr->OnQuestStatusChange(this, quest, oldStatus, questStatusData.Status);
-    sScriptMgr->OnQuestAccept(this, quest);  
+    sScriptMgr->OnQuestAccept(this, quest);
+
+    // meme raison que dans RewardQuest : accepter une quete change son statut et donc
+    // l eligibilite des entrees spell_area qui en dependent. [fix Sylvania]
+    UpdateAreaDependentAuras();
 }
 
 void Player::ForceCompleteQuest(uint32 quest_id)
@@ -16466,6 +16470,12 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
 
     sScriptMgr->OnQuestStatusChange(this, quest, oldStatus, QUEST_STATUS_REWARDED);
 
+    // Les entrees spell_area conditionnees par un statut de quete (quest_start/quest_end)
+    // ne sont reevaluees que lors d un changement de zone/aire. Sans ce rappel, rendre une
+    // quete sans bouger laissait le joueur sans l aura attendue - typiquement les chaines a
+    // "See Quest Invis" (Ile Vagabonde) : le PNJ suivant, invisible, ne proposait jamais sa
+    // quete tant que le joueur ne changeait pas d aire. [fix Sylvania]
+    UpdateAreaDependentAuras();
 }
 
 void Player::SetRewardedQuest(uint32 quest_id)
