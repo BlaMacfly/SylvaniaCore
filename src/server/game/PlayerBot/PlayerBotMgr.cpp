@@ -36,6 +36,7 @@
 #include "CharacterPackets.h"
 #include "MotionMaster.h"
 #include <boost/algorithm/string.hpp>
+#include <algorithm>
  //#include <boost/format.hpp>
 
 PlayerBotCharBaseInfo PlayerBotBaseInfo::empty;
@@ -1577,40 +1578,48 @@ void PlayerBotMgr::SupplementOneRandomPlayerBotPerAccount()
 
 void PlayerBotMgr::OnRealPlayerJoinBattlegroundQueue(uint32 bgTypeId, uint32 level)
 {
+    // SylvaniaCore (module BG BotFill): remplissage dynamique de la file selon le besoin
+    // reel du bracket du joueur (remplace l'ancien ajout fixe de 5 bots par faction)
+    bool botAll = sConfigMgr->GetIntDefault("pbotall", 1) != 0;
+    bool botBG = sConfigMgr->GetIntDefault("pbotbg", 0) != 0;
+    if (!botAll && !botBG)
+        return;
+
     BattlegroundTypeId _bgTypeId = BattlegroundTypeId(bgTypeId);
-    BattlegroundQueueTypeId bgQueueTypeId = BattlegroundMgr::BGQueueTypeId(BattlegroundTypeId(bgTypeId), 0);
+    if (std::find(m_BGTypes.begin(), m_BGTypes.end(), _bgTypeId) == m_BGTypes.end())
+        return; // pas d'IA d'objectifs (CommandBG) pour ce BG
+
+    BattlegroundQueueTypeId bgQueueTypeId = BattlegroundMgr::BGQueueTypeId(_bgTypeId, 0);
     BattlegroundQueue& bgQueue = sBattlegroundMgr->GetBattlegroundQueue(bgQueueTypeId);
-    Battleground* bg = sBattlegroundMgr->GetBattlegroundTemplate(BattlegroundTypeId(bgTypeId));
+    Battleground* bg = sBattlegroundMgr->GetBattlegroundTemplate(_bgTypeId);
     if (!bg)
         return;
 
-    uint32 needAlliancePlayerCount = 5;
-    uint32 needHordePlayerCount = 5;
-    uint32 _time = 0;
-
-    for (uint32 j = BattlegroundBracketId::BG_BRACKET_ID_FIRST; j <= BattlegroundBracketId::BG_BRACKET_ID_LAST; j++)
-    {
-        BattlegroundBracketId bracket = BattlegroundBracketId(j);
-        PVPDifficultyEntry const* bracketEntry = DB2Manager::GetBattlegroundBracketById(bg->GetMapId(), bracket);
-        if (!bracketEntry)
-            continue;
-        if (!bgQueue.ExistRealPlayer(bracketEntry))
-            continue;
-        if (needAlliancePlayerCount > 0)
-        {
-            for (uint32 k = 0; k <= needAlliancePlayerCount; k++)
-                AddNewPlayerBotToBG(TeamId::TEAM_ALLIANCE, bracketEntry->MinLevel, bracketEntry->MaxLevel, _bgTypeId);
-        }
-
-        if (needHordePlayerCount > 0)
-        {
-            for (uint32 k = 0; k <= needHordePlayerCount; k++)
-                AddNewPlayerBotToBG(TeamId::TEAM_HORDE, bracketEntry->MinLevel, bracketEntry->MaxLevel, _bgTypeId);
-        }
-
-        printf("QueryNeedPlayerCount %d %d \n", needAlliancePlayerCount, needHordePlayerCount);
+    PVPDifficultyEntry const* bracketEntry = sDB2Manager.GetBattlegroundBracketByLevel(bg->GetMapId(), level);
+    if (!bracketEntry)
         return;
+    if (!bgQueue.ExistRealPlayer(bracketEntry))
+        return;
+
+    int32 needAlliance = 0;
+    int32 needHorde = 0;
+    int32 teamSizeCap = sConfigMgr->GetIntDefault("pbotbg_maxperteam", 0);
+    if (!bgQueue.QueryNeedPlayerCount(_bgTypeId, bracketEntry->GetBracketId(), 0, needAlliance, needHorde, teamSizeCap))
+        return;
+
+    int32 maxOnline = sConfigMgr->GetIntDefault("pbotasl", 88);
+    for (int32 k = 0; k < needAlliance + needHorde; ++k)
+    {
+        if (maxOnline > 0 && int32(GetOnlineBotCount(TeamId::TEAM_ALLIANCE, true) + GetOnlineBotCount(TeamId::TEAM_HORDE, true)) >= maxOnline)
+            break;
+        if (k < needAlliance)
+            AddNewPlayerBotToBG(TeamId::TEAM_ALLIANCE, bracketEntry->MinLevel, bracketEntry->MaxLevel, _bgTypeId);
+        else
+            AddNewPlayerBotToBG(TeamId::TEAM_HORDE, bracketEntry->MinLevel, bracketEntry->MaxLevel, _bgTypeId);
     }
+
+    TC_LOG_INFO("bg.battleground", "BG BotFill: file bg %u (niveau %u, bracket %u-%u) -> engage %d bots Alliance / %d bots Horde",
+        bgTypeId, level, bracketEntry->MinLevel, bracketEntry->MaxLevel, needAlliance, needHorde);
 }
 
 void PlayerBotMgr::OnRealPlayerLeaveBattlegroundQueue(uint32 bgTypeId, uint32 level)
@@ -2420,9 +2429,7 @@ void PlayerBotMgr::AddNewPlayerBotToBG(TeamId team, uint32 minLV, uint32 maxLV, 
         }
     }
 
-    std::string allonlineText;
-    consoleToUtf8(std::string("|cffff8800所有机器人账号已经全部在线，无法加入新机器人到战场中。|r"), allonlineText);
-    sWorld->SendGlobalText(allonlineText.c_str(), NULL);
+    TC_LOG_INFO("bg.battleground", "BG BotFill: tous les comptes bots sont deja occupes ou en ligne, aucun bot disponible");
 }
 
 void PlayerBotMgr::AddNewPlayerBotToLFG(lfg::LFGBotRequirement* botRequirement)
@@ -3031,6 +3038,7 @@ bool PlayerBotMgr::CanReadyArenaByArenaTeamID(uint32 arenaTeamId)
 
 void PlayerBotMgr::QueryBattlegroundRequirement()
 {
+    int32 teamSizeCap = sConfigMgr->GetIntDefault("pbotbg_maxperteam", 0);
     for (BattleGroundTypes::iterator itType = m_BGTypes.begin(); itType != m_BGTypes.end(); itType++)
     {
         BattlegroundTypeId bgTypeID = *itType;
@@ -3047,9 +3055,14 @@ void PlayerBotMgr::QueryBattlegroundRequirement()
             uint32 maxLV = bg->GetMaxLevel();
             if (!bg->isRated() && bg->GetStatus() > STATUS_WAIT_QUEUE && bg->GetStatus() < STATUS_WAIT_LEAVE)
             {
-                if (bg->GetFreeSlotsForTeam(Team::ALLIANCE) > 0 && bg->GetFreeSlotsForTeam(Team::ALLIANCE) >= bg->GetFreeSlotsForTeam(Team::HORDE))
+                // SylvaniaCore (module BG BotFill): respect du plafond pbotbg_maxperteam
+                bool allianceNeed = bg->GetFreeSlotsForTeam(Team::ALLIANCE) > 0
+                    && (teamSizeCap <= 0 || bg->GetPlayersCountByTeam(ALLIANCE) < uint32(teamSizeCap));
+                bool hordeNeed = bg->GetFreeSlotsForTeam(Team::HORDE) > 0
+                    && (teamSizeCap <= 0 || bg->GetPlayersCountByTeam(HORDE) < uint32(teamSizeCap));
+                if (allianceNeed && bg->GetFreeSlotsForTeam(Team::ALLIANCE) >= bg->GetFreeSlotsForTeam(Team::HORDE))
                     AddNewPlayerBotToBG(TeamId::TEAM_ALLIANCE, minLV, maxLV, bgTypeID);
-                else if (bg->GetFreeSlotsForTeam(Team::HORDE) > 0)
+                else if (hordeNeed)
                     AddNewPlayerBotToBG(TeamId::TEAM_HORDE, minLV, maxLV, bgTypeID);
                 else
                     continue;
@@ -3069,7 +3082,7 @@ void PlayerBotMgr::QueryBattlegroundRequirement()
                 continue;
             int32 needAlliancePlayerCount = 0;
             int32 needHordePlayerCount = 0;
-            if (bgQueue.QueryNeedPlayerCount(bgTypeID, bracket, 0, needAlliancePlayerCount, needHordePlayerCount))
+            if (bgQueue.QueryNeedPlayerCount(bgTypeID, bracket, 0, needAlliancePlayerCount, needHordePlayerCount, teamSizeCap))
             {
                 if (needAlliancePlayerCount > 0 && needAlliancePlayerCount >= needHordePlayerCount)
                     AddNewPlayerBotToBG(TeamId::TEAM_ALLIANCE, bracketEntry->MinLevel, bracketEntry->MaxLevel, bgTypeID);
@@ -3341,30 +3354,89 @@ uint32 PlayerBotMgr::GetOnlineBotCount2(TeamId team, bool hasReal)
     return onlineCount;
 }
 
+// SylvaniaCore (module BG BotFill): en mode pbotbg seul, un bot n'a de raison d'etre en
+// ligne que pour un BG ; on deconnecte ceux qui restent inactifs trop longtemps.
+void PlayerBotMgr::UpdateIdleBotLogout()
+{
+    int32 idleLogout = sConfigMgr->GetIntDefault("pbotbg_idlelogout", 300);
+    if (idleLogout <= 0)
+        return;
+    if (m_LastIdleScanTick && GetMSTimeDiffToNow(m_LastIdleScanTick) < 5000)
+        return;
+    uint32 now = getMSTime();
+    m_LastIdleScanTick = now;
+
+    const SessionMap& allSession = sWorld->GetAllSessions();
+    for (SessionMap::const_iterator itSession = allSession.begin(); itSession != allSession.end(); itSession++)
+    {
+        WorldSession* session = itSession->second;
+        if (!session || !session->IsBotSession())
+            continue;
+        PlayerBotSession* pSession = dynamic_cast<PlayerBotSession*>(session);
+        if (!pSession || pSession->PlayerLoading() || pSession->IsAccountBotSession())
+            continue;
+        Player* player = pSession->GetPlayer();
+        if (!player || !player->IsInWorld() || player->IsLoading())
+            continue;
+        uint32 accId = session->GetAccountId();
+        bool busy = pSession->HasSchedules() || player->InBattleground() || player->InArena()
+            || player->InBattlegroundQueue() || player->GetMap()->IsDungeon() || player->isUsingLfg()
+            || player->IsInCombat();
+        if (busy)
+        {
+            m_BotIdleSince.erase(accId);
+            continue;
+        }
+        std::map<uint32, uint32>::iterator itIdle = m_BotIdleSince.find(accId);
+        if (itIdle == m_BotIdleSince.end())
+        {
+            m_BotIdleSince[accId] = now;
+            continue;
+        }
+        if (GetMSTimeDiffToNow(itIdle->second) >= uint32(idleLogout) * IN_MILLISECONDS)
+        {
+            m_BotIdleSince.erase(itIdle);
+            TC_LOG_INFO("bg.battleground", "BG BotFill: deconnexion du bot inactif (compte %u)", accId);
+            PlayerBotLogout(accId);
+            return; // un logout par passage, par prudence
+        }
+    }
+}
+
 void PlayerBotMgr::Update()
 {
-    if (!sConfigMgr->GetIntDefault("pbotall", 1))   // SylvaniaCore: serveur sans bots -> tick bot inerte (evite crash #56 sur file BG/arene)
+    // SylvaniaCore (module BG BotFill): pbotall = systeme bot complet (monde/LFG/arene/BG),
+    // pbotbg = remplissage des champs de bataille uniquement
+    bool botAll = sConfigMgr->GetIntDefault("pbotall", 1) != 0;
+    bool botBG = sConfigMgr->GetIntDefault("pbotbg", 0) != 0;
+    if (!botAll && !botBG)
         return;
 
     OnlinePlayerBotByGUIDQueue();
 
     //if (!ExistUnBGPlayerBot())
     QueryBattlegroundRequirement();
+
+    if (!botAll)
+        UpdateIdleBotLogout();
 #ifndef INCOMPLETE_BOT
-    //sArenaTeamMgr->CheckPlayerBotArenaTeam();
-    QueryRatedArenaRequirement();
-    QueryNonRatedArenaRequirement();
-    if (m_LFGSearchTick > 1)
+    if (botAll)
     {
-        m_LFGSearchTick = 0;
-        if (lfg::LFGBotRequirement* pbotReq = sLFGMgr->SearchLFGBotRequirement())
+        //sArenaTeamMgr->CheckPlayerBotArenaTeam();
+        QueryRatedArenaRequirement();
+        QueryNonRatedArenaRequirement();
+        if (m_LFGSearchTick > 1)
         {
-            AddNewPlayerBotToLFG(pbotReq);
-            delete pbotReq;
+            m_LFGSearchTick = 0;
+            if (lfg::LFGBotRequirement* pbotReq = sLFGMgr->SearchLFGBotRequirement())
+            {
+                AddNewPlayerBotToLFG(pbotReq);
+                delete pbotReq;
+            }
         }
+        else
+            ++m_LFGSearchTick;
     }
-    else
-        ++m_LFGSearchTick;
 #endif
 
     std::list<std::map<uint32, std::list<UnitAI*> >::iterator > delITer;

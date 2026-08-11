@@ -1282,7 +1282,7 @@ bool BattlegroundQueue::ExistRealPlayer(const PVPDifficultyEntry* bracketEntry, 
     return false;
 }
 
-bool BattlegroundQueue::QueryNeedPlayerCount(BattlegroundTypeId bgTypeID, BattlegroundBracketId bracket_id, uint32 aaType, int32& needAlliance, int32& needHorde)
+bool BattlegroundQueue::QueryNeedPlayerCount(BattlegroundTypeId bgTypeID, BattlegroundBracketId bracket_id, uint32 aaType, int32& needAlliance, int32& needHorde, int32 teamSizeCap)
 {
     if (bracket_id >= MAX_BATTLEGROUND_BRACKETS)
         return false;
@@ -1298,6 +1298,14 @@ bool BattlegroundQueue::QueryNeedPlayerCount(BattlegroundTypeId bgTypeID, Battle
         maxNumber = aaType * 2;
     needAlliance = maxNumber / 2;
     needHorde = maxNumber / 2;
+    // SylvaniaCore (module BG BotFill): plafond configurable de taille d'equipe visee
+    if (teamSizeCap > 0 && !bg_template->isArena())
+    {
+        if (needAlliance > teamSizeCap)
+            needAlliance = teamSizeCap;
+        if (needHorde > teamSizeCap)
+            needHorde = teamSizeCap;
+    }
     GroupsQueueType& groupQueueAlliance = m_QueuedGroups[bracket_id][BG_QUEUE_NORMAL_ALLIANCE];
     for (GroupsQueueType::iterator itGroup = groupQueueAlliance.begin(); itGroup != groupQueueAlliance.end(); itGroup++)
     {

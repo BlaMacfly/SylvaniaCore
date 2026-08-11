@@ -357,6 +357,8 @@ public:
     bool CanReadyArenaByArenaTeamID(uint32 arenaTeamId);
     void SetMax(int max) { m_MaxOnlineBot = max; }
     int32 m_MaxOnlineBot;
+    uint32 m_LastIdleScanTick = 0;
+    std::map<uint32, uint32> m_BotIdleSince;
     int32 m_BotOnlineCount;
 
 private:
@@ -388,6 +390,7 @@ private:
     bool FillOnlineBotScheduleByLFGRequirement(lfg::LFGBotRequirement* botRequirement, BotGlobleSchedule* botSchedule);
     uint32 GetScheduleTalentByLFGRequirement(lfg::LfgRoles roles, uint32 botCls);
     void QueryBattlegroundRequirement();
+    void UpdateIdleBotLogout();
     void QueryRatedArenaRequirement();
     void QueryNonRatedArenaRequirement();
     void OnlinePlayerBotByGUIDQueue();

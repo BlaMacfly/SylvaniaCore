@@ -4576,6 +4576,38 @@ LFGnumPlayer_Add = 0
 
 pbotall = 1
 
+###################################################################################################
+# MODULE BG BOTFILL (SylvaniaCore)
+#
+#   pbotbg
+#        Description: Remplissage des champs de bataille par PlayerBots quand des joueurs
+#                     reels sont en file (WS / AB / EY / AV / IC), sans activer les bots
+#                     de monde, LFG ni arene (independant de pbotall).
+#        Default:     0 - Desactive
+#                     1 - Active
+#
+
+pbotbg = 0
+
+#
+#   pbotbg_maxperteam
+#        Description: Taille equipe visee par le remplissage (joueurs reels + bots).
+#                     0 = taille maximale du BG (10v10 WS, 15v15 AB, 40v40 AV...)
+#        Default:     0
+#
+
+pbotbg_maxperteam = 0
+
+#
+#   pbotbg_idlelogout
+#        Description: Deconnexion d un bot reste inactif (hors BG, file, donjon, combat)
+#                     pendant N secondes. 0 = jamais.
+#        Default:     300
+#
+
+pbotbg_idlelogout = 300
+
+
 #
 # PlayerBot Maximum Online Limit
 #
