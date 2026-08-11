@@ -67,6 +67,23 @@ void WorldSession::HandleBattlemasterJoinOpcode(WorldPackets::Battleground::Batt
     Group* grp = NULL;
     uint32 bgTypeId_ = battlemasterJoin.QueueID & 0xFFFF;
 
+    // SylvaniaCore (module BG BotFill): l UI Legion ne propose que la file aleatoire (RB=32).
+    // On la resout cote serveur vers un BG couvert par l IA des bots (CommandBG), en ne
+    // retenant que les BG dont un bracket existe pour le niveau du joueur.
+    if (bgTypeId_ == BATTLEGROUND_RB && _player)
+    {
+        std::vector<uint32> pool;
+        uint32 candidates[] = { BATTLEGROUND_WS, BATTLEGROUND_AB, BATTLEGROUND_EY, BATTLEGROUND_AV, BATTLEGROUND_IC };
+        for (uint32 candidate : candidates)
+        {
+            Battleground* bgTemplate = sBattlegroundMgr->GetBattlegroundTemplate(BattlegroundTypeId(candidate));
+            if (bgTemplate && sDB2Manager.GetBattlegroundBracketByLevel(bgTemplate->GetMapId(), _player->getLevel()))
+                pool.push_back(candidate);
+        }
+        if (!pool.empty())
+            bgTypeId_ = pool[urand(0, uint32(pool.size()) - 1)];
+    }
+
     if (bgTypeId_ >= 32 || bgTypeId_ == 9)
     {
         ChatHandler(this).PSendSysMessage(LANG_BG_DISABLED);
