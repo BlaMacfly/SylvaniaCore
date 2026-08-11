@@ -1454,6 +1454,13 @@ public:
                 (*itr)->RemoveAura(SPELL_FIREWORK_INACTIVE);
                 (*itr)->AI()->SetData(DATA_1, DATA_1);
             }
+
+            // Zhao-Ren doit deja tourner en rond HORS combat : les lanceurs de feux d artifice
+            // forment un anneau (rayon ~25-35m) et leur tir exige que le serpent soit au-dessus
+            // du joueur. En vol stationnaire au centre (714, 4168) il restait hors de portee de
+            // TOUS les lanceurs -> impossible d amorcer le combat, quete bloquee. Le chemin
+            // ZHAOREN_PATH passe precisement au-dessus des lanceurs. [fix Sylvania]
+            me->GetMotionMaster()->MovePath(ZHAOREN_PATH, true);
         }
 
         void EnterCombat(Unit* /*who*/) override
