@@ -1,0 +1,11 @@
+-- =====================================================================
+-- Île Vagabonde — village Fe-Feng : suppression de 4 Hozen (57205)
+-- spawnés en doublon (superposés < 2 m à l entrée du village). Cause :
+-- le village a été peuplé en DEUX passes d import (guids des plages
+-- 20540xxx ET 21000xxx) qui se chevauchent à cet endroit -> jusqu à 4
+-- singes empilés sur le même point = double/quadruple dégâts injuste.
+-- Le reste du peuplement (~30 Hozen) est CONSERVE : Fe-Feng est le
+-- village hozen, il est censé grouiller (blizz adaptatif).
+-- Backup : db-backups/hozen-doublons-20260811_083033.sql
+-- =====================================================================
+DELETE FROM `creature` WHERE `guid` IN (20540397, 21000422, 21000544, 21000545) AND `id` = 57205;
