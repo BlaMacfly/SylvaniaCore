@@ -1835,6 +1835,7 @@ void World::SetInitialWorldSettings()
     TC_LOG_INFO("server.loading", "Initialize data stores...");
     ///- Load DB2s
     sDB2Manager.LoadStores(m_dataPath, m_defaultDbcLocale);
+    m_availableDbcLocaleMask = sDB2Manager.GetAvailableLocalesMask(); // [fix Sylvania] cf DB2Stores
     TC_LOG_INFO("misc", "Loading hotfix blobs...");
     sDB2Manager.LoadHotfixBlob();
     TC_LOG_INFO("misc", "Loading hotfix info...");

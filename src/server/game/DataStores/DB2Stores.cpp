@@ -1341,6 +1341,26 @@ void DB2Manager::LoadStores(std::string const& dataPath, uint32 defaultLocale)
         exit(1);
     }
 
+    // Masque des locales reellement disponibles (fichiers disque + locales chargees
+    // depuis la base hotfix quand DB2.Hotfix.LoadAllLocales est actif). Sans ca,
+    // m_availableDbcLocaleMask restait a 0 -> GetSessionDbcLocale forcait enUS et les
+    // hotfix de broadcast_text etaient pousses en anglais par-dessus les donnees FR
+    // du client. [fix Sylvania]
+    availableDb2Locales |= (1 << LOCALE_enUS);
+    if (sConfigMgr->GetBoolDefault("DB2.Hotfix.LoadAllLocales", false))
+    {
+        if (QueryResult localesResult = HotfixDatabase.Query("SELECT DISTINCT locale FROM broadcast_text_locale"))
+        {
+            do
+            {
+                LocaleConstant lc = GetLocaleByName((*localesResult)[0].GetString());
+                if (lc != LOCALE_none)
+                    availableDb2Locales |= (1 << lc);
+            } while (localesResult->NextRow());
+        }
+    }
+    _availableLocalesMask = availableDb2Locales;
+
     TC_LOG_INFO("server.loading", ">> Initialized " SZFMTD " DB2 data stores in %u ms", _stores.size(), GetMSTimeDiffToNow(oldMSTime));
 }
 
