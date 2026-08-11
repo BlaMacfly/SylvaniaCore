@@ -156,7 +156,12 @@ struct PlayerBotBaseInfo
         for (int i = 0; i < 5; i++)
 #endif
         {
-            int16 select = irand(0, characters.size() / 2 - 1);
+            // SylvaniaCore: correction racine du crash #56 - avec un seul perso sur le
+            // compte, characters.size()/2 - 1 = -1 => irand(0,-1) => ASSERT max >= min
+            int32 maxSelect = int32(characters.size()) / 2 - 1;
+            if (maxSelect < 0)
+                maxSelect = 0;
+            int16 select = int16(irand(0, maxSelect));
             for (CharInfoMap::iterator it = characters.begin();
                 it != characters.end();
                 it++)
