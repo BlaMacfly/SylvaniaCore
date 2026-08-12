@@ -298,6 +298,11 @@ void BotBGAIMovement::MovementToAIWP(float offset)
 
 void BotBGAIMovement::MovementTo(float x, float y, float z, float offset /* = 0 */)
 {
+	// SylvaniaCore (module BG BotFill): certaines chaines transmettent une destination
+	// nulle (cible disparue / position non initialisee) -> les bots partaient en ligne
+	// droite vers l origine de la carte (0,0,0), a travers lacs et decors.
+	if ((x == 0.0f && y == 0.0f) || !Trinity::IsValidMapCoord(x, y, z))
+		return;
 	if (m_BGAI && m_BGAI->IsNotSelect(m_Player))
 		return;
 	targetGuid.Clear();
