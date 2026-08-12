@@ -715,48 +715,37 @@ Creature const* BattlegroundAB::GetClosestGraveCreature(const Player* player)
 
 GameObject const* BattlegroundAB::GetNearGameObjectFlag(const Player* player)
 {
+    // SylvaniaCore (module BG BotFill): reecriture. L ancienne version reperait le noeud via
+    // un objet d aura avec des indices approximatifs et un rayon de 6 m : les bots cliquaient
+    // une banniere a 30 m (sort d ouverture hors portee, aucune capture possible).
+    // On renvoie la banniere cliquable (etat courant du noeud) la plus proche dans 30 m ;
+    // l IA rapproche le bot avant de lancer le sort.
     if (!player)
         return NULL;
-    uint8 node = BG_AB_NODE_STABLES;
-    GameObject* nearObject = GetBgMap()->GetGameObject(BgObjects[node * 8 + 7]);
-    while ((node < BG_AB_DYNAMIC_NODES_COUNT) && ((!nearObject) || (!player->IsWithinDistInMap(nearObject, 6))))
-    {
-        ++node;
-        nearObject = GetBgMap()->GetGameObject(BgObjects[node * 8 + BG_AB_OBJECT_SPEEDBUFF_STABLES]);
-    }
-
-    if (node == BG_AB_DYNAMIC_NODES_COUNT)
-        return NULL;
     TeamId teamIndex = GetTeamIndexByTeamId(player->GetTeam());
-    if (!(m_Nodes[node] == 0 || teamIndex == m_Nodes[node] % 2))
-        return NULL;
-    if (m_Nodes[node] == BG_AB_NODE_TYPE_NEUTRAL)
+    GameObject* best = NULL;
+    float bestDist = 30.0f;
+    for (uint8 node = 0; node < BG_AB_DYNAMIC_NODES_COUNT; ++node)
     {
-        ObjectGuid nearFlagGuid = BgObjects[node * 8 + BG_AB_NODE_TYPE_NEUTRAL];
-        GameObject* nearFlag = GetBgMap()->GetGameObject(nearFlagGuid);
-        if (nearFlag && nearFlag->isSpawned())
-            return nearFlag;
-        return NULL;
+        uint8 status = m_Nodes[node];
+        // cliquable si neutre, ou tenu/conteste par l equipe adverse
+        if (!(status == 0 || teamIndex == status % 2))
+            continue;
+        // BgObjects[node*8 + status] = banniere affichee pour cet etat (0=neutre,
+        // 1/2=contestee A/H, 3/4=occupee A/H)
+        GameObject* flag = GetBgMap()->GetGameObject(BgObjects[node * 8 + status]);
+        if (!flag || !flag->isSpawned())
+            continue;
+        float dist = player->GetDistance(flag);
+        if (dist < bestDist)
+        {
+            bestDist = dist;
+            best = flag;
+        }
     }
-    else if ((m_Nodes[node] == BG_AB_NODE_STATUS_ALLY_CONTESTED) ||
-        (m_Nodes[node] == BG_AB_NODE_STATUS_HORDE_CONTESTED))
-    {
-        ObjectGuid nearFlagGuid = BgObjects[node * 8 + BG_AB_NODE_TYPE_CONTESTED + !teamIndex];
-        GameObject* nearFlag = GetBgMap()->GetGameObject(nearFlagGuid);
-        if (nearFlag && nearFlag->isSpawned())
-            return nearFlag;
-        return NULL;
-    }
-    else
-    {
-        ObjectGuid nearFlagGuid = BgObjects[node * 8 + BG_AB_NODE_TYPE_OCCUPIED + !teamIndex];
-        GameObject* nearFlag = GetBgMap()->GetGameObject(nearFlagGuid);
-        if (nearFlag && nearFlag->isSpawned())
-            return nearFlag;
-        return NULL;
-    }
-    return NULL;
+    return best;
 }
+
 
 uint8 BattlegroundAB::GetABNodeState(uint32 abNode)
 {

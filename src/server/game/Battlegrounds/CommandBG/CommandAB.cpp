@@ -314,11 +314,22 @@ void CommandAB::TryOccupiedABNode(ObjectGuid guid)
 	GameObject const* pFlag = pBattlegroundAB->GetNearGameObjectFlag(player);
 	if (!pFlag)
 		return;
+	// SylvaniaCore (module BG BotFill): hors de portee d interaction -> on marche vers la
+	// banniere (ordre prioritaire type drapeau) au lieu de lancer un sort qui echouera
+	float flagDist = player->GetDistance(pFlag);
+	if (flagDist > 8.0f)
+	{
+		pBotAI->GetAIMovement()->AcceptCommand(pFlag->GetGUID(), true);
+		return;
+	}
+	TC_LOG_ERROR("server.worldserver", "BGF-DBG: TryOccupiedABNode %s clique la banniere %u (dist %.1f)",
+		player->GetName().c_str(), pFlag->GetEntry(), flagDist);
 	SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(21651);
 	if (!spellInfo)
 		return;
 
 	pBotAI->Dismount();
+	player->StopMoving();
 	SpellCastTargets targets;
 	targets.SetTargetMask(TARGET_FLAG_GAMEOBJECT);
 	targets.SetGOTarget((GameObject*)pFlag);
