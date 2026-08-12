@@ -450,15 +450,16 @@ void MotionMaster::MovePathfinding(PathParameter* pathParam)
 {
     if (!pathParam)
         return;
-    UnitMoveType curMoveType = UnitMoveType::MOVE_RUN;
-    G3D::Vector3 dest = pathParam->destPosition;
-    Mutate(new PointMovementGenerator<Player>(0, dest.x, dest.y, dest.z, false, _owner->GetSpeed(curMoveType)), MOTION_SLOT_CONTROLLED);// MOTION_SLOT_ACTIVE);
-
+    // SylvaniaCore (module BG BotFill): l ancien PointMovementGenerator (generatePath=false)
+    // relancait un deplacement en ligne droite au moindre evenement (changement de vitesse),
+    // ecrasant la spline du chemin calcule -> bots a travers le decor et vitesse anormale.
+    // On lance la spline du chemin puis on pose un generateur passif qui attend sa fin.
     Movement::MoveSplineInit init(_owner);
     init.MovebyPath(pathParam->finishPaths);
     init.SetSmooth();
     init.SetWalk(false);
     init.Launch();
+    Mutate(new EffectMovementGenerator(0), MOTION_SLOT_CONTROLLED);
 }
 
 void MotionMaster::MoveKnockbackFrom(float srcX, float srcY, float speedXY, float speedZ, Movement::SpellEffectExtraData const* spellEffectExtraData /*= nullptr*/)

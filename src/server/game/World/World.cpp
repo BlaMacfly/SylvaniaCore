@@ -1882,6 +1882,22 @@ void World::SetInitialWorldSettings()
     MMAP::MMapManager* mmmgr = MMAP::MMapFactory::createOrGetMMapManager();
     mmmgr->InitializeThreadUnsafe(mapData);
 
+    // SylvaniaCore (module BG BotFill): precharge les tuiles navmesh des cartes de champs de
+    // bataille. Sans cela, les tuiles ne se chargent qu avec les grilles (la ou il y a des
+    // joueurs) et le pathfinding des bots vers les zones vides retombe en ligne droite
+    // (BuildShortcut) : bots a travers le decor.
+    if (sConfigMgr->GetIntDefault("pbotbg", 0) || sConfigMgr->GetIntDefault("pbotall", 1))
+    {
+        uint32 preloadTiles = 0;
+        uint32 const bgNavMaps[5] = { 30, 489, 529, 566, 628 };
+        for (uint32 bgMapId : bgNavMaps)
+            for (int32 gx = 0; gx < 64; ++gx)
+                for (int32 gy = 0; gy < 64; ++gy)
+                    if (mmmgr->loadMap(m_dataPath, bgMapId, gx, gy))
+                        ++preloadTiles;
+        TC_LOG_INFO("server.loading", ">> BG BotFill: %u tuiles navmesh prechargees pour les champs de bataille", preloadTiles);
+    }
+
     TC_LOG_INFO("server.loading", "Loading SpellInfo store...");
     sSpellMgr->LoadSpellInfoStore();
 
