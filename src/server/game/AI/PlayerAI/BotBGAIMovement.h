@@ -90,6 +90,7 @@ private:
 	ObjectGuid targetGuid;
 	AIWaypoint* pTargetAIWP;
 	int32 m_MovementTick;
+	uint32 m_TargetLockTick = 0;
 	uint32 lastPathfindSure;
 	uint32 m_LastSyncTick;
 };

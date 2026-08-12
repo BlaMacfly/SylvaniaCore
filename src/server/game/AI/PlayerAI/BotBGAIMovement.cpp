@@ -184,13 +184,27 @@ void BotBGAIMovement::ClearMovement()
 
 void BotBGAIMovement::AcceptCommand(AIWaypoint* targetAIWP, bool isFlag)
 {
+	static uint32 s_dbgAccept = 0;
+	if (++s_dbgAccept % 50 == 1)
+		TC_LOG_ERROR("server.worldserver", "BGF-DBG: AcceptCommand #%u wp=%s", s_dbgAccept, targetAIWP ? "oui" : "NULL");
 	if (!targetAIWP)
 		return;
 	if (pTargetAIWP)
 	{
 		if (targetAIWP->entry == pTargetAIWP->entry && m_IsFlagTarget == isFlag)
 			return;
+		// SylvaniaCore (module BG BotFill): anti ping-pong. Le commandant realloue les
+		// objectifs toutes les 500 ms : un bot a mi-chemin entre deux cibles oscillait.
+		// On conserve la cible courante tant qu elle n est pas atteinte (15 s max),
+		// sauf ordre lie au drapeau, toujours prioritaire.
+		if (!isFlag && !m_IsFlagTarget)
+		{
+			bool arrived = m_Player->GetDistance(pTargetAIWP->GetPosition()) < 15.0f;
+			if (!arrived && m_TargetLockTick && GetMSTimeDiffToNow(m_TargetLockTick) < 15000)
+				return;
+		}
 	}
+	m_TargetLockTick = getMSTime();
 	m_IsFlagTarget = isFlag;
 	pTargetAIWP = targetAIWP;
 	m_MovementTick = 0;
