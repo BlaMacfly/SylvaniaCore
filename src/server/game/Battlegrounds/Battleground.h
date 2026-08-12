@@ -651,6 +651,7 @@ class TC_GAME_API Battleground
         // Start location
         uint32 m_MapId;
         BattlegroundMap* m_Map;
+        uint32 m_BotOnlyCheckTimer = 0;   // SylvaniaCore (module BG BotFill)
         Position StartPosition[BG_TEAMS_COUNT];
         float m_StartMaxDist;
         uint32 ScriptId;

@@ -206,6 +206,32 @@ void Battleground::Update(uint32 diff)
                     _ProcessProgress(diff);
                 else if (m_PrematureCountDown)
                     m_PrematureCountDown = false;
+
+                // SylvaniaCore (module BG BotFill): un BG desert par les joueurs reels ne doit
+                // pas continuer entre bots (jusqu a 40v40 pendant 25 min de CPU pour personne).
+                // Passe la minute d entree, si plus aucun joueur reel n est present, on renvoie
+                // les bots au monde ; le BG se vide et se termine de lui-meme.
+                m_BotOnlyCheckTimer += diff;
+                if (m_BotOnlyCheckTimer >= 10 * IN_MILLISECONDS)
+                {
+                    m_BotOnlyCheckTimer = 0;
+                    if (GetElapsedTime() > MINUTE * IN_MILLISECONDS && !ExistRealPlayer() && !GetPlayers().empty())
+                    {
+                        TC_LOG_INFO("bg.battleground", "BG BotFill: bg %u instance %u sans joueur reel -> renvoi des %u bots",
+                            uint32(GetTypeID()), GetInstanceID(), uint32(GetPlayers().size()));
+                        for (BattlegroundPlayerMap::const_iterator itr = GetPlayers().begin(); itr != GetPlayers().end(); ++itr)
+                        {
+                            Player* botPlayer = ObjectAccessor::FindPlayer(itr->first);
+                            if (!botPlayer || !botPlayer->IsPlayerBot())
+                                continue;
+                            if (PlayerBotSession* botSession = dynamic_cast<PlayerBotSession*>(botPlayer->GetSession()))
+                            {
+                                BotGlobleSchedule leaveSchedule(BotGlobleScheduleType::BGSType_LeaveBG, 0);
+                                botSession->PushScheduleToQueue(leaveSchedule);
+                            }
+                        }
+                    }
+                }
             }
             break;
         case STATUS_WAIT_LEAVE:
@@ -1165,6 +1191,7 @@ void Battleground::AddPlayer(Player* player)
     m_Players[player->GetGUID()] = bp;
 
     UpdatePlayersCountByTeam(team, false);                  // +1 player
+    TC_LOG_ERROR("server.worldserver", "BGF-DBG: AddPlayer %s bot=%u team=%u -> A=%u H=%u", player->GetName().c_str(), uint32(player->IsPlayerBot()), team, GetPlayersCountByTeam(ALLIANCE), GetPlayersCountByTeam(HORDE));
 
     WorldPackets::Battleground::BattlegroundPlayerJoined playerJoined;
     playerJoined.Guid = player->GetGUID();

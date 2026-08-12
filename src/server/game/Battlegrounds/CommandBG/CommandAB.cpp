@@ -317,7 +317,7 @@ void CommandAB::TryOccupiedABNode(ObjectGuid guid)
 	// SylvaniaCore (module BG BotFill): hors de portee d interaction -> on marche vers la
 	// banniere (ordre prioritaire type drapeau) au lieu de lancer un sort qui echouera
 	float flagDist = player->GetDistance(pFlag);
-	if (flagDist > 8.0f)
+	if (flagDist > 4.0f)
 	{
 		pBotAI->GetAIMovement()->AcceptCommand(pFlag->GetGUID(), true);
 		return;

@@ -189,6 +189,13 @@ void BotBGAIMovement::AcceptCommand(AIWaypoint* targetAIWP, bool isFlag)
 		TC_LOG_ERROR("server.worldserver", "BGF-DBG: AcceptCommand #%u wp=%s", s_dbgAccept, targetAIWP ? "oui" : "NULL");
 	if (!targetAIWP)
 		return;
+	// SylvaniaCore (module BG BotFill): un ordre de banniere/drapeau en cours n est pas
+	// ecrase par un ordre de position. ProcessRegulation appelait TryOccupied* (cible =
+	// banniere) puis Process*Requirement (cible = centre de la base) toutes les 500 ms :
+	// le second annulait le premier et les bots n approchaient jamais des bannieres.
+	if (!isFlag && m_IsFlagTarget && !targetGuid.IsEmpty()
+		&& m_FlagTargetTick && GetMSTimeDiffToNow(m_FlagTargetTick) < 20000)
+		return;
 	if (pTargetAIWP)
 	{
 		if (targetAIWP->entry == pTargetAIWP->entry && m_IsFlagTarget == isFlag)
@@ -214,6 +221,12 @@ void BotBGAIMovement::AcceptCommand(AIWaypoint* targetAIWP, bool isFlag)
 
 void BotBGAIMovement::AcceptCommand(ObjectGuid guid, bool isFlag)
 {
+	// SylvaniaCore (module BG BotFill): idem, un ordre de banniere en cours prime
+	if (!isFlag && m_IsFlagTarget && !targetGuid.IsEmpty() && guid != targetGuid
+		&& m_FlagTargetTick && GetMSTimeDiffToNow(m_FlagTargetTick) < 20000)
+		return;
+	if (isFlag)
+		m_FlagTargetTick = getMSTime();
 	m_IsFlagTarget = isFlag;
 	targetGuid = guid;
 	if (!targetGuid.IsEmpty())
