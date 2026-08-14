@@ -1601,6 +1601,20 @@ void PlayerBotMgr::OnRealPlayerJoinBattlegroundQueue(uint32 bgTypeId, uint32 lev
     if (!bgQueue.ExistRealPlayer(bracketEntry))
         return;
 
+    // SylvaniaCore (module BG BotFill): un seul champ de bataille servi par les bots a la
+    // fois. Si des bots se battent deja ailleurs (ou sont inscrits pour un autre BG), on
+    // n en engage pas de nouveaux : les joueurs de cette file attendront la fin du match
+    // en cours plutot que de faire tourner deux instances peuplees en parallele.
+    uint32 activeBotBG = 0;
+    uint32 queuedBotBGType = 0;
+    GetBotBGActivity(activeBotBG, queuedBotBGType);
+    if (activeBotBG || (queuedBotBGType && queuedBotBGType != uint32(_bgTypeId)))
+    {
+        TC_LOG_INFO("server.worldserver", "BG BotFill: bots deja engages (instance %u, bg %u) -> file du bg %u non alimentee",
+            activeBotBG, queuedBotBGType, bgTypeId);
+        return;
+    }
+
     int32 needAlliance = 0;
     int32 needHorde = 0;
     int32 teamSizeCap = sConfigMgr->GetIntDefault("pbotbg_maxperteam", 0);
@@ -3039,6 +3053,55 @@ bool PlayerBotMgr::CanReadyArenaByArenaTeamID(uint32 arenaTeamId)
 // SylvaniaCore (module BG BotFill): nombre de bots en cours d engagement (login /
 // re-level / inscription pas encore aboutis). Sert de garde-fou anti sur-provision :
 // tant que des bots sont en vol, le tick n en engage pas de nouveaux.
+// SylvaniaCore (module BG BotFill): releve l engagement courant des bots.
+// activeInstanceId = instance de BG ou des bots se battent deja (0 si aucune),
+// queuedBgTypeId   = type de BG pour lequel des bots sont deja inscrits en file.
+// Sert a n alimenter qu un seul champ de bataille a la fois : plusieurs instances
+// peuplees simultanement (jusqu a 80 bots chacune) mettent le serveur a genoux.
+void PlayerBotMgr::GetBotBGActivity(uint32& activeInstanceId, uint32& queuedBgTypeId)
+{
+    activeInstanceId = 0;
+    queuedBgTypeId = 0;
+    const SessionMap& allSession = sWorld->GetAllSessions();
+    for (SessionMap::const_iterator itSession = allSession.begin(); itSession != allSession.end(); itSession++)
+    {
+        if (!itSession->second || !itSession->second->IsBotSession())
+            continue;
+        PlayerBotSession* pSession = dynamic_cast<PlayerBotSession*>((WorldSession*)itSession->second);
+        if (!pSession || pSession->IsAccountBotSession() || pSession->PlayerLoading())
+            continue;
+        Player* player = pSession->GetPlayer();
+        if (!player || !player->IsInWorld() || player->InArena())
+            continue;
+
+        if (player->InBattleground())
+        {
+            Battleground* bg = player->GetBattleground();
+            if (bg && bg->GetStatus() < BattlegroundStatus::STATUS_WAIT_LEAVE)
+            {
+                activeInstanceId = bg->GetInstanceID();
+                if (!queuedBgTypeId)
+                    queuedBgTypeId = uint32(bg->GetTypeID());
+            }
+        }
+        else if (player->InBattlegroundQueue() && !queuedBgTypeId)
+        {
+            for (uint8 i = 0; i < PLAYER_MAX_BATTLEGROUND_QUEUES; ++i)
+            {
+                BattlegroundQueueTypeId qTypeId = player->GetBattlegroundQueueTypeId(i);
+                if (!qTypeId)
+                    continue;
+                BattlegroundTypeId qBgTypeId = BattlegroundMgr::BGTemplateId(qTypeId);
+                if (qBgTypeId != BattlegroundTypeId::BATTLEGROUND_AA)
+                {
+                    queuedBgTypeId = uint32(qBgTypeId);
+                    break;
+                }
+            }
+        }
+    }
+}
+
 uint32 PlayerBotMgr::GetScheduledBotCount()
 {
     uint32 count = 0;
@@ -3058,6 +3121,12 @@ void PlayerBotMgr::QueryBattlegroundRequirement()
 {
     if (GetScheduledBotCount() >= 8)
         return;
+    // SylvaniaCore (module BG BotFill): un seul BG peuple a la fois (cf. GetBotBGActivity).
+    // On complete uniquement l instance ou les bots se battent deja, et on n ouvre une
+    // nouvelle file que si aucun engagement n est en cours.
+    uint32 activeBotBG = 0;
+    uint32 queuedBotBGType = 0;
+    GetBotBGActivity(activeBotBG, queuedBotBGType);
     int32 teamSizeCap = sConfigMgr->GetIntDefault("pbotbg_maxperteam", 0);
     for (BattleGroundTypes::iterator itType = m_BGTypes.begin(); itType != m_BGTypes.end(); itType++)
     {
@@ -3071,6 +3140,8 @@ void PlayerBotMgr::QueryBattlegroundRequirement()
             Battleground* bg = *itr;
             if (!bg->ExistRealPlayer())
                 continue;
+            if (activeBotBG && bg->GetInstanceID() != activeBotBG)
+                continue;   // des bots servent deja un autre champ de bataille
             uint32 minLV = bg->GetMinLevel();
             uint32 maxLV = bg->GetMaxLevel();
             if (!bg->isRated() && bg->GetStatus() > STATUS_WAIT_QUEUE && bg->GetStatus() < STATUS_WAIT_LEAVE)
@@ -3100,6 +3171,8 @@ void PlayerBotMgr::QueryBattlegroundRequirement()
                 continue;
             if (!bgQueue.ExistRealPlayer(bracketEntry))
                 continue;
+            if (activeBotBG || (queuedBotBGType && queuedBotBGType != uint32(bgTypeID)))
+                continue;   // bots deja engages ailleurs
             int32 needAlliancePlayerCount = 0;
             int32 needHordePlayerCount = 0;
             if (bgQueue.QueryNeedPlayerCount(bgTypeID, bracket, 0, needAlliancePlayerCount, needHordePlayerCount, teamSizeCap))

@@ -397,6 +397,7 @@ private:
     void QueryBattlegroundRequirement();
     void UpdateIdleBotLogout();
     uint32 GetScheduledBotCount();
+    void GetBotBGActivity(uint32& activeInstanceId, uint32& queuedBgTypeId);
     void QueryRatedArenaRequirement();
     void QueryNonRatedArenaRequirement();
     void OnlinePlayerBotByGUIDQueue();
