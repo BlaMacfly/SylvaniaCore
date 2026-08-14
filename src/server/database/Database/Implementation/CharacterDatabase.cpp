@@ -806,6 +806,14 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_UPD_SPECIALIZATION, "UPDATE characters SET primarySpecialization = ? WHERE guid = ?", CONNECTION_ASYNC);
 
     PrepareStatement(CHAR_DEL_CHALLENGE_MEMBER, "DELETE FROM challenge_member WHERE member = ?", CONNECTION_ASYNC);
+
+    // Module Siege des Capitales (SylvaniaCore)
+    PrepareStatement(CHAR_SEL_CAPITAL_SIEGE_STATE, "SELECT last_event_day, last_attacker_team, scheduled_day, scheduled_time, scheduled_team FROM capital_siege_state WHERE id = 1", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_REP_CAPITAL_SIEGE_STATE, "REPLACE INTO capital_siege_state (id, last_event_day, last_attacker_team, scheduled_day, scheduled_time, scheduled_team) VALUES (1, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_INS_CAPITAL_SIEGE_HISTORY, "INSERT INTO capital_siege_history (start_time, attacker_team, target_map, boss_entry, outcome, triggered_by) VALUES (?, ?, ?, ?, 0, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_CAPITAL_SIEGE_HISTORY_CLOSE, "UPDATE capital_siege_history SET end_time = ?, duration = ?, outcome = ?, bots_spawned = ?, bots_lost = ? WHERE outcome = 0", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_CAPITAL_SIEGE_HISTORY_ORPHAN, "UPDATE capital_siege_history SET end_time = ?, outcome = ? WHERE outcome = 0", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_CAPITAL_SIEGE_HISTORY, "SELECT start_time, attacker_team, outcome, duration, bots_spawned, bots_lost, triggered_by FROM capital_siege_history ORDER BY id DESC LIMIT 10", CONNECTION_SYNCH);
 }
 
 CharacterDatabaseConnection::CharacterDatabaseConnection(MySQLConnectionInfo& connInfo, ConnectionFlags connectionFlags) : MySQLConnection(connInfo, connectionFlags)

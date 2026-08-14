@@ -4622,3 +4622,140 @@ pbotasl = 88
 
 #
 ####################################################################################################
+###################################################################################################
+# MODULE SIEGE DES CAPITALES (SylvaniaCore)
+#
+#   siege_enable
+#        Description: Evenement quotidien d invasion. Une fois par jour serveur, a une
+#                     heure tiree au hasard dans la plage horaire ci-dessous, une horde
+#                     de playerbots assaille la capitale de la faction adverse et tente
+#                     d abattre son dirigeant. La faction attaquante alterne strictement
+#                     d un jour a l autre.
+#        Default:     0 - Desactive
+#                     1 - Active
+#
+
+siege_enable = 0
+
+#
+#   siege_hour_min / siege_hour_max
+#        Description: Plage horaire (heure locale du serveur) dans laquelle l heure de
+#                     declenchement est tiree. Bornes en heures pleines, min inclus,
+#                     max exclu. 18 / 24 = tirage entre 18h00m00s et 23h59m59s.
+#                     Si le worldserver etait arrete a l heure tiree, l evenement n est
+#                     rattrape que tant qu on est encore dans cette plage.
+#        Default:     18 / 24
+#
+
+siege_hour_min = 18
+siege_hour_max = 24
+
+#
+#   siege_botcount
+#        Description: Nombre de playerbots composant la horde d invasion.
+#                     Plafonne a 100 par securite.
+#        Default:     50
+#
+
+siege_botcount = 50
+
+#
+#   siege_botlevel
+#        Description: Niveau auquel les bots de l invasion sont ajustes.
+#        Default:     110
+#
+
+siege_botlevel = 110
+
+#
+#   siege_duration
+#        Description: Duree maximale d un evenement, en secondes. Passe ce delai
+#                     l assaut est declare repousse et les bots restants sont retires.
+#        Default:     3600 - une heure
+#
+
+siege_duration = 3600
+
+#
+#   siege_spawn_rate
+#        Description: Nombre de bots connectes et deployes par seconde. Etale le cout
+#                     du spawn pour eviter un pic de charge au declenchement.
+#        Default:     5
+#
+
+siege_spawn_rate = 5
+
+#
+#   siege_pvp
+#        Description: Comportement des bots vis-a-vis des joueurs reels rencontres.
+#        Default:     1 - N engagent que les joueurs deja flagges PvP
+#                     0 - Ignorent les joueurs, n attaquent que gardes et PNJ
+#                     2 - Engagent tout joueur de la faction adverse
+#
+
+siege_pvp = 1
+
+#
+#   siege_boss_level / siege_boss_hp_mult
+#        Description: Ajustement applique au dirigeant pendant l evenement, en memoire
+#                     uniquement (jamais ecrit en base : un arret du serveur pendant le
+#                     siege laisse la creature intacte). Le multiplicateur de points de
+#                     vie est un pourcentage applique aux PV de base.
+#        Default:     112 / 50 - niveau 112, PV x50
+#
+
+siege_boss_level = 112
+siege_boss_hp_mult = 50
+
+#
+#   siege_maxdiff
+#        Description: Arret d urgence. Si le temps de mise a jour du monde depasse cette
+#                     valeur (en ms) pendant plus de dix secondes consecutives, l
+#                     evenement en cours est interrompu et nettoye.
+#                     0 = surveillance desactivee.
+#        Default:     400
+#
+
+siege_maxdiff = 400
+
+#
+#   siege_announce
+#        Description: Annonce serveur au declenchement et a la fin de l evenement.
+#        Default:     1 - Active
+#                     0 - Desactive
+#
+
+siege_announce = 1
+
+#
+#   Cible assaillie par la Horde : la capitale de l Alliance (Hurlevent).
+#        siege_alliance_map          carte de la capitale
+#        siege_alliance_boss_entry   creature_template du dirigeant
+#        siege_alliance_boss_*       position du trone
+#        siege_alliance_staging_*    point de rassemblement de la horde d invasion
+#
+
+siege_alliance_map = 0
+siege_alliance_boss_entry = 107574
+siege_alliance_boss_x = -8363.3
+siege_alliance_boss_y = 232.5
+siege_alliance_boss_z = 157.1
+siege_alliance_staging_x = -8833.1
+siege_alliance_staging_y = 622.8
+siege_alliance_staging_z = 93.9
+
+#
+#   Cible assaillie par l Alliance : la capitale de la Horde (Orgrimmar).
+#
+
+siege_horde_map = 1
+siege_horde_boss_entry = 42283
+siege_horde_boss_x = 1924.4
+siege_horde_boss_y = -4144.1
+siege_horde_boss_z = 40.6
+siege_horde_staging_x = 1570.0
+siege_horde_staging_y = -4397.4
+siege_horde_staging_z = 16.0
+
+#
+###################################################################################################
