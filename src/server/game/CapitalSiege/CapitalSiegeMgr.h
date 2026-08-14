@@ -34,6 +34,7 @@
 #include "SharedDefines.h"
 #include <string>
 
+class CommandSiege;
 class Player;
 
 enum CapitalSiegeStatus
@@ -62,6 +63,8 @@ struct CapitalSiegeTarget
     uint32 bossEntry;           // creature_template du dirigeant
     Position bossPos;           // position du trone
     Position stagingPos;        // point de rassemblement de la horde d invasion
+    uint32 routeFirst;          // premiere entree aiwaypoints de la route d assaut
+    uint32 routeLast;           // derniere entree aiwaypoints de la route d assaut
     char const* cityName;
 };
 
@@ -95,6 +98,8 @@ public:
     TeamId GetAttackerTeam() const { return m_attackerTeam; }
     TeamId GetScheduledTeam() const { return m_scheduledTeam; }
     CapitalSiegeTarget const* GetTarget() const { return m_target; }
+    // Commandant de la horde d invasion, nul hors evenement.
+    CommandSiege* GetCommander() const { return m_commander; }
     uint32 GetElapsedSeconds() const { return m_elapsed / IN_MILLISECONDS; }
     uint32 GetRemainingSeconds() const;
     std::string GetStatusText() const;
@@ -159,6 +164,7 @@ private:
     CapitalSiegeStatus m_status;
     TeamId m_attackerTeam;
     CapitalSiegeTarget const* m_target;
+    CommandSiege* m_commander;
     uint32 m_elapsed;           // ms depuis le debut de l evenement
     uint32 m_updateTimer;       // ms, cadence le tick a la seconde
     uint32 m_overloadTimer;     // ms passees au-dessus du seuil de charge

@@ -29,8 +29,10 @@
 
 #include "CapitalSiegeMgr.h"
 #include "Chat.h"
+#include "CommandSiege.h"
 #include "DatabaseEnv.h"
 #include "Player.h"
+#include "PlayerBotMgr.h"
 #include "RBAC.h"
 #include "ScriptMgr.h"
 #include "WorldSession.h"
@@ -129,6 +131,60 @@ static bool HandleSiegeStop(ChatHandler* handler, char const* /*args*/)
     return true;
 }
 
+// Harnais de test de l IA d assaut, en attendant le spawner automatique (E7) :
+// enrole manuellement le playerbot selectionne dans la horde d invasion.
+static bool HandleSiegeRecruit(ChatHandler* handler, char const* /*args*/)
+{
+    CommandSiege* commander = sCapitalSiegeMgr->GetCommander();
+    if (!commander)
+    {
+        handler->SendSysMessage("Aucun siege en cours. Lancez d abord .siege start.");
+        handler->SetSentErrorMessage(true);
+        return false;
+    }
+
+    Player* target = handler->getSelectedPlayer();
+    if (!target)
+    {
+        handler->SendSysMessage("Selectionnez le playerbot a enroler.");
+        handler->SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (!target->IsPlayerBot())
+    {
+        handler->SendSysMessage("Seul un playerbot peut etre enrole dans la horde d invasion.");
+        handler->SetSentErrorMessage(true);
+        return false;
+    }
+
+    if (target->GetTeamId() != commander->GetAttackerTeam())
+    {
+        handler->PSendSysMessage("%s n est pas de la faction attaquante (%s).",
+            target->GetName().c_str(), CapitalSiegeMgr::GetTeamName(commander->GetAttackerTeam()));
+        handler->SetSentErrorMessage(true);
+        return false;
+    }
+
+    // L IA de combat scriptee doit etre en place avant l enrolement : c est
+    // elle que CommandSiege bascule en mode siege.
+    PlayerBotMgr::SwitchPlayerBotAI(target, PlayerBotAIType::PBAIT_BG, true);
+
+    if (!commander->AddBot(target))
+    {
+        handler->PSendSysMessage("Enrolement de %s refuse (deja engage ?).", target->GetName().c_str());
+        handler->SetSentErrorMessage(true);
+        return false;
+    }
+
+    Position const staging = commander->GetStagingPosition();
+    target->TeleportTo(commander->GetMapId(), staging.GetPositionX(), staging.GetPositionY(), staging.GetPositionZ(), 0.0f);
+
+    handler->PSendSysMessage("%s enrole et deploye au point de rassemblement (%u bots engages).",
+        target->GetName().c_str(), commander->GetBotCount());
+    return true;
+}
+
 static bool HandleSiegeHistory(ChatHandler* handler, char const* /*args*/)
 {
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_CAPITAL_SIEGE_HISTORY);
@@ -174,6 +230,7 @@ public:
             { "status",  rbac::RBAC_PERM_COMMAND_EVENT, true, &HandleSiegeStatus,  "" },
             { "start",   rbac::RBAC_PERM_COMMAND_EVENT, true, &HandleSiegeStart,   "" },
             { "stop",    rbac::RBAC_PERM_COMMAND_EVENT, true, &HandleSiegeStop,    "" },
+            { "recruit", rbac::RBAC_PERM_COMMAND_EVENT, false, &HandleSiegeRecruit, "" },
             { "history", rbac::RBAC_PERM_COMMAND_EVENT, true, &HandleSiegeHistory, "" },
         };
 

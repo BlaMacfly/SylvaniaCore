@@ -68,6 +68,10 @@ public:
 	void ReadyBattleground();
 	void StartBattleground() { m_AIBGStateType = BotAIBGState::AIBGState_Start; }
 	void LeaveBattleground() { m_AIBGStateType = BotAIBGState::AIBGState_Leave; }
+	// Mode siege (module Siege des Capitales) : le bot combat hors champ de
+	// bataille, sous les ordres de CommandSiege et non de CommandBG.
+	void SetSiegeMode(bool enable);
+	bool IsSiegeMode() const { return m_SiegeMode; }
 	void PushFinishQueue(PathParameter* pathParam);
 	bool CanUseBGObject();
 	NearObjectList SearchGameObject(float range);
@@ -214,6 +218,7 @@ protected:
 
 	uint32 BotCommon_ClearAllCtrl;// = 59752;		// ×ÔÀû
 	uint32 m_lastClearCtrlTick;
+	bool m_SiegeMode;
 };
 
 #endif // !_BOT_AI_H_

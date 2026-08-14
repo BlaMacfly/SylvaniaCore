@@ -16,6 +16,7 @@
  */
 
 #include "CapitalSiegeMgr.h"
+#include "CommandSiege.h"
 #include "Config.h"
 #include "DatabaseEnv.h"
 #include "Log.h"
@@ -39,13 +40,14 @@ CapitalSiegeMgr::CapitalSiegeMgr() :
     m_lastEventDay(0), m_lastAttackerTeam(TEAM_NEUTRAL), m_scheduledDay(0),
     m_scheduledTime(0), m_scheduledTeam(TEAM_NEUTRAL),
     m_status(SIEGE_STATUS_IDLE), m_attackerTeam(TEAM_NEUTRAL), m_target(nullptr),
+    m_commander(nullptr),
     m_elapsed(0), m_updateTimer(0), m_overloadTimer(0),
     m_botsSpawned(0), m_botsLost(0), m_startTime(0)
 {
     // Les valeurs sont ecrasees par LoadConfig(). Elles ne servent que si le
     // fichier de configuration est muet sur une cle.
-    m_targets[TEAM_ALLIANCE] = { 1, 42283, Position(), Position(), "Orgrimmar" };
-    m_targets[TEAM_HORDE]    = { 0, 107574, Position(), Position(), "Hurlevent" };
+    m_targets[TEAM_ALLIANCE] = { 1, 42283, Position(), Position(), 2000, 2099, "Orgrimmar" };
+    m_targets[TEAM_HORDE]    = { 0, 107574, Position(), Position(), 1000, 1099, "Hurlevent" };
 }
 
 CapitalSiegeMgr::~CapitalSiegeMgr() { }
@@ -134,6 +136,8 @@ void CapitalSiegeMgr::LoadConfig()
         sConfigMgr->GetFloatDefault("siege_horde_staging_x", 1570.0f),
         sConfigMgr->GetFloatDefault("siege_horde_staging_y", -4397.4f),
         sConfigMgr->GetFloatDefault("siege_horde_staging_z", 16.0f));
+    m_targets[TEAM_ALLIANCE].routeFirst = sConfigMgr->GetIntDefault("siege_horde_route_first", 2000);
+    m_targets[TEAM_ALLIANCE].routeLast  = sConfigMgr->GetIntDefault("siege_horde_route_last", 2099);
     m_targets[TEAM_ALLIANCE].cityName = "Orgrimmar";
 
     // Cible assaillie par la Horde : la capitale de l Alliance.
@@ -147,6 +151,8 @@ void CapitalSiegeMgr::LoadConfig()
         sConfigMgr->GetFloatDefault("siege_alliance_staging_x", -8904.1f),
         sConfigMgr->GetFloatDefault("siege_alliance_staging_y", 692.4f),
         sConfigMgr->GetFloatDefault("siege_alliance_staging_z", 99.5f));
+    m_targets[TEAM_HORDE].routeFirst = sConfigMgr->GetIntDefault("siege_alliance_route_first", 1000);
+    m_targets[TEAM_HORDE].routeLast  = sConfigMgr->GetIntDefault("siege_alliance_route_last", 1099);
     m_targets[TEAM_HORDE].cityName = "Hurlevent";
 
     TC_LOG_INFO("server.loading", "Siege des Capitales: %s (plage %02uh-%02uh, %u bots niveau %u, duree max %u min).",
@@ -288,8 +294,22 @@ bool CapitalSiegeMgr::StartSiege(TeamId attacker, std::string const& trigger)
     if (attacker != TEAM_ALLIANCE && attacker != TEAM_HORDE)
         return false;
 
+    CapitalSiegeTarget const* target = &m_targets[attacker];
+
+    // La route est validee avant toute autre chose : si elle est absente ou
+    // incomplete, le creneau du jour n est pas consomme et l evenement pourra
+    // se declencher normalement une fois les waypoints en base.
+    CommandSiege* commander = new CommandSiege(target->mapId, attacker);
+    if (!commander->LoadRoute(target->routeFirst, target->routeLast))
+    {
+        TC_LOG_ERROR("server.worldserver", "Siege des Capitales: assaut sur %s annule, route d invasion indisponible.", target->cityName);
+        delete commander;
+        return false;
+    }
+
     m_attackerTeam  = attacker;
-    m_target        = &m_targets[attacker];
+    m_target        = target;
+    m_commander     = commander;
     m_status        = SIEGE_STATUS_SPAWNING;
     m_elapsed       = 0;
     m_overloadTimer = 0;
@@ -322,7 +342,18 @@ void CapitalSiegeMgr::StopSiege(CapitalSiegeOutcome outcome)
 
     m_status = SIEGE_STATUS_ENDING;
 
-    // E7 : despawn des bots restants.
+    // Les bots repassent en IA normale et perdent leurs ordres d assaut avant
+    // toute autre operation : aucun ne doit continuer a marcher sur le trone
+    // pendant le nettoyage.
+    if (m_commander)
+    {
+        m_botsLost = m_commander->GetLostCount();
+        m_commander->DismissAll();
+        delete m_commander;
+        m_commander = nullptr;
+    }
+
+    // E7 : deconnexion des bots restants.
     // E8 : restauration des drapeaux du dirigeant et purge des aggro de ville.
 
     CloseHistoryRow(outcome);
@@ -355,8 +386,20 @@ void CapitalSiegeMgr::UpdateRunningSiege(uint32 diff)
         return;
     }
 
-    // E5 : tick du commandant d assaut (progression, ciblage, morts de bots).
     // E7 : suite du spawn etale tant que le quota n est pas atteint.
+
+    if (!m_commander)
+        return;
+
+    m_commander->Update(diff);
+    m_botsSpawned = m_commander->GetBotCount();
+    m_botsLost    = m_commander->GetLostCount();
+
+    // Le deploiement est termine des que la horde a recu ses premiers ordres.
+    if (m_status == SIEGE_STATUS_SPAWNING && m_commander->GetBotCount())
+        m_status = SIEGE_STATUS_ASSAULT;
+
+    // E8 : detection de la mort du dirigeant, condition de victoire immediate.
 }
 
 bool CapitalSiegeMgr::IsServerOverloaded(uint32 diff)
@@ -449,9 +492,12 @@ std::string CapitalSiegeMgr::GetStatusText() const
     }
 
     snprintf(buffer, sizeof(buffer),
-        "Siege en cours [%s]: %s attaque %s. Ecoule %u s, restant %u s, bots %u deployes / %u perdus.",
+        "Siege en cours [%s]: %s attaque %s. Ecoule %u s, restant %u s, bots %u engages / %u vivants / %u perdus. Progression %u/%u.",
         statusName, GetTeamName(m_attackerTeam), m_target ? m_target->cityName : "?",
-        GetElapsedSeconds(), GetRemainingSeconds(), m_botsSpawned, m_botsLost);
+        GetElapsedSeconds(), GetRemainingSeconds(), m_botsSpawned,
+        m_commander ? m_commander->GetAliveCount() : 0, m_botsLost,
+        m_commander ? m_commander->GetVanguardProgress() + 1 : 0,
+        m_commander ? m_commander->GetRouteSize() : 0);
     return buffer;
 }
 

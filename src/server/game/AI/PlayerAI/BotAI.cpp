@@ -41,6 +41,9 @@
 #include "MotionMaster.h"
 #include "SpellHistory.h"
 #include "ObjectVisitors.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
+#include "CapitalSiegeMgr.h"
 
 //#define THREAD_PATHFINDING
 #ifdef _DEBUG
@@ -133,7 +136,8 @@ BotBGAI::BotBGAI(Player* player) :
     m_LastControlTarget(ObjectGuid::Empty),
     m_NeedReserveCtrlSpell(false),
     m_InitRndPos(),
-    m_lastClearCtrlTick(0)
+    m_lastClearCtrlTick(0),
+    m_SiegeMode(false)
 {
     m_FilterCreatureEntrys.clear();
     m_FilterCreatureEntrys.insert(14848);
@@ -478,7 +482,9 @@ void BotBGAI::UpdateAI(uint32 diff)
     if (m_UpdateTick <= 0)
     {
         m_UpdateTick = BOTAI_UPDATE_TICK;
-        if (!InBattleground())
+        // Le mode siege se joue en ville, hors de toute instance de champ
+        // de bataille : le verrou ne s applique qu au cas BG.
+        if (!m_SiegeMode && !InBattleground())
             return;
         if (IsAlive())
         {
@@ -501,7 +507,11 @@ void BotBGAI::UpdateAI(uint32 diff)
             m_CastRecords.ClearRecordSpell();
             m_Teleporting.ClearTeleport();
             me->SetSelection(ObjectGuid::Empty);
-            BattlegroundRevive();
+            // En siege, un bot tue est perdu pour l evenement : pas de
+            // boucle de resurrection. CommandSiege le compte en perte et
+            // le gestionnaire le retire.
+            if (!m_SiegeMode)
+                BattlegroundRevive();
         }
 
         //{
@@ -719,7 +729,11 @@ void BotBGAI::SearchCreatureListFromRange(Unit* center, NearCreatureVec& nearCre
     {
         Trinity::AllWorldObjectsInRange checker(center, range);
         Trinity::CreatureListSearcher<Trinity::AllWorldObjectsInRange> searcher(center, nearCreature, checker);
-        //center->VisitNearbyGridObject(range, searcher);
+        // SylvaniaCore: la visite de grille etait commentee et jamais
+        // remplacee (VisitNearbyGridObject n existe plus dans ce core). La
+        // liste restait donc toujours vide et les bots ne voyaient aucune
+        // creature, ni en siege ni en champ de bataille.
+        Cell::VisitGridObjects(center, searcher, range);
     }
     for (Creature* pCreature : nearCreature)
     {
@@ -1617,30 +1631,40 @@ void BotBGAI::UpdateBotAI(uint32 diff)
 void BotBGAI::UpdateBotAI(uint32 diff)
 {
     Battleground* pBattleground = me->GetBattleground();
-    if (!pBattleground)
-        return;
 
-    BattlegroundStatus bgStatus = pBattleground->GetStatus();
-
-    switch (bgStatus)
+    if (m_SiegeMode)
     {
-    case STATUS_NONE:
-    case STATUS_WAIT_QUEUE:
-        return;
-    case STATUS_WAIT_JOIN:
-        if (m_AIBGStateType != BotAIBGState::AIBGState_Ready)
-            m_AIBGStateType = BotAIBGState::AIBGState_Ready;
-        break;
-    case STATUS_IN_PROGRESS:
-        if (m_AIBGStateType != BotAIBGState::AIBGState_Start)
-            m_AIBGStateType = BotAIBGState::AIBGState_Start;
-        break;
-    case STATUS_WAIT_LEAVE:
-        if (m_AIBGStateType != BotAIBGState::AIBGState_Leave)
-            m_AIBGStateType = BotAIBGState::AIBGState_Leave;
-        break;
-    default:
-        return;
+        // Module Siege des Capitales : aucun statut de champ de bataille a
+        // suivre, l etat d assaut est impose en permanence.
+        m_AIBGStateType = BotAIBGState::AIBGState_Start;
+    }
+    else
+    {
+        if (!pBattleground)
+            return;
+
+        BattlegroundStatus bgStatus = pBattleground->GetStatus();
+
+        switch (bgStatus)
+        {
+        case STATUS_NONE:
+        case STATUS_WAIT_QUEUE:
+            return;
+        case STATUS_WAIT_JOIN:
+            if (m_AIBGStateType != BotAIBGState::AIBGState_Ready)
+                m_AIBGStateType = BotAIBGState::AIBGState_Ready;
+            break;
+        case STATUS_IN_PROGRESS:
+            if (m_AIBGStateType != BotAIBGState::AIBGState_Start)
+                m_AIBGStateType = BotAIBGState::AIBGState_Start;
+            break;
+        case STATUS_WAIT_LEAVE:
+            if (m_AIBGStateType != BotAIBGState::AIBGState_Leave)
+                m_AIBGStateType = BotAIBGState::AIBGState_Leave;
+            break;
+        default:
+            return;
+        }
     }
 
     EachTick();
@@ -1807,6 +1831,16 @@ void BotBGAI::ResetBotAI()
     m_FastAid.CheckPlayerFastAid();
 }
 
+// Module Siege des Capitales. En mode siege le bot garde toute son IA de
+// combat de champ de bataille, mais cesse de dependre d un Battleground :
+// l etat d assaut est impose et les ordres viennent de CommandSiege.
+void BotBGAI::SetSiegeMode(bool enable)
+{
+    m_SiegeMode = enable;
+    if (enable)
+        m_AIBGStateType = BotAIBGState::AIBGState_Start;
+}
+
 bool BotBGAI::IsAlive()
 {
     return me->IsAlive();
@@ -1830,6 +1864,18 @@ bool BotBGAI::IsNotSelect(Unit* pTarget)
             return true;
 
 
+
+        // Module Siege des Capitales : les bots d invasion n engagent les
+        // joueurs reels que selon la cle siege_pvp. 0 = jamais, 1 = seulement
+        // les joueurs deja flagges PvP, 2 = tout joueur de la faction adverse.
+        if (m_SiegeMode)
+        {
+            uint32 const siegePvpMode = sCapitalSiegeMgr->GetPvpMode();
+            if (siegePvpMode == 0)
+                return true;
+            if (siegePvpMode == 1 && !pPlayer->IsPvP())
+                return true;
+        }
 
         if (pPlayer->GetVehicleKit())
             return true;
@@ -2623,7 +2669,7 @@ void BotBGAI::QueryNearCreatureList(float range, NearCreatureList& creatureList)
     NearCreatureList& nearCreature = m_RangeCreatureLists[range];
     Trinity::AllWorldObjectsInRange checker(me, range);
     Trinity::CreatureListSearcher<Trinity::AllWorldObjectsInRange> searcher(me, nearCreature, checker);
-    //me->VisitNearbyGridObject(range, searcher);
+    Cell::VisitGridObjects(me, searcher, range);
     creatureList = m_RangeCreatureLists[range];
 }
 

@@ -4745,6 +4745,17 @@ siege_alliance_staging_y = 692.4
 siege_alliance_staging_z = 99.5
 
 #
+#        siege_alliance_route_first / siege_alliance_route_last
+#             Plage d entrees de la table aiwaypoints decrivant la route d assaut
+#             de Hurlevent, du point de rassemblement au trone. Les entrees
+#             absentes de la plage sont ignorees, on peut donc la dimensionner
+#             large et inserer des points intermediaires plus tard.
+#
+
+siege_alliance_route_first = 1000
+siege_alliance_route_last = 1099
+
+#
 #   Cible assaillie par l Alliance : la capitale de la Horde (Orgrimmar).
 #
 
@@ -4756,6 +4767,14 @@ siege_horde_boss_z = 40.6
 siege_horde_staging_x = 1570.0
 siege_horde_staging_y = -4397.4
 siege_horde_staging_z = 16.0
+
+#
+#        siege_horde_route_first / siege_horde_route_last
+#             Idem pour la route d assaut d Orgrimmar (etape E10).
+#
+
+siege_horde_route_first = 2000
+siege_horde_route_last = 2099
 
 #
 ###################################################################################################
