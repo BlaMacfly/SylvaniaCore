@@ -144,9 +144,9 @@ void CapitalSiegeMgr::LoadConfig()
         sConfigMgr->GetFloatDefault("siege_alliance_boss_y", 232.5f),
         sConfigMgr->GetFloatDefault("siege_alliance_boss_z", 157.1f));
     m_targets[TEAM_HORDE].stagingPos.Relocate(
-        sConfigMgr->GetFloatDefault("siege_alliance_staging_x", -8833.1f),
-        sConfigMgr->GetFloatDefault("siege_alliance_staging_y", 622.8f),
-        sConfigMgr->GetFloatDefault("siege_alliance_staging_z", 93.9f));
+        sConfigMgr->GetFloatDefault("siege_alliance_staging_x", -8904.1f),
+        sConfigMgr->GetFloatDefault("siege_alliance_staging_y", 692.4f),
+        sConfigMgr->GetFloatDefault("siege_alliance_staging_z", 99.5f));
     m_targets[TEAM_HORDE].cityName = "Hurlevent";
 
     TC_LOG_INFO("server.loading", "Siege des Capitales: %s (plage %02uh-%02uh, %u bots niveau %u, duree max %u min).",
