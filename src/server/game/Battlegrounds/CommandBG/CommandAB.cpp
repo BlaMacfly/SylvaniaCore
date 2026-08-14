@@ -322,8 +322,6 @@ void CommandAB::TryOccupiedABNode(ObjectGuid guid)
 		pBotAI->GetAIMovement()->AcceptCommand(pFlag->GetGUID(), true);
 		return;
 	}
-	TC_LOG_ERROR("server.worldserver", "BGF-DBG: TryOccupiedABNode %s clique la banniere %u (dist %.1f)",
-		player->GetName().c_str(), pFlag->GetEntry(), flagDist);
 	SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(21651);
 	if (!spellInfo)
 		return;

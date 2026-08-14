@@ -53,7 +53,6 @@ void CommandBG::Initialize()
 
 void CommandBG::ReadyGame()
 {
-	TC_LOG_ERROR("server.worldserver", "BGF-DBG: CommandBG::ReadyGame team=%u etat=%u", uint32(m_TeamID), uint32(m_BGGC));
 	m_BGGC = BGGameCommand::BGGS_Ready;
 	//for (ObjectGuid guid : m_PlayerGUIDs)
 	//{
@@ -67,7 +66,6 @@ void CommandBG::ReadyGame()
 
 void CommandBG::StartGame()
 {
-	TC_LOG_ERROR("server.worldserver", "BGF-DBG: CommandBG::StartGame team=%u etat=%u", uint32(m_TeamID), uint32(m_BGGC));
 	m_BGGC = BGGameCommand::BGGS_Start;
 	//for (ObjectGuid guid : m_PlayerGUIDs)
 	//{
@@ -89,7 +87,6 @@ void CommandBG::OnPlayerDead(ObjectGuid guid)
 
 bool CommandBG::AddPlayerBot(Player* player, Battleground* pBG)
 {
-	TC_LOG_ERROR("server.worldserver", "BGF-DBG: CommandBG::AddPlayerBot %s team=%u etat=%u", player ? player->GetName().c_str() : "null", uint32(m_TeamID), uint32(m_BGGC));
 	if (!player || !pBG)
 		return false;
 	if (m_PlayerGUIDs.find(player->GetGUID()) != m_PlayerGUIDs.end())
@@ -145,12 +142,6 @@ void CommandBG::RemovePlayerBot(Player* player)
 
 void CommandBG::Update(uint32 diff)
 {
-	static uint32 s_dbgCount = 0;
-	if (++s_dbgCount % 97 == 0)
-		TC_LOG_ERROR("server.worldserver", "BGF-DBG: CmdUpdate this=%p inst=%u team=%u etat=%u model=%u statut=%u bots=%u",
-			(void*)this, m_pBattleground ? m_pBattleground->GetInstanceID() : 0u,
-			uint32(m_TeamID), uint32(m_BGGC), uint32(g_CommandModelType),
-			m_pBattleground ? uint32(m_pBattleground->GetStatus()) : 999u, uint32(m_PlayerGUIDs.size()));
 	if (m_BGGC != BGGS_None)
 	{
 		if (m_BGGC == BGGS_Init)

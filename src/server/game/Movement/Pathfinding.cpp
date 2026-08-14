@@ -75,11 +75,6 @@ bool Pathfinding::CalculatePath(float destX, float destY, float destZ, bool forc
     // check if the start and end point have a .mmtile loaded (can we pass via not loaded tile on the way?)
     if (!_navMesh || !_navMeshQuery || !HaveTile(start) || !HaveTile(dest))
     {
-        static uint32 s_dbgSc = 0;
-        if (++s_dbgSc % 20 == 1)
-            TC_LOG_ERROR("server.worldserver", "BGF-DBG: Shortcut #%u map=%u inst=%u mesh=%u query=%u tuileDep=%u tuileArr=%u",
-                s_dbgSc, _pathParameter->mapID, _pathParameter->instID, uint32(_navMesh != nullptr), uint32(_navMeshQuery != nullptr),
-                uint32(_navMesh ? HaveTile(start) : 0), uint32(_navMesh ? HaveTile(dest) : 0));
         BuildShortcut();
         _type = PathType(PATHFIND_NORMAL | PATHFIND_NOT_USING_PATH);
         return true;

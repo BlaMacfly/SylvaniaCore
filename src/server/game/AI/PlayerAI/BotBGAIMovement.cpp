@@ -184,9 +184,6 @@ void BotBGAIMovement::ClearMovement()
 
 void BotBGAIMovement::AcceptCommand(AIWaypoint* targetAIWP, bool isFlag)
 {
-	static uint32 s_dbgAccept = 0;
-	if (++s_dbgAccept % 50 == 1)
-		TC_LOG_ERROR("server.worldserver", "BGF-DBG: AcceptCommand #%u wp=%s", s_dbgAccept, targetAIWP ? "oui" : "NULL");
 	if (!targetAIWP)
 		return;
 	// SylvaniaCore (module BG BotFill): un ordre de banniere/drapeau en cours n est pas

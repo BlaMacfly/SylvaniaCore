@@ -1191,7 +1191,6 @@ void Battleground::AddPlayer(Player* player)
     m_Players[player->GetGUID()] = bp;
 
     UpdatePlayersCountByTeam(team, false);                  // +1 player
-    TC_LOG_ERROR("server.worldserver", "BGF-DBG: AddPlayer %s bot=%u team=%u -> A=%u H=%u", player->GetName().c_str(), uint32(player->IsPlayerBot()), team, GetPlayersCountByTeam(ALLIANCE), GetPlayersCountByTeam(HORDE));
 
     WorldPackets::Battleground::BattlegroundPlayerJoined playerJoined;
     playerJoined.Guid = player->GetGUID();
