@@ -399,7 +399,13 @@ bool PlayerBotSession::ProcessSetting(BotGlobleSchedule& schedule)
 	{
 		if (player->IsSettingFinish() && player->getLevel() >= schedule.parameter1 && player->getLevel() <= schedule.parameter2)
 		{
-			if (schedule.parameter3 >= 4 || (player->FindTalentType() + 1 == schedule.parameter3))
+			// SylvaniaCore : le raccourci ne vaut que si le bot a reellement ses
+			// talents. Sans ce controle, un bot deja au bon niveau et a la bonne
+			// specialisation sautait tout le re-level et restait avec zero talent,
+			// heritage de l epoque ou LearnTalents() etait un corps vide.
+			PlayerTalentMap const* talents = player->GetTalentMap(player->GetActiveTalentGroup());
+			bool const hasTalents = talents && talents->size() >= player->CalculateTalentsTiers();
+			if (hasTalents && (schedule.parameter3 >= 4 || (player->FindTalentType() + 1 == schedule.parameter3)))
 				return true;
 		}
 	}

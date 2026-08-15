@@ -26,6 +26,8 @@
 #include "ItemTemplate.h"
 #include "Bag.h"
 #include <Spell.h>
+#include "DB2Stores.h"
+#include "Random.h"
 
 uint32 PlayerBotSetting::classesTrainersGUID[MAX_CLASSES][2];
 std::set<BotTalentEntry> PlayerBotSetting::classesTalents[MAX_CLASSES][3] = { std::set<BotTalentEntry>() };
@@ -1839,7 +1841,46 @@ void PlayerBotSetting::UpdateReset()
 
 void PlayerBotSetting::LearnTalents()
 {
-	
+	// SylvaniaCore : cette fonction etait un corps vide alors que l etape
+	// precedente du re-level appelle ResetTalents(true). Les bots repartaient
+	// donc au combat sans un seul talent, soit sept rangs manquants a 110.
+	//
+	// Version volontairement minimale : on apprend les talents de la
+	// specialisation deja portee par le personnage, rien d autre. Une premiere
+	// version basculait aussi la specialisation en cours de re-level et
+	// provoquait un debordement de pile.
+	if (!m_Player)
+		return;
+
+	uint8 const playerClass = m_Player->getClass();
+	uint32 const specId = m_Player->GetPrimarySpecialization();
+	uint32 const tiers = m_Player->CalculateTalentsTiers();
+	uint8 const talentGroup = m_Player->GetActiveTalentGroup();
+
+	for (uint32 tier = 0; tier < tiers; ++tier)
+	{
+		std::vector<TalentEntry const*> candidates;
+		for (uint32 column = 0; column < MAX_TALENT_COLUMNS; ++column)
+		{
+			for (TalentEntry const* talent : sDB2Manager.GetTalentsByPosition(playerClass, tier, column))
+			{
+				if (!talent || !talent->SpellID)
+					continue;
+				if (talent->SpecID && specId && talent->SpecID != specId)
+					continue;
+				if (m_Player->HasTalent(talent->ID, talentGroup) || m_Player->HasSpell(talent->SpellID))
+					continue;
+				candidates.push_back(talent);
+			}
+		}
+
+		if (candidates.empty())
+			continue;
+
+		TalentEntry const* picked = candidates[urand(0, uint32(candidates.size()) - 1)];
+		if (m_Player->AddTalent(picked, talentGroup, true))
+			m_Player->LearnSpell(picked->SpellID, false);
+	}
 }
 
 void PlayerBotSetting::LearnCommonSpells()

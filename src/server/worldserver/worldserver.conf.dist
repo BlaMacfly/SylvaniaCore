@@ -4680,7 +4680,7 @@ siege_enable = 0
 #        Default:     18 / 24
 #
 
-siege_hour_min = 18
+siege_hour_min = 6
 siege_hour_max = 24
 
 #
@@ -4727,6 +4727,21 @@ siege_spawn_rate = 5
 #
 
 siege_pvp = 1
+
+#
+#   siege_tank_pct / siege_healer_pct
+#        Description: Composition de la horde, en pourcent de l effectif. Le
+#                     reste part aux degats. Les soigneurs et les tanks sont
+#                     recrutes en premier : sans eux la horde fond avant le
+#                     trone. Le role est impose par la specialisation demandee
+#                     au re-level, et les IA de classe s y adaptent seules
+#                     (BotPaladinAI soigne en Sacre, le pretre hors Ombre, etc).
+#                     La somme des deux est plafonnee a 60 pour cent.
+#        Default:     10 / 20
+#
+
+siege_tank_pct = 10
+siege_healer_pct = 20
 
 #
 #   siege_engage_range
