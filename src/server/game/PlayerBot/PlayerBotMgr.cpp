@@ -3472,7 +3472,14 @@ void PlayerBotMgr::UpdateIdleBotLogout()
         if (!player || !player->IsInWorld() || player->IsLoading())
             continue;
         uint32 accId = session->GetAccountId();
-        bool busy = pSession->HasSchedules() || player->InBattleground() || player->InArena()
+        // Module Siege des Capitales : un bot enrole dans une invasion n est
+        // jamais inactif, meme entre deux combats. Sans cette exemption la
+        // deconnexion d inactivite du remplissage BG vidait la horde en pleine
+        // progression et le recrutement la reconstituait en boucle.
+        bool inSiege = false;
+        if (BotBGAI* botAI = dynamic_cast<BotBGAI*>(player->GetAI()))
+            inSiege = botAI->IsSiegeMode();
+        bool busy = inSiege || pSession->HasSchedules() || player->InBattleground() || player->InArena()
             || player->InBattlegroundQueue() || player->GetMap()->IsDungeon() || player->isUsingLfg()
             || player->IsInCombat();
         if (busy)

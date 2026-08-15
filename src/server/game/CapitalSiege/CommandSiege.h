@@ -71,6 +71,8 @@ public:
 
     uint32 GetBotCount() const { return uint32(m_bots.size()); }
     uint32 GetAliveCount() const;
+    // Effectif complet, morts compris, pour le nettoyage de fin d evenement.
+    std::vector<ObjectGuid> GetBotGuids() const;
     uint32 GetLostCount() const { return m_lostCount; }
     // Point de la route atteint par le bot le plus avance, pour l affichage GM.
     uint32 GetVanguardProgress() const;
@@ -88,9 +90,10 @@ private:
     struct SiegeBot
     {
         uint32 waypointIndex;   // point de la route actuellement vise
+        uint32 stallSeconds;    // temps passe sans franchir de point
         bool   dead;            // deja compte comme perte
 
-        SiegeBot() : waypointIndex(0), dead(false) { }
+        SiegeBot() : waypointIndex(0), stallSeconds(0), dead(false) { }
     };
 
     Player* GetBot(ObjectGuid guid) const;

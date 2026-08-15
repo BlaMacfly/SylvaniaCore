@@ -137,7 +137,8 @@ BotBGAI::BotBGAI(Player* player) :
     m_NeedReserveCtrlSpell(false),
     m_InitRndPos(),
     m_lastClearCtrlTick(0),
-    m_SiegeMode(false)
+    m_SiegeMode(false),
+    m_SiegeAdvanceUntil(0)
 {
     m_FilterCreatureEntrys.clear();
     m_FilterCreatureEntrys.insert(14848);
@@ -1731,6 +1732,11 @@ void BotBGAI::UpdateBotAI(uint32 diff)
         if (m_Movement->ExecuteCruxMovementCommand())
             return;
         bool inArena = me->InArena();
+        // Module Siege des Capitales : en ville il y a toujours une cible
+        // dans les 32 yards reglementaires, si bien que la horde s arrete au
+        // premier civil croise et n atteint jamais le trone. En mode siege on
+        // n engage que ce qui barre reellement le passage.
+        float const searchRange = m_SiegeMode ? sCapitalSiegeMgr->GetEngageRange() : float(BOTAI_SEARCH_RANGE);
         if (!inArena)
         {
             if (!me->HasAura(m_UseMountID) && !me->HasUnitState(UNIT_STATE_CASTING))
@@ -1738,6 +1744,21 @@ void BotBGAI::UpdateBotAI(uint32 diff)
         }
         else if (TryStartControlCommand())
             return;
+        // Module Siege des Capitales : marche forcee. On lache la cible et on
+        // avance, quitte a encaisser des coups en chemin.
+        if (m_SiegeMode && m_SiegeAdvanceUntil)
+        {
+            if (getMSTime() < m_SiegeAdvanceUntil)
+            {
+                me->AttackStop();
+                me->SetSelection(ObjectGuid::Empty);
+                if (!IsNotMovement())
+                    m_Movement->ExecuteMovementCommand();
+                return;
+            }
+            m_SiegeAdvanceUntil = 0;
+        }
+
         Unit* pSelect = GetBotAIValidSelectedUnit();
         if (pSelect && TargetIsStealth(pSelect->ToPlayer()))
         {
@@ -1748,7 +1769,7 @@ void BotBGAI::UpdateBotAI(uint32 diff)
         else if (pSelect && !IsInvincible(pSelect) && !HasAuraMechanic(pSelect, Mechanics::MECHANIC_POLYMORPH))
         {
             float distance = me->GetDistance(pSelect->GetPosition());
-            if (distance < BOTAI_SEARCH_RANGE || inArena)
+            if (distance < searchRange || inArena)
             {
                 if (m_CurrentTargetTick < BOTAI_MAXTARGET_TICKTIME || inArena)
                 {
@@ -1769,7 +1790,7 @@ void BotBGAI::UpdateBotAI(uint32 diff)
                     me->SetSelection(ObjectGuid::Empty);
                 }
             }
-            else if (distance > BOTAI_SEARCH_RANGE * 1.7f || me->GetMap() != pSelect->GetMap())
+            else if (distance > searchRange * 1.7f || me->GetMap() != pSelect->GetMap())
             {
                 me->SetSelection(ObjectGuid::Empty);
             }
@@ -1785,7 +1806,7 @@ void BotBGAI::UpdateBotAI(uint32 diff)
             {
                 me->AttackStop();
             }
-            if (Unit* enemy = SearchEnemy(inArena ? 200 : BOTAI_SEARCH_RANGE))
+            if (Unit* enemy = SearchEnemy(inArena ? 200.0f : searchRange))
             {
                 me->SetSelection(enemy->GetGUID());
             }
@@ -1837,8 +1858,20 @@ void BotBGAI::ResetBotAI()
 void BotBGAI::SetSiegeMode(bool enable)
 {
     m_SiegeMode = enable;
+    m_SiegeAdvanceUntil = 0;
     if (enable)
         m_AIBGStateType = BotAIBGState::AIBGState_Start;
+}
+
+// Ouvre une fenetre pendant laquelle le bot cesse d acquerir des cibles et
+// marche vers son objectif. Sans elle, une ville qui presente en permanence un
+// adversaire a portee fige la horde a son point d entree : l IA ne se deplace
+// que lorsqu elle n a aucune cible selectionnee.
+void BotBGAI::PushSiegeAdvance(uint32 durationMs)
+{
+    if (!m_SiegeMode)
+        return;
+    m_SiegeAdvanceUntil = getMSTime() + durationMs;
 }
 
 bool BotBGAI::IsAlive()
@@ -1868,7 +1901,11 @@ bool BotBGAI::IsNotSelect(Unit* pTarget)
         // Module Siege des Capitales : les bots d invasion n engagent les
         // joueurs reels que selon la cle siege_pvp. 0 = jamais, 1 = seulement
         // les joueurs deja flagges PvP, 2 = tout joueur de la faction adverse.
-        if (m_SiegeMode)
+        // La regle ne vaut que pour un joueur adverse. IsNotSelect() est aussi
+        // appele par IsNotMovement() avec le bot lui-meme en parametre : sans le
+        // test pPlayer != me, un bot non flagge PvP se declarait non selectionnable,
+        // ce qui appelait StopMoving() et figeait toute la horde sur place.
+        if (m_SiegeMode && pPlayer != me && pPlayer->GetTeamId() != me->GetTeamId())
         {
             uint32 const siegePvpMode = sCapitalSiegeMgr->GetPvpMode();
             if (siegePvpMode == 0)

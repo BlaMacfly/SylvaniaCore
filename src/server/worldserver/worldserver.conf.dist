@@ -4696,6 +4696,42 @@ siege_spawn_rate = 5
 siege_pvp = 1
 
 #
+#   siege_engage_range
+#        Description: Portee d engagement des bots d invasion, en yards. Hors siege
+#                     les bots cherchent une cible a 32 yards ; en ville cette portee
+#                     garantit qu il y a toujours un civil a portee, ce qui fige la
+#                     horde a son point d entree. Une valeur plus courte fait qu on
+#                     n engage que ce qui barre reellement le passage.
+#                     Borne a l intervalle 5 - 32.
+#        Default:     18
+#
+
+siege_engage_range = 18
+
+#
+#   siege_stall_timeout
+#        Description: Nombre de secondes sans franchir de point de la route avant
+#                     qu un bot lache sa cible pour reprendre sa marche. Garde-fou
+#                     contre l enlisement dans une zone qui produit des adversaires
+#                     en continu. 0 = desactive.
+#        Default:     45
+#
+
+siege_stall_timeout = 20
+
+#
+#   siege_advance_window
+#        Description: Duree en secondes de la marche forcee declenchee par
+#                     siege_stall_timeout. Pendant cette fenetre le bot ignore
+#                     les cibles et progresse, quitte a encaisser des coups.
+#                     Lacher simplement la cible ne suffit pas : l IA en
+#                     reselectionne une au tick suivant.
+#        Default:     12
+#
+
+siege_advance_window = 12
+
+#
 #   siege_boss_level / siege_boss_hp_mult
 #        Description: Ajustement applique au dirigeant pendant l evenement, en memoire
 #                     uniquement (jamais ecrit en base : un arret du serveur pendant le

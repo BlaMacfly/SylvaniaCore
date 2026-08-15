@@ -20,9 +20,16 @@
 #include "Config.h"
 #include "DatabaseEnv.h"
 #include "Log.h"
+#include "ObjectAccessor.h"
+#include "Player.h"
+#include "PlayerBotMgr.h"
+#include "PlayerBotSession.h"
+#include "PlayerBotSetting.h"
 #include "Random.h"
 #include "World.h"
+#include "WorldSession.h"
 
+#include <algorithm>
 #include <cstdarg>
 #include <cstdio>
 #include <ctime>
@@ -31,16 +38,21 @@ namespace
 {
     // Duree minimale passee au-dessus du seuil de charge avant l arret d urgence.
     constexpr uint32 SIEGE_OVERLOAD_GRACE_MS = 10 * IN_MILLISECONDS;
+
+    // Au-dela, une recrue qui n a pas rejoint la horde est abandonnee : compte
+    // bloque en chargement, personnage d une classe non geree, teleport perdu.
+    constexpr uint32 SIEGE_RECRUIT_TIMEOUT_SECONDS = 90;
 }
 
 CapitalSiegeMgr::CapitalSiegeMgr() :
     m_enabled(false), m_hourMin(18), m_hourMax(24), m_botCount(50), m_botLevel(110),
-    m_duration(HOUR), m_spawnRate(5), m_pvpMode(1), m_bossLevel(112), m_bossHealthMult(50),
+    m_duration(HOUR), m_spawnRate(5), m_pvpMode(1), m_engageRange(18.0f), m_stallTimeout(20), m_advanceWindow(12),
+    m_bossLevel(112), m_bossHealthMult(50),
     m_maxDiff(400), m_announce(true),
     m_lastEventDay(0), m_lastAttackerTeam(TEAM_NEUTRAL), m_scheduledDay(0),
     m_scheduledTime(0), m_scheduledTeam(TEAM_NEUTRAL),
     m_status(SIEGE_STATUS_IDLE), m_attackerTeam(TEAM_NEUTRAL), m_target(nullptr),
-    m_commander(nullptr),
+    m_commander(nullptr), m_totalRecruited(0),
     m_elapsed(0), m_updateTimer(0), m_overloadTimer(0),
     m_botsSpawned(0), m_botsLost(0), m_startTime(0)
 {
@@ -96,6 +108,9 @@ void CapitalSiegeMgr::LoadConfig()
     m_duration        = sConfigMgr->GetIntDefault("siege_duration", HOUR);
     m_spawnRate       = sConfigMgr->GetIntDefault("siege_spawn_rate", 5);
     m_pvpMode         = sConfigMgr->GetIntDefault("siege_pvp", 1);
+    m_engageRange     = sConfigMgr->GetFloatDefault("siege_engage_range", 18.0f);
+    m_stallTimeout    = sConfigMgr->GetIntDefault("siege_stall_timeout", 20);
+    m_advanceWindow   = sConfigMgr->GetIntDefault("siege_advance_window", 12);
     m_bossLevel       = sConfigMgr->GetIntDefault("siege_boss_level", 112);
     m_bossHealthMult  = sConfigMgr->GetIntDefault("siege_boss_hp_mult", 50);
     m_maxDiff         = sConfigMgr->GetIntDefault("siege_maxdiff", 400);
@@ -124,6 +139,14 @@ void CapitalSiegeMgr::LoadConfig()
         m_duration = MINUTE;
     if (m_pvpMode > 2)
         m_pvpMode = 1;
+    // Une portee trop courte rendrait les bots inoffensifs, une portee au-dela
+    // de BOTAI_SEARCH_RANGE (32 yards, BotAITool.h) les ferait courir apres
+    // toute la ville au lieu de suivre leur route.
+    if (m_engageRange < 5.0f || m_engageRange > 32.0f)
+        m_engageRange = 18.0f;
+    // Une fenetre de marche nulle rendrait le garde-fou anti-enlisement inutile.
+    if (!m_advanceWindow)
+        m_advanceWindow = 12;
 
     // Cible assaillie par l Alliance : la capitale de la Horde.
     m_targets[TEAM_ALLIANCE].mapId     = sConfigMgr->GetIntDefault("siege_horde_map", 1);
@@ -307,6 +330,10 @@ bool CapitalSiegeMgr::StartSiege(TeamId attacker, std::string const& trigger)
         return false;
     }
 
+    m_recruits.clear();
+    m_engagedAccounts.clear();
+    m_totalRecruited = 0;
+
     m_attackerTeam  = attacker;
     m_target        = target;
     m_commander     = commander;
@@ -347,13 +374,15 @@ void CapitalSiegeMgr::StopSiege(CapitalSiegeOutcome outcome)
     // pendant le nettoyage.
     if (m_commander)
     {
-        m_botsLost = m_commander->GetLostCount();
-        m_commander->DismissAll();
-        delete m_commander;
-        m_commander = nullptr;
+        m_botsSpawned = m_commander->GetBotCount();
+        m_botsLost    = m_commander->GetLostCount();
     }
 
-    // E7 : deconnexion des bots restants.
+    ReleaseAllBots();
+
+    delete m_commander;
+    m_commander = nullptr;
+
     // E8 : restauration des drapeaux du dirigeant et purge des aggro de ville.
 
     CloseHistoryRow(outcome);
@@ -386,20 +415,251 @@ void CapitalSiegeMgr::UpdateRunningSiege(uint32 diff)
         return;
     }
 
-    // E7 : suite du spawn etale tant que le quota n est pas atteint.
-
     if (!m_commander)
         return;
+
+    UpdateRecruitment();
 
     m_commander->Update(diff);
     m_botsSpawned = m_commander->GetBotCount();
     m_botsLost    = m_commander->GetLostCount();
 
-    // Le deploiement est termine des que la horde a recu ses premiers ordres.
-    if (m_status == SIEGE_STATUS_SPAWNING && m_commander->GetBotCount())
-        m_status = SIEGE_STATUS_ASSAULT;
-
     // E8 : detection de la mort du dirigeant, condition de victoire immediate.
+}
+
+/*******************************************************************************
+ * Recrutement de la horde d invasion
+ ******************************************************************************/
+
+bool CapitalSiegeMgr::IsSiegeCapableClass(uint8 playerClass)
+{
+    switch (playerClass)
+    {
+        case CLASS_WARRIOR:
+        case CLASS_PALADIN:
+        case CLASS_HUNTER:
+        case CLASS_ROGUE:
+        case CLASS_PRIEST:
+        case CLASS_SHAMAN:
+        case CLASS_MAGE:
+        case CLASS_WARLOCK:
+        case CLASS_DRUID:
+            return true;
+        default:
+            // Chevalier de la mort, moine et chasseur de demons n ont pas d IA
+            // de combat scriptee dans BotClassAI.
+            return false;
+    }
+}
+
+void CapitalSiegeMgr::UpdateRecruitment()
+{
+    ProcessPendingRecruits();
+
+    // Plafond sur le total engage depuis le debut, et non sur l effectif
+    // present : un bot tue n est pas remplace. Sans ce plafond, les pertes
+    // relanceraient le recrutement et l evenement produirait une vague sans fin.
+    uint32 const engaged = m_totalRecruited;
+    if (engaged >= m_botCount)
+    {
+        if (m_status == SIEGE_STATUS_SPAWNING && m_commander->GetBotCount())
+        {
+            m_status = SIEGE_STATUS_ASSAULT;
+            TC_LOG_INFO("server.worldserver", "Siege des Capitales: horde au complet, %u bots en marche sur %s.",
+                m_commander->GetBotCount(), m_target ? m_target->cityName : "?");
+        }
+        return;
+    }
+
+    // Etalement du deploiement : au plus siege_spawn_rate engagements par
+    // seconde. Connecter et re-equiper cinquante personnages sur un seul tick
+    // monde ferait decrocher le serveur.
+    uint32 remaining = std::min(m_spawnRate, m_botCount - engaged);
+    while (remaining--)
+    {
+        if (!RecruitOneBot())
+            break;  // plus aucun compte bot libre, on retentera au tick suivant
+    }
+}
+
+void CapitalSiegeMgr::ProcessPendingRecruits()
+{
+    for (std::list<SiegeRecruit>::iterator it = m_recruits.begin(); it != m_recruits.end(); )
+    {
+        ++it->waitSeconds;
+        if (it->waitSeconds > SIEGE_RECRUIT_TIMEOUT_SECONDS)
+        {
+            TC_LOG_ERROR("server.worldserver", "Siege des Capitales: recrue abandonnee, le compte bot %u n a pas rejoint la horde en %u s.",
+                it->accountId, SIEGE_RECRUIT_TIMEOUT_SECONDS);
+            m_engagedAccounts.erase(it->accountId);
+            it = m_recruits.erase(it);
+            continue;
+        }
+
+        WorldSession* session = sWorld->FindSession(it->accountId);
+        if (!session || !session->IsBotSession())
+        {
+            m_engagedAccounts.erase(it->accountId);
+            it = m_recruits.erase(it);
+            continue;
+        }
+
+        Player* player = session->GetPlayer();
+        if (!player || !player->IsInWorld() || session->PlayerLoading())
+        {
+            ++it;   // connexion ou changement de carte en cours
+            continue;
+        }
+
+        if (it->stage == 0)
+        {
+            // La remise a niveau doit etre terminee avant le depart, sinon le
+            // bot part au front avec son ancien equipement.
+            if (session->HasSchedules() || !player->IsSettingFinish())
+            {
+                ++it;
+                continue;
+            }
+
+            if (!IsSiegeCapableClass(player->getClass()))
+            {
+                m_engagedAccounts.erase(it->accountId);
+                it = m_recruits.erase(it);
+                continue;
+            }
+
+            PlayerBotMgr::SwitchPlayerBotAI(player, PlayerBotAIType::PBAIT_BG, true);
+
+            Position const staging = m_commander->GetStagingPosition();
+            player->TeleportTo(m_target->mapId, staging.GetPositionX(), staging.GetPositionY(), staging.GetPositionZ(), 0.0f);
+            it->stage = 1;
+            ++it;
+            continue;
+        }
+
+        // Arrive sur la carte de la capitale : le bot rejoint la horde.
+        if (player->GetMapId() != m_target->mapId)
+        {
+            ++it;
+            continue;
+        }
+
+        if (!m_commander->AddBot(player))
+        {
+            m_engagedAccounts.erase(it->accountId);
+            it = m_recruits.erase(it);
+            continue;
+        }
+
+        it = m_recruits.erase(it);
+    }
+}
+
+bool CapitalSiegeMgr::RecruitOneBot()
+{
+    SessionMap const& sessions = sWorld->GetAllSessions();
+
+    // Premier choix : un bot deja connecte et inoccupe. Pas de connexion a
+    // payer, et il est deja charge en memoire.
+    for (SessionMap::const_iterator it = sessions.begin(); it != sessions.end(); ++it)
+    {
+        if (!it->second->IsBotSession())
+            continue;
+        PlayerBotSession* session = dynamic_cast<PlayerBotSession*>(it->second);
+        if (!session || session->PlayerLoading() || session->HasSchedules() || session->IsAccountBotSession())
+            continue;
+        if (m_engagedAccounts.find(session->GetAccountId()) != m_engagedAccounts.end())
+            continue;
+
+        Player* player = session->GetPlayer();
+        if (!player || player->IsLoading() || !player->IsInWorld())
+            continue;
+        // On ne debauche pas un bot deja occupe ailleurs : un champ de bataille
+        // en cours reste prioritaire sur l evenement.
+        if (player->InBattleground() || player->InArena() || player->InBattlegroundQueue())
+            continue;
+        if (player->GetMap()->IsDungeon() || player->isUsingLfg())
+            continue;
+        if (!player->IsSettingFinish())
+            continue;
+        if (player->GetTeamId() != m_attackerTeam)
+            continue;
+        if (!IsSiegeCapableClass(player->getClass()))
+            continue;
+
+        uint32 const level = PlayerBotSetting::CheckMaxLevel(m_botLevel);
+        BotGlobleSchedule setting(BotGlobleScheduleType::BGSType_Settting, 0);
+        setting.parameter1 = level;
+        setting.parameter2 = level;
+        setting.parameter3 = 4;
+        session->PushScheduleToQueue(setting);
+
+        m_engagedAccounts.insert(session->GetAccountId());
+        m_recruits.push_back(SiegeRecruit(session->GetAccountId()));
+        ++m_totalRecruited;
+        return true;
+    }
+
+    // Second choix : une session bot hors ligne, qu on connecte sur un
+    // personnage de la faction attaquante.
+    for (SessionMap::const_iterator it = sessions.begin(); it != sessions.end(); ++it)
+    {
+        if (!it->second->IsBotSession())
+            continue;
+        PlayerBotSession* session = dynamic_cast<PlayerBotSession*>(it->second);
+        if (!session || session->PlayerLoading() || session->HasSchedules() || session->IsAccountBotSession())
+            continue;
+        if (m_engagedAccounts.find(session->GetAccountId()) != m_engagedAccounts.end())
+            continue;
+        if (session->GetPlayer())
+            continue;
+
+        uint32 const level = PlayerBotSetting::CheckMaxLevel(m_botLevel);
+
+        BotGlobleSchedule online(BotGlobleScheduleType::BGSType_Online, 0);
+        online.parameter1 = (m_attackerTeam == TEAM_ALLIANCE) ? 1 : 2;
+        session->PushScheduleToQueue(online);
+
+        BotGlobleSchedule setting(BotGlobleScheduleType::BGSType_Settting, 0);
+        setting.parameter1 = level;
+        setting.parameter2 = level;
+        setting.parameter3 = 4;
+        session->PushScheduleToQueue(setting);
+
+        m_engagedAccounts.insert(session->GetAccountId());
+        m_recruits.push_back(SiegeRecruit(session->GetAccountId()));
+        ++m_totalRecruited;
+        return true;
+    }
+
+    return false;
+}
+
+void CapitalSiegeMgr::ReleaseAllBots()
+{
+    if (m_commander)
+    {
+        // Deconnexion de tout l effectif, morts compris : c est le despawn
+        // exige en fin d evenement.
+        std::vector<ObjectGuid> const guids = m_commander->GetBotGuids();
+        m_commander->DismissAll();
+
+        for (ObjectGuid const& guid : guids)
+        {
+            if (Player* player = ObjectAccessor::FindPlayer(guid))
+            {
+                if (WorldSession* session = player->GetSession())
+                    sPlayerBotMgr->PlayerBotLogout(session->GetAccountId());
+            }
+        }
+    }
+
+    // Les recrues encore en chemin sont relachees sans avoir combattu.
+    for (std::list<SiegeRecruit>::const_iterator it = m_recruits.begin(); it != m_recruits.end(); ++it)
+        sPlayerBotMgr->PlayerBotLogout(it->accountId);
+
+    m_recruits.clear();
+    m_engagedAccounts.clear();
 }
 
 bool CapitalSiegeMgr::IsServerOverloaded(uint32 diff)
@@ -492,10 +752,11 @@ std::string CapitalSiegeMgr::GetStatusText() const
     }
 
     snprintf(buffer, sizeof(buffer),
-        "Siege en cours [%s]: %s attaque %s. Ecoule %u s, restant %u s, bots %u engages / %u vivants / %u perdus. Progression %u/%u.",
+        "Siege en cours [%s]: %s attaque %s. Ecoule %u s, restant %u s, bots %u engages / %u vivants / %u perdus / %u en route (objectif %u). Progression %u/%u.",
         statusName, GetTeamName(m_attackerTeam), m_target ? m_target->cityName : "?",
         GetElapsedSeconds(), GetRemainingSeconds(), m_botsSpawned,
         m_commander ? m_commander->GetAliveCount() : 0, m_botsLost,
+        uint32(m_recruits.size()), m_botCount,
         m_commander ? m_commander->GetVanguardProgress() + 1 : 0,
         m_commander ? m_commander->GetRouteSize() : 0);
     return buffer;

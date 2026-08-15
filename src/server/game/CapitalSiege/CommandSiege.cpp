@@ -18,6 +18,7 @@
 #include "CommandSiege.h"
 #include "BotAI.h"
 #include "BotBGAIMovement.h"
+#include "CapitalSiegeMgr.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -158,6 +159,15 @@ uint32 CommandSiege::GetAliveCount() const
     return count;
 }
 
+std::vector<ObjectGuid> CommandSiege::GetBotGuids() const
+{
+    std::vector<ObjectGuid> guids;
+    guids.reserve(m_bots.size());
+    for (std::map<ObjectGuid, SiegeBot>::const_iterator it = m_bots.begin(); it != m_bots.end(); ++it)
+        guids.push_back(it->first);
+    return guids;
+}
+
 uint32 CommandSiege::GetVanguardProgress() const
 {
     uint32 best = 0;
@@ -189,11 +199,20 @@ void CommandSiege::Update(uint32 diff)
     {
         Player* player = GetBot(it->first);
 
-        // Bot deconnecte ou sorti du monde : il quitte l effectif sans etre
-        // compte comme perte au combat.
-        if (!player || !player->IsInWorld())
+        // Bot deconnecte : il quitte l effectif sans etre compte comme perte
+        // au combat.
+        if (!player)
         {
             it = m_bots.erase(it);
+            continue;
+        }
+
+        // Hors du monde mais toujours connecte : changement de carte en cours.
+        // On le laisse dans l effectif, sinon un simple teleport le ferait
+        // sortir de la horde.
+        if (!player->IsInWorld())
+        {
+            ++it;
             continue;
         }
 
@@ -218,27 +237,38 @@ void CommandSiege::Update(uint32 diff)
 
 void CommandSiege::CommandBot(ObjectGuid guid, SiegeBot& state, Player* player)
 {
-    // Un bot au contact garde la main : la boucle de combat de BotBGAI a la
-    // priorite, sinon un ordre de deplacement lui ferait lacher sa cible en
-    // plein echange et la horde traverserait la ville sans jamais rien tuer.
-    if (player->IsInCombat())
-        return;
-
     if (state.waypointIndex >= m_route.size())
         state.waypointIndex = uint32(m_route.size()) - 1;
 
     AIWaypoint* target = m_route[state.waypointIndex];
     float const distance = player->GetDistance(target->posX, target->posY, target->posZ);
 
+    // L ordre de deplacement est reemis meme en plein combat : il ne fait que
+    // memoriser la destination. BotBGAI arbitre seul, il ne marche que lorsqu il
+    // n a plus d ennemi selectionne.
     if (distance < COMMANDSIEGE_WAYPOINT_REACH && state.waypointIndex + 1 < m_route.size())
     {
         ++state.waypointIndex;
+        state.stallSeconds = 0;
         target = m_route[state.waypointIndex];
     }
+    else
+        ++state.stallSeconds;
 
     BotBGAI* botAI = GetBotAI(guid);
     if (!botAI)
         return;
+
+    // Enlisement. Lacher la cible ne suffit pas : l IA en reselectionne une au
+    // tick suivant, puisqu une ville presente toujours un adversaire a portee.
+    // On ouvre donc une fenetre de marche forcee pendant laquelle le bot ignore
+    // les cibles et progresse, quitte a encaisser des coups.
+    uint32 const stallTimeout = sCapitalSiegeMgr->GetStallTimeout();
+    if (stallTimeout && state.stallSeconds >= stallTimeout)
+    {
+        state.stallSeconds = 0;
+        botAI->PushSiegeAdvance(sCapitalSiegeMgr->GetAdvanceWindow() * IN_MILLISECONDS);
+    }
 
     // Arrive au dernier point de la route, le bot bascule sur le dirigeant.
     // L ordre est marque prioritaire pour qu un ordre de deplacement residuel

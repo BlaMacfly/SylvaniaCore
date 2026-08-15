@@ -32,6 +32,8 @@
 #include "Common.h"
 #include "Position.h"
 #include "SharedDefines.h"
+#include <list>
+#include <set>
 #include <string>
 
 class CommandSiege;
@@ -110,6 +112,9 @@ public:
     uint32 GetBotLevel() const { return m_botLevel; }
     uint32 GetSpawnRate() const { return m_spawnRate; }
     uint32 GetPvpMode() const { return m_pvpMode; }
+    float GetEngageRange() const { return m_engageRange; }
+    uint32 GetStallTimeout() const { return m_stallTimeout; }
+    uint32 GetAdvanceWindow() const { return m_advanceWindow; }
     uint32 GetBossLevel() const { return m_bossLevel; }
     uint32 GetBossHealthMult() const { return m_bossHealthMult; }
 
@@ -125,6 +130,15 @@ private:
     // Deroulement ------------------------------------------------------------
     void UpdateRunningSiege(uint32 diff);
     bool IsServerOverloaded(uint32 diff);
+
+    // Recrutement ------------------------------------------------------------
+    void UpdateRecruitment();
+    void ProcessPendingRecruits();
+    bool RecruitOneBot();
+    void ReleaseAllBots();
+    // BotClassAI ne couvre que neuf classes : pas de chevalier de la mort, de
+    // moine ni de chasseur de demons dans la horde d invasion.
+    static bool IsSiegeCapableClass(uint8 playerClass);
 
     // Persistance ------------------------------------------------------------
     void SaveState();
@@ -147,6 +161,9 @@ private:
     uint32 m_duration;          // secondes
     uint32 m_spawnRate;         // bots par seconde
     uint32 m_pvpMode;           // 0 = PNJ seuls, 1 = joueurs flagges PvP, 2 = tous
+    float  m_engageRange;       // yards, portee d engagement en mode siege
+    uint32 m_stallTimeout;      // secondes sans progresser avant de lacher la cible
+    uint32 m_advanceWindow;     // secondes de marche forcee apres un enlisement
     uint32 m_bossLevel;
     uint32 m_bossHealthMult;
     uint32 m_maxDiff;           // ms, seuil d arret d urgence (0 = desactive)
@@ -161,10 +178,27 @@ private:
     TeamId m_scheduledTeam;
 
     // Etat volatil
+    // Bot en cours d enrolement : connexion, remise a niveau, puis trajet vers
+    // le point de rassemblement. Suivi par compte, car le personnage tire par
+    // la connexion n est pas connu a l avance.
+    struct SiegeRecruit
+    {
+        uint32 accountId;
+        uint32 stage;           // 0 = connexion et reglage, 1 = trajet
+        uint32 waitSeconds;
+
+        explicit SiegeRecruit(uint32 account) : accountId(account), stage(0), waitSeconds(0) { }
+    };
+
     CapitalSiegeStatus m_status;
     TeamId m_attackerTeam;
     CapitalSiegeTarget const* m_target;
     CommandSiege* m_commander;
+    std::list<SiegeRecruit> m_recruits;
+    std::set<uint32> m_engagedAccounts;
+    // Total engage depuis le debut de l evenement. Plafonne le recrutement :
+    // un bot tue n est jamais remplace, il n y a pas de vague infinie.
+    uint32 m_totalRecruited;
     uint32 m_elapsed;           // ms depuis le debut de l evenement
     uint32 m_updateTimer;       // ms, cadence le tick a la seconde
     uint32 m_overloadTimer;     // ms passees au-dessus du seuil de charge
