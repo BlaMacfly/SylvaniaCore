@@ -2,7 +2,7 @@
 -- Base : dc_world
 --
 -- Le Portail d Invocation de Mercenaire. Rang « boss » pour le contour dore,
--- faction 35 (amical avec tout le monde) et unit_flags 770 pour qu il ne puisse
+-- faction 35 (amical avec tout le monde), echelle 0.5 et unit_flags 770 pour qu il ne puisse
 -- ni etre attaque ni entrer en combat : c est un decor qui parle.
 --
 -- Le PNJ n est PAS spawne par ce fichier : il se pose en jeu avec
@@ -17,7 +17,7 @@ INSERT INTO `creature_template`
      `ArmorModifier`, `DamageModifier`, `ExperienceModifier`, `ScriptName`)
 VALUES
     (1000010, 74465, "Portail d'Invocation de Mercenaire", 'Compagnie franche de Sylvania', 0, 110, 110,
-     6, 35, 1, 1, 1.14286, 1,
+     6, 35, 1, 1, 1.14286, 0.5,
      3, 1, 770, 10, 1, 2,
      '', 0, 3, 1, 1,
      1, 1, 1, 'npc_mercenary_portal');
