@@ -4783,9 +4783,9 @@ siege_alliance_boss_faction = 0
 siege_alliance_boss_x = -8363.3
 siege_alliance_boss_y = 232.5
 siege_alliance_boss_z = 157.1
-siege_alliance_staging_x = -8904.1
-siege_alliance_staging_y = 692.4
-siege_alliance_staging_z = 99.5
+siege_alliance_staging_x = -9204.4
+siege_alliance_staging_y = 466.6
+siege_alliance_staging_z = 97.9
 
 #
 #        siege_alliance_route_first / siege_alliance_route_last
