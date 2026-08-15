@@ -4654,6 +4654,18 @@ pbotbg_idlelogout = 300
 pbotasl = 88
 
 #
+#    pbottitle
+#        Description: ID CharTitles du titre porte obligatoirement par tous les
+#                     playerbots, pour les distinguer des vrais joueurs.
+#                     600 = « Mercenaire », entree custom fournie par la table
+#                     `char_titles` de la base hotfix (MaskID 380).
+#        Default:     600 - (titre Mercenaire)
+#                     0   - (aucun titre force)
+
+pbottitle = 600
+
+
+#
 ####################################################################################################
 ###################################################################################################
 # MODULE SIEGE DES CAPITALES (SylvaniaCore)

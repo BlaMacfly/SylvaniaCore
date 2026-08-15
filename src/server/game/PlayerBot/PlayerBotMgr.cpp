@@ -1194,9 +1194,45 @@ void PlayerBotMgr::OnAccountBotDelete(ObjectGuid& guid, uint32 accountId)
     pInfo->RemoveCharacterByGUID(guid);
 }
 
+// Titre obligatoire des playerbots.
+// Tous les bots portent le titre custom « Mercenaire » (CharTitles 600 /
+// MaskID 380, pousse au client par la table hotfix `char_titles`), afin que
+// les vrais joueurs les distinguent d'un coup d'oeil. Le titre est accorde
+// puis selectionne a chaque connexion : un bot ne peut donc pas s'en defaire.
+void PlayerBotMgr::ApplyBotTitle(Player* pPlayer)
+{
+    if (!pPlayer)
+        return;
+
+    uint32 titleId = uint32(sConfigMgr->GetIntDefault("pbottitle", 600));
+    if (!titleId)
+        return;
+
+    CharTitlesEntry const* title = sCharTitlesStore.LookupEntry(titleId);
+    if (!title)
+    {
+        static bool s_titleWarned = false;
+        if (!s_titleWarned)
+        {
+            s_titleWarned = true;
+            TC_LOG_ERROR("server.loading", "PlayerBotMgr: titre de bot %u absent de CharTitles - verifier la table `char_titles` de la base hotfix", titleId);
+        }
+        return;
+    }
+
+    if (!pPlayer->HasTitle(title))
+        pPlayer->SetTitle(title);
+
+    if (pPlayer->GetUInt32Value(PLAYER_CHOSEN_TITLE) != uint32(title->MaskID))
+        pPlayer->SetUInt32Value(PLAYER_CHOSEN_TITLE, uint32(title->MaskID));
+}
+
 void PlayerBotMgr::OnPlayerBotLogin(WorldSession* pSession, Player* pPlayer)
 {
     ++m_BotOnlineCount;
+
+    ApplyBotTitle(pPlayer);
+
     Group* pGroup = pPlayer->GetGroup();
     if (pGroup)
     {

@@ -325,6 +325,7 @@ public:
     void OnAccountBotCreate(ObjectGuid const& guid, uint32 accountId, std::string const& name, uint8 gender, uint8 race, uint8 playerClass, uint8 level);
     void OnAccountBotDelete(ObjectGuid& guid, uint32 accountId);
     void OnPlayerBotLogin(WorldSession* pSession, Player* pPlayer);
+    void ApplyBotTitle(Player* pPlayer);
     void OnPlayerBotLogout(WorldSession* pSession);
     void OnPlayerBotLeaveOriginalGroup(Player* pPlayer);
     void LoginGroupBotByPlayer(Player* pPlayer);
