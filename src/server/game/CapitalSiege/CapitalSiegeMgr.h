@@ -103,6 +103,9 @@ public:
     bool IsEnabled() const { return m_enabled; }
     CapitalSiegeStatus GetStatus() const { return m_status; }
     bool IsRunning() const { return m_status != SIEGE_STATUS_IDLE; }
+    // Un compte bot deja enrole dans l assaut ne doit pas etre debauche par
+    // un autre module (mercenaires).
+    bool IsAccountEngaged(uint32 accountId) const { return m_engagedAccounts.find(accountId) != m_engagedAccounts.end(); }
     TeamId GetAttackerTeam() const { return m_attackerTeam; }
     TeamId GetScheduledTeam() const { return m_scheduledTeam; }
     CapitalSiegeTarget const* GetTarget() const { return m_target; }
