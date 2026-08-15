@@ -4751,7 +4751,7 @@ siege_engage_range = 10
 #        Default:     40
 #
 
-siege_boss_engage_range = 40
+siege_boss_engage_range = 60
 
 #
 #   siege_stall_timeout

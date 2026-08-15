@@ -1903,6 +1903,18 @@ void PlayerBotSetting::RemoveSpells()
 void PlayerBotSetting::LearnSpells()
 {
 	uint8 level = m_Player->getLevel();
+
+	// SylvaniaCore : en 7.3.5 le gros du kit de classe ne s apprend plus chez un
+	// dresseur mais s octroie a la montee de niveau et via la specialisation. Se
+	// limiter aux donnees de dresseur laissait les bots re-leveles sans sorts
+	// d attaque : constate en jeu sur les demonistes 110 du siege, deux sorts de
+	// degats sur la duree sur cinq et aucun sort de degats directs sur quatre.
+	// Concerne aussi le remplissage des champs de bataille, qui re-level de la
+	// meme facon.
+	m_Player->LearnDefaultSkills();
+	m_Player->LearnSpecializationSpells();
+	m_Player->UpdateSkillsToMaxSkillsForLevel();
+
 	const TrainerSpellData* spellData = sObjectMgr->GetNpcTrainerSpells(classesTrainersGUID[m_Player->getClass()][(m_Player->GetTeamId() == TeamId::TEAM_ALLIANCE) ? 0 : 1]);
 	if (!spellData)
 		return;

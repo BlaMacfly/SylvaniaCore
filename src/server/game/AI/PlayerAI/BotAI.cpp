@@ -1766,11 +1766,48 @@ void BotBGAI::UpdateBotAI(uint32 diff)
         // mais passent leur temps sur sa garde rapprochee.
         if (m_SiegeMode && !m_SiegeTarget.IsEmpty())
         {
-            if (Unit* siegeBoss = ObjectAccessor::GetUnit(*me, m_SiegeTarget))
+            Unit* siegeBoss = ObjectAccessor::GetUnit(*me, m_SiegeTarget);
+            if (siegeBoss)
             {
-                if (siegeBoss->IsAlive() && me->IsValidAttackTarget(siegeBoss)
-                    && me->GetDistance(siegeBoss) < sCapitalSiegeMgr->GetBossEngageRange())
+                float const bossDistance = me->GetDistance(siegeBoss);
+                bool const bossAttackable = me->IsValidAttackTarget(siegeBoss);
+                bool const bossInRange = bossDistance < sCapitalSiegeMgr->GetBossEngageRange();
+
+                // Instrumentation temporaire du blocage sur le dirigeant : il ne
+                // perd aucun point de vie alors que des bots meurent a trois
+                // yards de lui, et ni sa faction, ni ses drapeaux, ni son
+                // creature_template ne l expliquent.
+                // Sonde declenchee des que le dirigeant est designe (60 yards),
+                // et non seulement au contact : IsValidAttackTarget ne depend pas
+                // de la distance, et la horde n arrive pas toujours jusqu a lui.
+                {
+                    static uint32 s_siegeBossLog = 0;
+                    if (++s_siegeBossLog % 25 == 1)
+                    {
+                        Unit* victim = me->GetVictim();
+                        TC_LOG_ERROR("server.worldserver",
+                            "SIEGE-DBG: %s dist=%.1f attaquable=%u cible=%s victime=%s flags=0x%X | evade=%u visible=%u memephase=%u react=%d pv=%s",
+                            me->GetName().c_str(), bossDistance, uint32(bossAttackable),
+                            (me->GetTarget() == m_SiegeTarget) ? "dirigeant" : "autre",
+                            victim ? victim->GetName().c_str() : "aucune",
+                            siegeBoss->GetUInt32Value(UNIT_FIELD_FLAGS),
+                            uint32(siegeBoss->ToCreature() ? siegeBoss->ToCreature()->IsInEvadeMode() : 0),
+                            uint32(siegeBoss->IsVisible()),
+                            uint32(me->InSamePhase(siegeBoss->GetPhaseShift())),
+                            int32(siegeBoss->ToCreature() ? siegeBoss->ToCreature()->GetReactState() : -1),
+                            std::to_string(siegeBoss->GetHealth()).c_str());
+                    }
+                }
+                (void)bossInRange;
+
+                if (siegeBoss->IsAlive() && bossAttackable && bossInRange)
                     me->SetSelection(m_SiegeTarget);
+            }
+            else
+            {
+                static uint32 s_siegeBossMissing = 0;
+                if (++s_siegeBossMissing % 50 == 1)
+                    TC_LOG_ERROR("server.worldserver", "SIEGE-DBG: %s ne trouve pas le dirigeant en memoire.", me->GetName().c_str());
             }
         }
 
@@ -1784,7 +1821,13 @@ void BotBGAI::UpdateBotAI(uint32 diff)
         else if (pSelect && !IsInvincible(pSelect) && !HasAuraMechanic(pSelect, Mechanics::MECHANIC_POLYMORPH))
         {
             float distance = me->GetDistance(pSelect->GetPosition());
-            if (distance < searchRange || inArena)
+            // Module Siege des Capitales : le dirigeant echappe au seuil
+            // d abandon de cible. Avec une portee d engagement courte, l IA le
+            // lachait des 17 yards ( distance > searchRange * 1.7 ) et la
+            // selection ne tenait pas une seule tick, meme a 28 yards de lui.
+            float const engageDistance = (m_SiegeMode && !m_SiegeTarget.IsEmpty() && pSelect->GetGUID() == m_SiegeTarget)
+                ? sCapitalSiegeMgr->GetBossEngageRange() : searchRange;
+            if (distance < engageDistance || inArena)
             {
                 if (m_CurrentTargetTick < BOTAI_MAXTARGET_TICKTIME || inArena)
                 {
@@ -1805,7 +1848,7 @@ void BotBGAI::UpdateBotAI(uint32 diff)
                     me->SetSelection(ObjectGuid::Empty);
                 }
             }
-            else if (distance > searchRange * 1.7f || me->GetMap() != pSelect->GetMap())
+            else if (distance > engageDistance * 1.7f || me->GetMap() != pSelect->GetMap())
             {
                 me->SetSelection(ObjectGuid::Empty);
             }
