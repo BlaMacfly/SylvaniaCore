@@ -44,6 +44,7 @@
 #include "CellImpl.h"
 #include "GridNotifiersImpl.h"
 #include "CapitalSiegeMgr.h"
+#include "ObjectAccessor.h"
 
 //#define THREAD_PATHFINDING
 #ifdef _DEBUG
@@ -138,7 +139,8 @@ BotBGAI::BotBGAI(Player* player) :
     m_InitRndPos(),
     m_lastClearCtrlTick(0),
     m_SiegeMode(false),
-    m_SiegeAdvanceUntil(0)
+    m_SiegeAdvanceUntil(0),
+    m_SiegeTarget(ObjectGuid::Empty)
 {
     m_FilterCreatureEntrys.clear();
     m_FilterCreatureEntrys.insert(14848);
@@ -1759,6 +1761,19 @@ void BotBGAI::UpdateBotAI(uint32 diff)
             m_SiegeAdvanceUntil = 0;
         }
 
+        // Module Siege des Capitales : le dirigeant prime sur tout le reste des
+        // qu il est a portee. Sans cette priorite les bots atteignent le trone
+        // mais passent leur temps sur sa garde rapprochee.
+        if (m_SiegeMode && !m_SiegeTarget.IsEmpty())
+        {
+            if (Unit* siegeBoss = ObjectAccessor::GetUnit(*me, m_SiegeTarget))
+            {
+                if (siegeBoss->IsAlive() && me->IsValidAttackTarget(siegeBoss)
+                    && me->GetDistance(siegeBoss) < searchRange * 2.0f)
+                    me->SetSelection(m_SiegeTarget);
+            }
+        }
+
         Unit* pSelect = GetBotAIValidSelectedUnit();
         if (pSelect && TargetIsStealth(pSelect->ToPlayer()))
         {
@@ -1859,6 +1874,7 @@ void BotBGAI::SetSiegeMode(bool enable)
 {
     m_SiegeMode = enable;
     m_SiegeAdvanceUntil = 0;
+    m_SiegeTarget = ObjectGuid::Empty;
     if (enable)
         m_AIBGStateType = BotAIBGState::AIBGState_Start;
 }

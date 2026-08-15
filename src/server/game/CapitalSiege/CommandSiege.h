@@ -47,6 +47,10 @@ class Player;
 // Distance a laquelle un point de la route est considere atteint.
 #define COMMANDSIEGE_WAYPOINT_REACH 12.0f
 
+// Distance a l objectif final au-dela de laquelle le dirigeant devient la cible
+// prioritaire, sans attendre le franchissement du dernier point de la route.
+#define COMMANDSIEGE_BOSS_RANGE 60.0f
+
 class TC_GAME_API CommandSiege
 {
 public:

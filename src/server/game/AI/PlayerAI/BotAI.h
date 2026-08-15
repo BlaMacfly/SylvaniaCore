@@ -75,6 +75,9 @@ public:
 	// Fenetre de marche forcee : pendant cette duree le bot ignore les
 	// cibles et avance vers son objectif.
 	void PushSiegeAdvance(uint32 durationMs);
+	// Cible prioritaire du siege : le dirigeant. AcceptCommand() ne pilote que
+	// le deplacement, la cible d attaque reste choisie par SearchEnemy().
+	void SetSiegeTarget(ObjectGuid guid) { m_SiegeTarget = guid; }
 	void PushFinishQueue(PathParameter* pathParam);
 	bool CanUseBGObject();
 	NearObjectList SearchGameObject(float range);
@@ -223,6 +226,7 @@ protected:
 	uint32 m_lastClearCtrlTick;
 	bool m_SiegeMode;
 	uint32 m_SiegeAdvanceUntil;
+	ObjectGuid m_SiegeTarget;
 };
 
 #endif // !_BOT_AI_H_

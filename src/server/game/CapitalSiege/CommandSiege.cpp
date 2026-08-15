@@ -107,6 +107,14 @@ bool CommandSiege::AddBot(Player* player)
     if (m_bots.find(player->GetGUID()) != m_bots.end())
         return false;
 
+    // Dernier filet : jamais un bot de la faction assiegee dans la horde
+    // d invasion. Le tirage de personnage du core peut se tromper de faction.
+    if (player->GetTeamId() != m_attackerTeam)
+    {
+        TC_LOG_ERROR("server.worldserver", "Siege des Capitales: %s n est pas de la faction attaquante, enrolement refuse.", player->GetName().c_str());
+        return false;
+    }
+
     BotBGAI* botAI = dynamic_cast<BotBGAI*>(player->GetAI());
     if (!botAI)
     {
@@ -270,14 +278,26 @@ void CommandSiege::CommandBot(ObjectGuid guid, SiegeBot& state, Player* player)
         botAI->PushSiegeAdvance(sCapitalSiegeMgr->GetAdvanceWindow() * IN_MILLISECONDS);
     }
 
-    // Arrive au dernier point de la route, le bot bascule sur le dirigeant.
-    // L ordre est marque prioritaire pour qu un ordre de deplacement residuel
-    // ne le detourne pas de sa cible.
-    if (state.waypointIndex + 1 == m_route.size() && !m_bossGuid.IsEmpty())
+    // Le dirigeant prime des qu il est a portee, sans attendre que le bot ait
+    // formellement franchi tous les points de la route : les derniers metres se
+    // font sous le feu de la garde et l index progresse mal. L ordre est marque
+    // prioritaire pour qu un ordre de deplacement residuel ne le detourne pas.
+    if (!m_bossGuid.IsEmpty())
     {
-        botAI->GetAIMovement()->AcceptCommand(m_bossGuid, true);
-        return;
+        bool const lastLeg = (state.waypointIndex + 1 == m_route.size());
+        if (lastLeg || player->GetDistance(GetObjectivePosition()) < COMMANDSIEGE_BOSS_RANGE)
+        {
+            // Deux ordres distincts : l un pour marcher jusqu a lui, l autre
+            // pour le prendre pour cible. AcceptCommand ne fait que le premier.
+            botAI->GetAIMovement()->AcceptCommand(m_bossGuid, true);
+            botAI->SetSiegeTarget(m_bossGuid);
+            return;
+        }
     }
+
+    // Hors de portee de l objectif, aucune cible prioritaire : le bot combat ce
+    // qu il rencontre.
+    botAI->SetSiegeTarget(ObjectGuid::Empty);
 
     botAI->GetAIMovement()->AcceptCommand(target);
 }

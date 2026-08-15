@@ -30,6 +30,7 @@
 #define __CAPITALSIEGEMGR_H__
 
 #include "Common.h"
+#include "ObjectGuid.h"
 #include "Position.h"
 #include "SharedDefines.h"
 #include <list>
@@ -37,6 +38,7 @@
 #include <string>
 
 class CommandSiege;
+class Creature;
 class Player;
 
 enum CapitalSiegeStatus
@@ -67,6 +69,10 @@ struct CapitalSiegeTarget
     Position stagingPos;        // point de rassemblement de la horde d invasion
     uint32 routeFirst;          // premiere entree aiwaypoints de la route d assaut
     uint32 routeLast;           // derniere entree aiwaypoints de la route d assaut
+    uint32 bossSpawnId;         // creature.guid du dirigeant, pour le retrouver sur la carte
+    uint32 bossLevel;           // niveau impose pendant l evenement, 0 = ne pas toucher
+    uint64 bossHealth;          // PV imposes pendant l evenement, 0 = ne pas toucher
+    uint32 bossFaction;         // faction imposee pendant l evenement, 0 = ne pas toucher
     char const* cityName;
 };
 
@@ -115,8 +121,6 @@ public:
     float GetEngageRange() const { return m_engageRange; }
     uint32 GetStallTimeout() const { return m_stallTimeout; }
     uint32 GetAdvanceWindow() const { return m_advanceWindow; }
-    uint32 GetBossLevel() const { return m_bossLevel; }
-    uint32 GetBossHealthMult() const { return m_bossHealthMult; }
 
     static char const* GetTeamName(TeamId team);
     static char const* GetOutcomeName(CapitalSiegeOutcome outcome);
@@ -130,6 +134,12 @@ private:
     // Deroulement ------------------------------------------------------------
     void UpdateRunningSiege(uint32 diff);
     bool IsServerOverloaded(uint32 diff);
+
+    // Dirigeant --------------------------------------------------------------
+    Creature* FindBoss() const;
+    void AwakenBoss();
+    void RestoreBoss();
+    bool IsBossDead() const;
 
     // Recrutement ------------------------------------------------------------
     void UpdateRecruitment();
@@ -164,8 +174,6 @@ private:
     float  m_engageRange;       // yards, portee d engagement en mode siege
     uint32 m_stallTimeout;      // secondes sans progresser avant de lacher la cible
     uint32 m_advanceWindow;     // secondes de marche forcee apres un enlisement
-    uint32 m_bossLevel;
-    uint32 m_bossHealthMult;
     uint32 m_maxDiff;           // ms, seuil d arret d urgence (0 = desactive)
     bool   m_announce;
     CapitalSiegeTarget m_targets[2];    // indexe par TeamId de l attaquant
@@ -194,6 +202,17 @@ private:
     TeamId m_attackerTeam;
     CapitalSiegeTarget const* m_target;
     CommandSiege* m_commander;
+    // Dirigeant : etat d origine, restaure en fin d evenement. Rien n est
+    // ecrit en base, un arret du worldserver laisse donc la creature intacte.
+    ObjectGuid m_bossGuid;
+    uint32 m_bossClearedFlags;
+    uint32 m_bossOriginalLevel;
+    uint32 m_bossOriginalFaction;
+    uint64 m_bossOriginalMaxHealth;
+    bool   m_bossAwakened;
+    bool   m_bossLookupFailed;
+    uint32 m_bossRetryTimer;
+
     std::list<SiegeRecruit> m_recruits;
     std::set<uint32> m_engagedAccounts;
     // Total engage depuis le debut de l evenement. Plafonne le recrutement :

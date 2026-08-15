@@ -4731,17 +4731,6 @@ siege_stall_timeout = 20
 
 siege_advance_window = 12
 
-#
-#   siege_boss_level / siege_boss_hp_mult
-#        Description: Ajustement applique au dirigeant pendant l evenement, en memoire
-#                     uniquement (jamais ecrit en base : un arret du serveur pendant le
-#                     siege laisse la creature intacte). Le multiplicateur de points de
-#                     vie est un pourcentage applique aux PV de base.
-#        Default:     112 / 50 - niveau 112, PV x50
-#
-
-siege_boss_level = 112
-siege_boss_hp_mult = 50
 
 #
 #   siege_maxdiff
@@ -4773,6 +4762,24 @@ siege_announce = 1
 
 siege_alliance_map = 0
 siege_alliance_boss_entry = 107574
+#        siege_alliance_boss_spawn : creature.guid du dirigeant, sert a le
+#        retrouver sur la carte. 20555650 = Anduin Wrynn dans le donjon.
+siege_alliance_boss_spawn = 20555650
+
+#        siege_alliance_boss_level  : niveau impose au dirigeant pendant l evenement.
+#        siege_alliance_boss_health : points de vie imposes.
+#        0 = ne pas toucher. Reglage absolu et par ville : un multiplicateur
+#        serait ingerable, Anduin depasse le milliard de points de vie quand
+#        Vol jin, reste au niveau 83, en a quelques milliers.
+siege_alliance_boss_level = 0
+siege_alliance_boss_health = 0
+#        siege_alliance_boss_faction : faction imposee au dirigeant pendant l
+#        evenement, 0 = ne pas toucher. Indispensable cote Alliance : Anduin ne
+#        porte aucun drapeau bloquant mais sa faction d origine (1733) interdit
+#        l attaque. Verifie en jeu, quinze bots au contact pendant dix minutes
+#        ne lui retiraient pas un point de vie. 12 = Stormwind, la faction des
+#        civils de la ville, hostile a la Horde et attaquable.
+siege_alliance_boss_faction = 0
 siege_alliance_boss_x = -8363.3
 siege_alliance_boss_y = 232.5
 siege_alliance_boss_z = 157.1
@@ -4797,6 +4804,23 @@ siege_alliance_route_last = 1099
 
 siege_horde_map = 1
 siege_horde_boss_entry = 42283
+#        siege_horde_boss_spawn : 110864 = Vol'jin dans l enclos de Grommash.
+siege_horde_boss_spawn = 110864
+
+#        siege_horde_boss_level  : niveau impose au dirigeant pendant l evenement.
+#        siege_horde_boss_health : points de vie imposes.
+#        0 = ne pas toucher. Reglage absolu et par ville : un multiplicateur
+#        serait ingerable, Anduin depasse le milliard de points de vie quand
+#        Vol jin, reste au niveau 83, en a quelques milliers.
+siege_horde_boss_level = 110
+siege_horde_boss_health = 0
+#        siege_horde_boss_faction : faction imposee au dirigeant pendant l
+#        evenement, 0 = ne pas toucher. Indispensable cote Alliance : Anduin ne
+#        porte aucun drapeau bloquant mais sa faction d origine (1733) interdit
+#        l attaque. Verifie en jeu, quinze bots au contact pendant dix minutes
+#        ne lui retiraient pas un point de vie. 12 = Stormwind, la faction des
+#        civils de la ville, hostile a la Horde et attaquable.
+siege_horde_boss_faction = 0
 siege_horde_boss_x = 1924.4
 siege_horde_boss_y = -4144.1
 siege_horde_boss_z = 40.6

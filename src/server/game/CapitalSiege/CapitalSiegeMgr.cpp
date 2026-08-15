@@ -20,6 +20,9 @@
 #include "Config.h"
 #include "DatabaseEnv.h"
 #include "Log.h"
+#include "Creature.h"
+#include "Map.h"
+#include "MapManager.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "PlayerBotMgr.h"
@@ -42,24 +45,29 @@ namespace
     // Au-dela, une recrue qui n a pas rejoint la horde est abandonnee : compte
     // bloque en chargement, personnage d une classe non geree, teleport perdu.
     constexpr uint32 SIEGE_RECRUIT_TIMEOUT_SECONDS = 90;
+
+    // Intervalle entre deux tentatives d eveil du dirigeant.
+    constexpr uint32 SIEGE_BOSS_RETRY_MS = 5 * IN_MILLISECONDS;
 }
 
 CapitalSiegeMgr::CapitalSiegeMgr() :
     m_enabled(false), m_hourMin(18), m_hourMax(24), m_botCount(50), m_botLevel(110),
     m_duration(HOUR), m_spawnRate(5), m_pvpMode(1), m_engageRange(18.0f), m_stallTimeout(20), m_advanceWindow(12),
-    m_bossLevel(112), m_bossHealthMult(50),
     m_maxDiff(400), m_announce(true),
     m_lastEventDay(0), m_lastAttackerTeam(TEAM_NEUTRAL), m_scheduledDay(0),
     m_scheduledTime(0), m_scheduledTeam(TEAM_NEUTRAL),
     m_status(SIEGE_STATUS_IDLE), m_attackerTeam(TEAM_NEUTRAL), m_target(nullptr),
-    m_commander(nullptr), m_totalRecruited(0),
+    m_commander(nullptr),
+    m_bossGuid(ObjectGuid::Empty), m_bossClearedFlags(0), m_bossOriginalLevel(0), m_bossOriginalFaction(0),
+    m_bossOriginalMaxHealth(0), m_bossAwakened(false), m_bossLookupFailed(false),
+    m_bossRetryTimer(0), m_totalRecruited(0),
     m_elapsed(0), m_updateTimer(0), m_overloadTimer(0),
     m_botsSpawned(0), m_botsLost(0), m_startTime(0)
 {
     // Les valeurs sont ecrasees par LoadConfig(). Elles ne servent que si le
     // fichier de configuration est muet sur une cle.
-    m_targets[TEAM_ALLIANCE] = { 1, 42283, Position(), Position(), 2000, 2099, "Orgrimmar" };
-    m_targets[TEAM_HORDE]    = { 0, 107574, Position(), Position(), 1000, 1099, "Hurlevent" };
+    m_targets[TEAM_ALLIANCE] = { 1, 42283, Position(), Position(), 2000, 2099, 110864, 110, 0, 0, "Orgrimmar" };
+    m_targets[TEAM_HORDE]    = { 0, 107574, Position(), Position(), 1000, 1099, 20555650, 0, 0, 0, "Hurlevent" };
 }
 
 CapitalSiegeMgr::~CapitalSiegeMgr() { }
@@ -111,8 +119,6 @@ void CapitalSiegeMgr::LoadConfig()
     m_engageRange     = sConfigMgr->GetFloatDefault("siege_engage_range", 18.0f);
     m_stallTimeout    = sConfigMgr->GetIntDefault("siege_stall_timeout", 20);
     m_advanceWindow   = sConfigMgr->GetIntDefault("siege_advance_window", 12);
-    m_bossLevel       = sConfigMgr->GetIntDefault("siege_boss_level", 112);
-    m_bossHealthMult  = sConfigMgr->GetIntDefault("siege_boss_hp_mult", 50);
     m_maxDiff         = sConfigMgr->GetIntDefault("siege_maxdiff", 400);
     m_announce        = sConfigMgr->GetBoolDefault("siege_announce", true);
 
@@ -161,6 +167,10 @@ void CapitalSiegeMgr::LoadConfig()
         sConfigMgr->GetFloatDefault("siege_horde_staging_z", 16.0f));
     m_targets[TEAM_ALLIANCE].routeFirst = sConfigMgr->GetIntDefault("siege_horde_route_first", 2000);
     m_targets[TEAM_ALLIANCE].routeLast  = sConfigMgr->GetIntDefault("siege_horde_route_last", 2099);
+    m_targets[TEAM_ALLIANCE].bossSpawnId = sConfigMgr->GetIntDefault("siege_horde_boss_spawn", 110864);
+    m_targets[TEAM_ALLIANCE].bossLevel   = sConfigMgr->GetIntDefault("siege_horde_boss_level", 110);
+    m_targets[TEAM_ALLIANCE].bossHealth  = uint64(sConfigMgr->GetIntDefault("siege_horde_boss_health", 0));
+    m_targets[TEAM_ALLIANCE].bossFaction = sConfigMgr->GetIntDefault("siege_horde_boss_faction", 0);
     m_targets[TEAM_ALLIANCE].cityName = "Orgrimmar";
 
     // Cible assaillie par la Horde : la capitale de l Alliance.
@@ -176,6 +186,10 @@ void CapitalSiegeMgr::LoadConfig()
         sConfigMgr->GetFloatDefault("siege_alliance_staging_z", 99.5f));
     m_targets[TEAM_HORDE].routeFirst = sConfigMgr->GetIntDefault("siege_alliance_route_first", 1000);
     m_targets[TEAM_HORDE].routeLast  = sConfigMgr->GetIntDefault("siege_alliance_route_last", 1099);
+    m_targets[TEAM_HORDE].bossSpawnId = sConfigMgr->GetIntDefault("siege_alliance_boss_spawn", 20555650);
+    m_targets[TEAM_HORDE].bossLevel   = sConfigMgr->GetIntDefault("siege_alliance_boss_level", 0);
+    m_targets[TEAM_HORDE].bossHealth  = uint64(sConfigMgr->GetIntDefault("siege_alliance_boss_health", 0));
+    m_targets[TEAM_HORDE].bossFaction = sConfigMgr->GetIntDefault("siege_alliance_boss_faction", 0);
     m_targets[TEAM_HORDE].cityName = "Hurlevent";
 
     TC_LOG_INFO("server.loading", "Siege des Capitales: %s (plage %02uh-%02uh, %u bots niveau %u, duree max %u min).",
@@ -333,6 +347,8 @@ bool CapitalSiegeMgr::StartSiege(TeamId attacker, std::string const& trigger)
     m_recruits.clear();
     m_engagedAccounts.clear();
     m_totalRecruited = 0;
+    m_bossLookupFailed = false;
+    m_bossRetryTimer = 0;
 
     m_attackerTeam  = attacker;
     m_target        = target;
@@ -350,6 +366,8 @@ bool CapitalSiegeMgr::StartSiege(TeamId attacker, std::string const& trigger)
     m_lastAttackerTeam = attacker;
     SaveState();
     OpenHistoryRow(trigger);
+
+    AwakenBoss();
 
     TC_LOG_INFO("server.worldserver", "Siege des Capitales: debut de l assaut %s sur %s (declencheur: %s).",
         GetTeamName(attacker), m_target->cityName, trigger.c_str());
@@ -383,7 +401,8 @@ void CapitalSiegeMgr::StopSiege(CapitalSiegeOutcome outcome)
     delete m_commander;
     m_commander = nullptr;
 
-    // E8 : restauration des drapeaux du dirigeant et purge des aggro de ville.
+    // Le dirigeant retrouve ses drapeaux, son niveau et ses points de vie.
+    RestoreBoss();
 
     CloseHistoryRow(outcome);
 
@@ -424,7 +443,171 @@ void CapitalSiegeMgr::UpdateRunningSiege(uint32 diff)
     m_botsSpawned = m_commander->GetBotCount();
     m_botsLost    = m_commander->GetLostCount();
 
-    // E8 : detection de la mort du dirigeant, condition de victoire immediate.
+    // Le dirigeant peut n avoir pas ete trouve au declenchement (grille non
+    // chargee, respawn en cours). On retente tant qu il manque a l appel.
+    if (!m_bossAwakened)
+    {
+        m_bossRetryTimer += diff;
+        if (m_bossRetryTimer >= SIEGE_BOSS_RETRY_MS)
+        {
+            m_bossRetryTimer = 0;
+            AwakenBoss();
+        }
+    }
+
+    // Victoire immediate : le dirigeant est tombe.
+    if (IsBossDead())
+    {
+        StopSiege(SIEGE_OUTCOME_VICTORY);
+        return;
+    }
+}
+
+/*******************************************************************************
+ * Dirigeant de la capitale
+ ******************************************************************************/
+
+Creature* CapitalSiegeMgr::FindBoss() const
+{
+    if (!m_target || !m_target->bossSpawnId)
+        return nullptr;
+
+    Map* map = sMapMgr->FindMap(m_target->mapId, 0);
+    if (!map)
+        return nullptr;
+
+    // Sans joueur dans la salle du trone la grille n est pas chargee et la
+    // creature n existe pas encore en memoire. On la fait charger.
+    if (!map->IsGridLoaded(m_target->bossPos.GetPositionX(), m_target->bossPos.GetPositionY()))
+        map->LoadGrid(m_target->bossPos.GetPositionX(), m_target->bossPos.GetPositionY());
+
+    auto bounds = map->GetCreatureBySpawnIdStore().equal_range(m_target->bossSpawnId);
+    if (bounds.first == bounds.second)
+        return nullptr;
+
+    return bounds.first->second;
+}
+
+void CapitalSiegeMgr::AwakenBoss()
+{
+    m_bossAwakened          = false;
+    m_bossGuid              = ObjectGuid::Empty;
+    m_bossClearedFlags      = 0;
+    m_bossOriginalLevel     = 0;
+    m_bossOriginalFaction   = 0;
+    m_bossOriginalMaxHealth = 0;
+
+    Creature* boss = FindBoss();
+    if (!boss)
+    {
+        if (!m_bossLookupFailed)
+        {
+            m_bossLookupFailed = true;
+            TC_LOG_ERROR("server.worldserver", "Siege des Capitales: dirigeant introuvable (spawn %u sur la carte %u), nouvelle tentative dans %u s.",
+                m_target->bossSpawnId, m_target->mapId, SIEGE_BOSS_RETRY_MS / IN_MILLISECONDS);
+        }
+        return;
+    }
+
+    // Tout ce qui suit est applique en memoire uniquement. Rien n est ecrit en
+    // base : si le worldserver s arrete en plein siege, la creature est
+    // rechargee telle quelle depuis creature_template au redemarrage.
+    uint32 const blockingFlags = UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC
+        | UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_PACIFIED;
+
+    // On ne retire que les drapeaux reellement presents, et on ne restaurera
+    // que ceux-la : le module n a pas a supposer la configuration de la base.
+    m_bossClearedFlags = boss->GetUInt32Value(UNIT_FIELD_FLAGS) & blockingFlags;
+    if (m_bossClearedFlags)
+        boss->RemoveFlag(UNIT_FIELD_FLAGS, m_bossClearedFlags);
+
+    m_bossOriginalLevel     = boss->getLevel();
+    m_bossOriginalMaxHealth = boss->GetMaxHealth();
+    m_bossOriginalFaction   = boss->getFaction();
+
+    // Sans changement de faction le dirigeant reste intouchable : ni drapeau ni
+    // niveau ne le protegent, c est sa faction d origine qui interdit l attaque.
+    // Verifie en jeu : quinze bots au contact d Anduin pendant dix minutes ne lui
+    // ont pas retire un seul point de vie.
+    if (m_target->bossFaction)
+        boss->setFaction(m_target->bossFaction);
+
+    // Reglage absolu et par ville. Un multiplicateur serait ingerable : les deux
+    // dirigeants n ont rien de comparable, Anduin depasse le milliard de points
+    // de vie quand Vol jin, reste au niveau 83, en a quelques milliers.
+    if (m_target->bossLevel)
+        boss->SetLevel(uint8(m_target->bossLevel));
+
+    if (m_target->bossHealth)
+    {
+        boss->SetMaxHealth(m_target->bossHealth);
+        boss->SetHealth(m_target->bossHealth);
+    }
+
+    m_bossGuid     = boss->GetGUID();
+    m_bossAwakened = true;
+
+    if (m_commander)
+        m_commander->SetBossGuid(m_bossGuid);
+
+    TC_LOG_INFO("server.worldserver", "Siege des Capitales: dirigeant eveille (%s, niveau %u -> %u, PV %s -> %s, faction %u -> %u, drapeaux retires 0x%X).",
+        boss->GetName().c_str(), m_bossOriginalLevel, uint32(boss->getLevel()),
+        std::to_string(m_bossOriginalMaxHealth).c_str(), std::to_string(boss->GetMaxHealth()).c_str(),
+        m_bossOriginalFaction, boss->getFaction(), m_bossClearedFlags);
+}
+
+bool CapitalSiegeMgr::IsBossDead() const
+{
+    if (!m_bossAwakened)
+        return false;
+
+    Creature* boss = FindBoss();
+    if (!boss)
+        return false;   // grille dechargee : on ne conclut pas a la victoire
+
+    return !boss->IsAlive();
+}
+
+void CapitalSiegeMgr::RestoreBoss()
+{
+    if (!m_bossAwakened)
+        return;
+
+    Creature* boss = FindBoss();
+
+    // Si le dirigeant est mort il n y a rien a restaurer : il reapparaitra avec
+    // les valeurs de creature_template a l expiration de son respawn.
+    if (boss && boss->IsAlive())
+    {
+        if (m_bossClearedFlags)
+            boss->SetFlag(UNIT_FIELD_FLAGS, m_bossClearedFlags);
+
+        if (m_bossOriginalFaction)
+            boss->setFaction(m_bossOriginalFaction);
+
+        if (m_bossOriginalLevel)
+            boss->SetLevel(uint8(m_bossOriginalLevel));
+
+        if (m_bossOriginalMaxHealth)
+        {
+            boss->SetMaxHealth(m_bossOriginalMaxHealth);
+            if (boss->GetHealth() > m_bossOriginalMaxHealth)
+                boss->SetHealth(m_bossOriginalMaxHealth);
+        }
+
+        // La ville reprend son cours : plus personne ne doit rester en combat
+        // avec lui a cause de l evenement.
+        boss->CombatStop(true);
+
+        TC_LOG_INFO("server.worldserver", "Siege des Capitales: dirigeant restaure (%s).", boss->GetName().c_str());
+    }
+
+    m_bossAwakened          = false;
+    m_bossGuid              = ObjectGuid::Empty;
+    m_bossClearedFlags      = 0;
+    m_bossOriginalLevel     = 0;
+    m_bossOriginalFaction   = 0;
+    m_bossOriginalMaxHealth = 0;
 }
 
 /*******************************************************************************
@@ -492,6 +675,8 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
             TC_LOG_ERROR("server.worldserver", "Siege des Capitales: recrue abandonnee, le compte bot %u n a pas rejoint la horde en %u s.",
                 it->accountId, SIEGE_RECRUIT_TIMEOUT_SECONDS);
             m_engagedAccounts.erase(it->accountId);
+            if (m_totalRecruited)
+                --m_totalRecruited;
             it = m_recruits.erase(it);
             continue;
         }
@@ -521,9 +706,26 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
                 continue;
             }
 
+            // Le tirage de personnage du core (GetRandomCharacterByFuction)
+            // retombe sur le premier personnage du compte quand il n en trouve
+            // aucun de la faction demandee. Sans ce controle, des Alliance se
+            // retrouvaient enroles dans l assaut sur Hurlevent.
+            if (player->GetTeamId() != m_attackerTeam)
+            {
+                TC_LOG_INFO("server.worldserver", "Siege des Capitales: %s est de la mauvaise faction, recrue relachee.", player->GetName().c_str());
+                sPlayerBotMgr->PlayerBotLogout(it->accountId);
+                m_engagedAccounts.erase(it->accountId);
+                if (m_totalRecruited)
+                    --m_totalRecruited;
+                it = m_recruits.erase(it);
+                continue;
+            }
+
             if (!IsSiegeCapableClass(player->getClass()))
             {
                 m_engagedAccounts.erase(it->accountId);
+                if (m_totalRecruited)
+                    --m_totalRecruited;
                 it = m_recruits.erase(it);
                 continue;
             }
@@ -547,6 +749,8 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
         if (!m_commander->AddBot(player))
         {
             m_engagedAccounts.erase(it->accountId);
+            if (m_totalRecruited)
+                --m_totalRecruited;
             it = m_recruits.erase(it);
             continue;
         }
@@ -614,10 +818,37 @@ bool CapitalSiegeMgr::RecruitOneBot()
         if (session->GetPlayer())
             continue;
 
+        // Le personnage est choisi ici, explicitement. Laisser le core le tirer
+        // (BGSType_Online + GetRandomCharacterByFuction) ne garantit rien : cette
+        // fonction retombe sur le premier personnage du compte quand elle n en
+        // trouve aucun de la faction demandee, ce qui enrolait des Alliance dans
+        // l assaut sur Hurlevent.
+        PlayerBotBaseInfo* accountInfo = sPlayerBotMgr->GetPlayerBotAccountInfo(session->GetAccountId());
+        if (!accountInfo)
+            accountInfo = sPlayerBotMgr->GetAccountBotAccountInfo(session->GetAccountId());
+        if (!accountInfo)
+            continue;
+
+        uint64 pickedGuid = 0;
+        for (PlayerBotBaseInfo::CharInfoMap::iterator itChar = accountInfo->characters.begin();
+            itChar != accountInfo->characters.end(); ++itChar)
+        {
+            PlayerBotCharBaseInfo& charInfo = itChar->second;
+            if (charInfo.GetCamp() != m_attackerTeam)
+                continue;
+            if (!IsSiegeCapableClass(uint8(charInfo.profession)))
+                continue;
+            pickedGuid = charInfo.guid;
+            break;
+        }
+
+        // Compte sans personnage utilisable pour cet assaut : on passe au suivant.
+        if (!pickedGuid)
+            continue;
+
         uint32 const level = PlayerBotSetting::CheckMaxLevel(m_botLevel);
 
-        BotGlobleSchedule online(BotGlobleScheduleType::BGSType_Online, 0);
-        online.parameter1 = (m_attackerTeam == TEAM_ALLIANCE) ? 1 : 2;
+        BotGlobleSchedule online(BotGlobleScheduleType::BGSType_Online_GUID, pickedGuid);
         session->PushScheduleToQueue(online);
 
         BotGlobleSchedule setting(BotGlobleScheduleType::BGSType_Settting, 0);
@@ -751,14 +982,26 @@ std::string CapitalSiegeMgr::GetStatusText() const
         default: break;
     }
 
+    // Etat du dirigeant, pour savoir d un coup d oeil si l assaut le touche.
+    char bossText[96] = "dirigeant non eveille";
+    if (m_bossAwakened)
+    {
+        if (Creature* boss = FindBoss())
+            snprintf(bossText, sizeof(bossText), "%s a %u%% (%s PV)", boss->GetName().c_str(),
+                uint32(boss->GetHealthPct()), std::to_string(boss->GetHealth()).c_str());
+        else
+            snprintf(bossText, sizeof(bossText), "dirigeant hors grille");
+    }
+
     snprintf(buffer, sizeof(buffer),
-        "Siege en cours [%s]: %s attaque %s. Ecoule %u s, restant %u s, bots %u engages / %u vivants / %u perdus / %u en route (objectif %u). Progression %u/%u.",
+        "Siege en cours [%s]: %s attaque %s. Ecoule %u s, restant %u s, bots %u engages / %u vivants / %u perdus / %u en route (objectif %u). Progression %u/%u. Objectif: %s.",
         statusName, GetTeamName(m_attackerTeam), m_target ? m_target->cityName : "?",
         GetElapsedSeconds(), GetRemainingSeconds(), m_botsSpawned,
         m_commander ? m_commander->GetAliveCount() : 0, m_botsLost,
         uint32(m_recruits.size()), m_botCount,
         m_commander ? m_commander->GetVanguardProgress() + 1 : 0,
-        m_commander ? m_commander->GetRouteSize() : 0);
+        m_commander ? m_commander->GetRouteSize() : 0,
+        bossText);
     return buffer;
 }
 
