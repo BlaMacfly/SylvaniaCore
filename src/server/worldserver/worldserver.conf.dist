@@ -4739,7 +4739,19 @@ siege_pvp = 1
 #        Default:     18
 #
 
-siege_engage_range = 18
+siege_engage_range = 10
+
+#
+#   siege_boss_engage_range
+#        Description: Rayon en yards a partir duquel un bot prend le dirigeant
+#                     pour cible prioritaire. Independant de siege_engage_range :
+#                     coupler les deux faisait qu abaisser la portee d engagement
+#                     retrecissait aussi ce rayon, exactement quand on cherchait
+#                     a rendre le dirigeant atteignable. Borne a 10 - 60.
+#        Default:     40
+#
+
+siege_boss_engage_range = 40
 
 #
 #   siege_stall_timeout

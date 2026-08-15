@@ -1769,7 +1769,7 @@ void BotBGAI::UpdateBotAI(uint32 diff)
             if (Unit* siegeBoss = ObjectAccessor::GetUnit(*me, m_SiegeTarget))
             {
                 if (siegeBoss->IsAlive() && me->IsValidAttackTarget(siegeBoss)
-                    && me->GetDistance(siegeBoss) < searchRange * 2.0f)
+                    && me->GetDistance(siegeBoss) < sCapitalSiegeMgr->GetBossEngageRange())
                     me->SetSelection(m_SiegeTarget);
             }
         }

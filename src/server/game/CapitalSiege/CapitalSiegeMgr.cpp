@@ -52,7 +52,7 @@ namespace
 
 CapitalSiegeMgr::CapitalSiegeMgr() :
     m_enabled(false), m_hourMin(18), m_hourMax(24), m_botCount(50), m_botLevel(110),
-    m_duration(HOUR), m_spawnRate(5), m_pvpMode(1), m_engageRange(18.0f), m_stallTimeout(20), m_advanceWindow(12),
+    m_duration(HOUR), m_spawnRate(5), m_pvpMode(1), m_engageRange(18.0f), m_bossEngageRange(40.0f), m_stallTimeout(20), m_advanceWindow(12),
     m_maxDiff(400), m_announce(true),
     m_lastEventDay(0), m_lastAttackerTeam(TEAM_NEUTRAL), m_scheduledDay(0),
     m_scheduledTime(0), m_scheduledTeam(TEAM_NEUTRAL),
@@ -117,6 +117,7 @@ void CapitalSiegeMgr::LoadConfig()
     m_spawnRate       = sConfigMgr->GetIntDefault("siege_spawn_rate", 5);
     m_pvpMode         = sConfigMgr->GetIntDefault("siege_pvp", 1);
     m_engageRange     = sConfigMgr->GetFloatDefault("siege_engage_range", 18.0f);
+    m_bossEngageRange = sConfigMgr->GetFloatDefault("siege_boss_engage_range", 40.0f);
     m_stallTimeout    = sConfigMgr->GetIntDefault("siege_stall_timeout", 20);
     m_advanceWindow   = sConfigMgr->GetIntDefault("siege_advance_window", 12);
     m_maxDiff         = sConfigMgr->GetIntDefault("siege_maxdiff", 400);
@@ -150,6 +151,12 @@ void CapitalSiegeMgr::LoadConfig()
     // toute la ville au lieu de suivre leur route.
     if (m_engageRange < 5.0f || m_engageRange > 32.0f)
         m_engageRange = 18.0f;
+    // Le rayon de prise a partie du dirigeant est independant de la portee
+    // d engagement courante : les deux n ont rien a voir, et les coupler
+    // faisait qu abaisser siege_engage_range retrecissait aussi le rayon
+    // du boss, exactement quand on cherchait a le rendre atteignable.
+    if (m_bossEngageRange < 10.0f || m_bossEngageRange > 60.0f)
+        m_bossEngageRange = 40.0f;
     // Une fenetre de marche nulle rendrait le garde-fou anti-enlisement inutile.
     if (!m_advanceWindow)
         m_advanceWindow = 12;

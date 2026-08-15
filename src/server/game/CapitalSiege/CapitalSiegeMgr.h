@@ -120,6 +120,7 @@ public:
     uint32 GetPvpMode() const { return m_pvpMode; }
     float GetEngageRange() const { return m_engageRange; }
     uint32 GetStallTimeout() const { return m_stallTimeout; }
+    float GetBossEngageRange() const { return m_bossEngageRange; }
     uint32 GetAdvanceWindow() const { return m_advanceWindow; }
 
     static char const* GetTeamName(TeamId team);
@@ -172,6 +173,7 @@ private:
     uint32 m_spawnRate;         // bots par seconde
     uint32 m_pvpMode;           // 0 = PNJ seuls, 1 = joueurs flagges PvP, 2 = tous
     float  m_engageRange;       // yards, portee d engagement en mode siege
+    float  m_bossEngageRange;   // yards, rayon de prise a partie du dirigeant
     uint32 m_stallTimeout;      // secondes sans progresser avant de lacher la cible
     uint32 m_advanceWindow;     // secondes de marche forcee apres un enlisement
     uint32 m_maxDiff;           // ms, seuil d arret d urgence (0 = desactive)
