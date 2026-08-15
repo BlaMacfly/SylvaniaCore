@@ -4282,15 +4282,48 @@ Solocraft.Enable = 1
 Solocraft.Announce = 1
  
 #   Difficulty Multipliers
-#      	Description: Difficulty multipliers for dungeons.
-#       Defaults: 5, 10, 10, 25, 30, 40
- 
+#       Description: Pour COMBIEN DE JOUEURS le contenu est calibre. Le bonus reellement
+#                    accorde vaut cette valeur DIVISEE par le nombre de membres du groupe
+#                    presents dans l'instance.
+#                      Solocraft.Dungeon = 5 -> joueur seul : x5 ; groupe de 5 : x1 (aucun bonus)
+#                      Solocraft.Raid25 = 25 -> groupe de 10 : x2.5
+#                    Solocraft.Heroic peut depasser 5 pour compenser la difficulte accrue
+#                    des mecaniques heroiques.
+#       Defaults: 5, 8, 10, 25, 30, 40
+
 Solocraft.Dungeon = 5
-Solocraft.Heroic = 10
+Solocraft.Heroic = 8
 Solocraft.Raid10 = 10
 Solocraft.Raid25 = 25
 Solocraft.Raid30 = 30
 Solocraft.Raid40 = 40
+
+#   Solocraft.Mythic
+#       Description: Bonus en donjon Mythique / clef Mythique+ / raid Mythique.
+#                    1.0 = aucun bonus (contenu reserve au groupe complet).
+#       Default:     1.0
+
+Solocraft.Mythic = 1.0
+
+#   Solocraft.StatsPct
+#       Description: Part du bonus (en %) appliquee aux stats primaires -- elles portent les
+#                    PV via l'endurance, la puissance des sorts et la puissance d'attaque.
+#                    100 = un joueur seul en donjon a bien x5 PV.
+#       Default:     100
+
+Solocraft.StatsPct = 100
+
+#   Solocraft.DamagePct
+#       Description: Part du bonus (en %) appliquee aux degats d'arme. Les degats d'une
+#                    attaque valent (degats_arme + AP/3.5) et seule la moitie "AP" profite du
+#                    bonus de stats : sans ce reglage le joueur encaisse x5 mais tape a peine
+#                    plus fort (contenu ressenti comme hardcore). 20 vise environ x5 degats
+#                    en solo, tous bonus cumules.
+#                    Monter cette valeur si les combats restent trop longs, la baisser si le
+#                    contenu devient trivial.
+#       Default:     20
+
+Solocraft.DamagePct = 20
 
 #
 ###################################################################################################
