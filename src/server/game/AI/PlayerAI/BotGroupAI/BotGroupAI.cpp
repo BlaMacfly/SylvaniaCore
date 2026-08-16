@@ -928,7 +928,7 @@ me->SetPower(POWER_MANA, (me->GetMaxPower(POWER_MANA)));
 		}
         Position pos = me->GetPosition();
 		m_Movement->SyncPosition(pos);
-		if (TryUpMount())
+		if (UpdateMountState())
 			return;
 		if (!me->HasAura(m_UseMountID) && !me->HasUnitState(UNIT_STATE_CASTING))
 			m_UsePotion.TryUsePotion();
@@ -1162,6 +1162,45 @@ bool BotGroupAI::TryUpMount()
 		return false;
 	m_Movement->ClearMovement();
 	return (TryCastSpell(m_UseMountID, me) == SPELL_CAST_OK);
+}
+
+// SylvaniaCore : le core ne savait que monter, jamais descendre. Un bot
+// recrute alors qu il galopait sur le terrain restait en selle pour toujours,
+// y compris derriere un maitre a pied. La monture suit desormais le maitre :
+// a pied il pose pied a terre, monture terrestre au sol, monture volante en vol.
+bool BotGroupAI::UpdateMountState()
+{
+	if (!m_MasterPlayer)
+		return false;
+	if (me->IsInCombat() || me->HasUnitState(UNIT_STATE_CASTING))
+		return false;
+	if (me->GetMap() != m_MasterPlayer->GetMap())
+		return false;
+
+	// Maitre a pied : le bot descend. Le vol fait exception, c est BotAIFly qui
+	// le ramene au sol - le couper ici le ferait chuter du ciel.
+	if (!m_MasterPlayer->IsMounted())
+	{
+		if (m_Flying.HasFlying())
+			return false;
+		if (!me->IsMounted())
+			return false;
+		// RemoveAurasByType et pas Dismount() : la monture portee peut venir de
+		// l IA de terrain et ne pas etre m_UseMountID.
+		me->RemoveAurasByType(SPELL_AURA_MOUNTED);
+		return true;
+	}
+
+	// Maitre en vol : BotAIFly::UpdateFly pose la monture volante et assure le
+	// suivi en trois dimensions.
+	if (m_MasterPlayer->IsFlying())
+		return false;
+
+	// Maitre monte au sol : monture terrestre.
+	if (m_Flying.HasFlying())
+		m_Flying.CancelFly();
+
+	return TryUpMount();
 }
 
 void BotGroupAI::Dismount()

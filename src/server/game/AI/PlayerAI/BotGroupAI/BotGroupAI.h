@@ -93,6 +93,8 @@ public:
 
 protected:
 	bool TryUpMount();
+	// Aligne la monture du bot sur celle du maitre : a pied, au sol ou en vol.
+	bool UpdateMountState();
 	bool CanReciveCommand(std::string& cmd, std::string& param);
 	void ProcessSummonCommand();
 	void ProcessAttackCommand();

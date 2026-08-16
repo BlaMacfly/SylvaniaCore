@@ -2659,7 +2659,9 @@ void BotAIFly::FlyToTarget(Player* player, bool offset)
 
 void BotAIFly::UpdateFly(Player* masterPlayer, uint32 groundMountID, BotBGAIMovement* pMovement)
 {
-	return;
+	// SylvaniaCore : cette fonction etait neutralisee par un return sec en
+	// tete de corps. Elle est le seul endroit qui fait suivre un bot en vol,
+	// et elle n est appelee que par BotGroupAI (NonCombatProcess).
 	if (m_FlyMountID == 0 || !masterPlayer || !pMovement)
 		return;
 	if (me->GetMap() != masterPlayer->GetMap())
