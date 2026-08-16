@@ -512,7 +512,9 @@ void CommandAV::TryOccupiedAVNode(BattlegroundAV* pBattlegroundAV, ObjectGuid gu
 	Player* player = GetBGPlayer(guid);
 	if (!player || player->HasUnitState(UNIT_STATE_CASTING) || player->IsInCombat())
 		return;
-	GameObject const* pFlag = pBattlegroundAV->GetEnemyNodeObjectByRange(player, 8.0f);
+	// SylvaniaCore (module BG BotFill): rayon de reperage elargi (l ancien 8 m supposait
+	// le bot deja au pied de la banniere) puis approche avant l ouverture
+	GameObject const* pFlag = pBattlegroundAV->GetEnemyNodeObjectByRange(player, 30.0f);
 	if (!pFlag)
 		return;
 	SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(21651);
@@ -521,8 +523,14 @@ void CommandAV::TryOccupiedAVNode(BattlegroundAV* pBattlegroundAV, ObjectGuid gu
 	BotBGAI* pBotAI = GetBotBGAI(guid);
 	if (!pBotAI)
 		return;
+	if (player->GetDistance(pFlag) > 4.0f)
+	{
+		pBotAI->GetAIMovement()->AcceptCommand(pFlag->GetGUID(), true);
+		return;
+	}
 
 	pBotAI->Dismount();
+	player->StopMoving();
 	SpellCastTargets targets;
 	targets.SetTargetMask(TARGET_FLAG_GAMEOBJECT);
 	targets.SetGOTarget((GameObject*)pFlag);

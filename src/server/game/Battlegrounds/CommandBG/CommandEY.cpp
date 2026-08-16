@@ -384,15 +384,14 @@ void CommandEY::TryPickStormFlag(ObjectGuid guid)
 		if (!pObject || !pObject->isSpawned())
 			return;
 		float distance = player->GetDistance(pObject->GetPosition());
-		if (distance > 5)
+		if (distance > 4)
 		{
-			if (distance < 60)
-			{
-				AcceptCommandByPlayerGUID(guid, m_BGKeyWaypoints[AIWP_EY_FLAG]);
-				return;
-			}
-			else
-				return;
+			// SylvaniaCore (module BG BotFill): viser le drapeau lui-meme en ordre
+			// prioritaire. L ancien ordre visait un waypoint voisin, sans priorite :
+			// la repartition des tours l ecrasait avant que le bot n arrive.
+			if (distance < 80)
+				AcceptCommandByPlayerGUID(guid, pObject->GetGUID(), true);
+			return;
 		}
 		if (BotBGAI* pAI = GetBotBGAI(guid))
 		{

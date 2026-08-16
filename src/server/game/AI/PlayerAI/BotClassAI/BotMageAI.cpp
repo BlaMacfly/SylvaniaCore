@@ -26,6 +26,12 @@
 
 void BotMageAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien plus ancienne : sur les 46 sorts reclames ici, les
+	// mages 110 du serveur n en connaissaient que 4, si bien que l essentiel de
+	// la rotation se resolvait a  sort inconnu  et etait saute. Les valeurs
+	// corrigees viennent de la base du serveur, pas d une documentation.
+
 	MageIDLE_ManaGem = FindMaxRankSpellByExist(36883);
 	MageIDLE_ArcaneMagic = FindMaxRankSpellByExist(13326);
 	MageIDLE_AOEArcaneMagic = FindMaxRankSpellByExist(129171);
@@ -38,7 +44,7 @@ void BotMageAI::InitializeSpells()
 	MageIDLE_SummonRite = FindMaxRankSpellByExist(43987);
 
 	MageGuard_MagicShield = FindMaxRankSpellByExist(56778);
-	MageGuard_FrostShield = FindMaxRankSpellByExist(201565);
+	MageGuard_FrostShield = FindMaxRankSpellByExist(11426);   // Barriere de glace
 	MageGuard_FrostScherm = FindMaxRankSpellByExist(41590);
 	MageGuard_FrostNova = FindMaxRankSpellByExist(64919);
 	MageGuard_FireBreath = FindMaxRankSpellByExist(31661);
@@ -63,18 +69,18 @@ void BotMageAI::InitializeSpells()
 	MageConfine_Freeze = FindMaxRankSpellByExist(79130);
 
 	MageAOE_ArcaneExplode = FindMaxRankSpellByExist(9433);
-	MageAOE_Snowstorm = FindMaxRankSpellByExist(15783);
-	MageAOE_IcePiton = FindMaxRankSpellByExist(12557);
+	MageAOE_Snowstorm = FindMaxRankSpellByExist(190356);   // Blizzard
+	MageAOE_IcePiton = FindMaxRankSpellByExist(84714);   // Orbe de givre
 	MageAOE_FireStorm = FindMaxRankSpellByExist(13899);
 
 	MageArcane_Barrage = FindMaxRankSpellByExist(44425);
 	MageArcane_Bullet = FindMaxRankSpellByExist(5143);
 	MageArcane_ArcaneShock = FindMaxRankSpellByExist(16067);
-	MageFrost_IceArrow = FindMaxRankSpellByExist(9672);
-	MageFrost_IceLance = FindMaxRankSpellByExist(43571);
-	MageFrost_FFArrow = FindMaxRankSpellByExist(70616);
+	MageFrost_IceArrow = FindMaxRankSpellByExist(116);   // Trait de givre, le sort de base de la rotation
+	MageFrost_IceLance = FindMaxRankSpellByExist(30455);   // Lance de glace
+	MageFrost_FFArrow = FindMaxRankSpellByExist(44614);   // Bourrasque
 	MageFire_FireArrow = FindMaxRankSpellByExist(133);
-	MageFire_FireShock = FindMaxRankSpellByExist(15574);
+	MageFire_FireShock = FindMaxRankSpellByExist(108853);   // Frappe de feu, instantane
 	MageFire_Firing = FindMaxRankSpellByExist(2948);
 	MageFire_BigFireBall = FindMaxRankSpellByExist(33051);
 	MageFire_FireBomb = FindMaxRankSpellByExist(178551);

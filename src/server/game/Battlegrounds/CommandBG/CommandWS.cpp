@@ -214,14 +214,20 @@ void CommandWS::TryPickEnemyFlag(ObjectGuid guid)
     }
     if (!pObject)
         return;
-    if (player->GetDistance(pObject->GetPosition()) > 5)
+    BotBGAI* pAI = GetBotBGAI(guid);
+    if (!pAI)
         return;
-    if (BotBGAI* pAI = GetBotBGAI(guid))
+    // SylvaniaCore (module BG BotFill): hors de portee, on marche jusqu au drapeau au lieu
+    // d abandonner (ordre prioritaire : la repartition des objectifs ne l ecrase pas)
+    if (player->GetDistance(pObject->GetPosition()) > 4.0f)
     {
-        pAI->Dismount();
-        if (!pAI->CanUseBGObject())
-            return;
+        pAI->GetAIMovement()->AcceptCommand(pObject->GetGUID(), true);
+        return;
     }
+    pAI->Dismount();
+    if (!pAI->CanUseBGObject())
+        return;
+    player->StopMoving();
     pObject->Use(player);
 }
 
@@ -245,12 +251,17 @@ void CommandWS::TryPickSelfFlag(ObjectGuid guid)
         pObject = SearchDropedFlag(guid, TeamId::TEAM_HORDE);
     if (!pObject)
         return;
-    if (player->GetDistance(pObject->GetPosition()) > 5)
+    BotBGAI* pAI = GetBotBGAI(guid);
+    if (!pAI)
         return;
-    if (BotBGAI* pAI = GetBotBGAI(guid))
+    // SylvaniaCore (module BG BotFill): approche prioritaire avant de rendre le drapeau
+    if (player->GetDistance(pObject->GetPosition()) > 4.0f)
     {
-        pAI->Dismount();
+        pAI->GetAIMovement()->AcceptCommand(pObject->GetGUID(), true);
+        return;
     }
+    pAI->Dismount();
+    player->StopMoving();
     pObject->Use(player);
 }
 
@@ -271,12 +282,17 @@ void CommandWS::TryCaptureFlag(ObjectGuid guid)
     GameObject* pObject = pBGWS->GetBGObject((m_TeamID == TEAM_ALLIANCE) ? BG_WS_ObjectTypes::BG_WS_OBJECT_A_FLAG : BG_WS_ObjectTypes::BG_WS_OBJECT_H_FLAG);
     if (!pObject)
         return;
-    if (player->GetDistance(pObject->GetPosition()) > 4)
+    BotBGAI* pAI = GetBotBGAI(guid);
+    if (!pAI)
         return;
-    if (BotBGAI* pAI = GetBotBGAI(guid))
+    // SylvaniaCore (module BG BotFill): le porteur doit rejoindre sa propre base pour
+    // marquer ; sans cet ordre il errait avec le drapeau sans jamais capturer
+    if (player->GetDistance(pObject->GetPosition()) > 4.0f)
     {
-        pAI->Dismount();
+        pAI->GetAIMovement()->AcceptCommand(pObject->GetGUID(), true);
+        return;
     }
+    pAI->Dismount();
     pBGWS->HandleAreaTrigger(player, (m_TeamID == TEAM_ALLIANCE) ? 3646 : 3647, true);
 }
 

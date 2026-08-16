@@ -291,12 +291,18 @@ void CommandIC::TryOccupiedICNode(ObjectGuid guid)
 	BattlegroundIC* pBattlegroundIC = dynamic_cast<BattlegroundIC*>(m_pBattleground);
 	if (!pBattlegroundIC)
 		return;
-	GameObject const* pFlag = pBattlegroundIC->GetClosestEnemyFlagByRange(player, 6);
+	// SylvaniaCore (module BG BotFill): idem Alterac, reperage large puis approche
+	GameObject const* pFlag = pBattlegroundIC->GetClosestEnemyFlagByRange(player, 30);
 	if (!pFlag)
 		return;
 	SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(21651);
 	if (!spellInfo)
 		return;
+	if (player->GetDistance(pFlag) > 4.0f)
+	{
+		pBotAI->GetAIMovement()->AcceptCommand(pFlag->GetGUID(), true);
+		return;
+	}
 
 	pBotAI->GetAIMovement()->ClearMovement();
 	pBotAI->Dismount();
