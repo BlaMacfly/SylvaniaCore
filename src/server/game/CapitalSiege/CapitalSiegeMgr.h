@@ -154,6 +154,13 @@ private:
     // moine ni de chasseur de demons dans la horde d invasion.
     static bool IsSiegeCapableClass(uint8 playerClass);
 
+    // Composition par roles. Renvoie l index de specialisation (0 a 2) que la
+    // classe doit prendre pour tenir le role, ou -1 si elle ne le peut pas dans
+    // la limite des trois premieres specialisations, seules atteignables par le
+    // re-level (PlayerBotSetting::ResetPlayerToLevel refuse talent > 2).
+    static int32 FindSpecIndexForRole(uint8 playerClass, uint8 role);
+    uint8 PickRoleToRecruit() const;
+
     // Persistance ------------------------------------------------------------
     void SaveState();
     void OpenHistoryRow(std::string const& trigger);
@@ -175,6 +182,8 @@ private:
     uint32 m_duration;          // secondes
     uint32 m_spawnRate;         // bots par seconde
     uint32 m_pvpMode;           // 0 = PNJ seuls, 1 = joueurs flagges PvP, 2 = tous
+    uint32 m_tankPct;           // part de tanks dans la horde, en pourcent
+    uint32 m_healerPct;         // part de soigneurs dans la horde, en pourcent
     float  m_engageRange;       // yards, portee d engagement en mode siege
     float  m_bossEngageRange;   // yards, rayon de prise a partie du dirigeant
     uint32 m_stallTimeout;      // secondes sans progresser avant de lacher la cible
@@ -199,8 +208,10 @@ private:
         uint32 accountId;
         uint32 stage;           // 0 = connexion et reglage, 1 = trajet
         uint32 waitSeconds;
+        uint8  role;            // ROLE_TANK, ROLE_HEALER ou ROLE_DAMAGE
 
-        explicit SiegeRecruit(uint32 account) : accountId(account), stage(0), waitSeconds(0) { }
+        SiegeRecruit(uint32 account, uint8 wantedRole)
+            : accountId(account), stage(0), waitSeconds(0), role(wantedRole) { }
     };
 
     CapitalSiegeStatus m_status;
@@ -223,6 +234,8 @@ private:
     // Total engage depuis le debut de l evenement. Plafonne le recrutement :
     // un bot tue n est jamais remplace, il n y a pas de vague infinie.
     uint32 m_totalRecruited;
+    // Effectif engage par role depuis le debut, pour tenir la composition.
+    uint32 m_recruitedByRole[3];
     uint32 m_elapsed;           // ms depuis le debut de l evenement
     uint32 m_updateTimer;       // ms, cadence le tick a la seconde
     uint32 m_overloadTimer;     // ms passees au-dessus du seuil de charge

@@ -21,6 +21,7 @@
 #include "DatabaseEnv.h"
 #include "Log.h"
 #include "Creature.h"
+#include "DB2Stores.h"
 #include "Map.h"
 #include "MapManager.h"
 #include "ObjectAccessor.h"
@@ -52,7 +53,7 @@ namespace
 
 CapitalSiegeMgr::CapitalSiegeMgr() :
     m_enabled(false), m_hourMin(18), m_hourMax(24), m_botCount(50), m_botLevel(110),
-    m_duration(HOUR), m_spawnRate(5), m_pvpMode(1), m_engageRange(18.0f), m_bossEngageRange(40.0f), m_stallTimeout(20), m_advanceWindow(12),
+    m_duration(HOUR), m_spawnRate(5), m_pvpMode(1), m_tankPct(10), m_healerPct(20), m_engageRange(18.0f), m_bossEngageRange(40.0f), m_stallTimeout(20), m_advanceWindow(12),
     m_maxDiff(400), m_announce(true),
     m_lastEventDay(0), m_lastAttackerTeam(TEAM_NEUTRAL), m_scheduledDay(0),
     m_scheduledTime(0), m_scheduledTeam(TEAM_NEUTRAL),
@@ -60,7 +61,7 @@ CapitalSiegeMgr::CapitalSiegeMgr() :
     m_commander(nullptr),
     m_bossGuid(ObjectGuid::Empty), m_bossClearedFlags(0), m_bossOriginalLevel(0), m_bossOriginalFaction(0),
     m_bossOriginalMaxHealth(0), m_bossAwakened(false), m_bossLookupFailed(false),
-    m_bossRetryTimer(0), m_totalRecruited(0),
+    m_bossRetryTimer(0), m_totalRecruited(0), m_recruitedByRole{ 0, 0, 0 },
     m_elapsed(0), m_updateTimer(0), m_overloadTimer(0),
     m_botsSpawned(0), m_botsLost(0), m_startTime(0)
 {
@@ -116,6 +117,8 @@ void CapitalSiegeMgr::LoadConfig()
     m_duration        = sConfigMgr->GetIntDefault("siege_duration", HOUR);
     m_spawnRate       = sConfigMgr->GetIntDefault("siege_spawn_rate", 5);
     m_pvpMode         = sConfigMgr->GetIntDefault("siege_pvp", 1);
+    m_tankPct         = sConfigMgr->GetIntDefault("siege_tank_pct", 10);
+    m_healerPct       = sConfigMgr->GetIntDefault("siege_healer_pct", 20);
     m_engageRange     = sConfigMgr->GetFloatDefault("siege_engage_range", 18.0f);
     m_bossEngageRange = sConfigMgr->GetFloatDefault("siege_boss_engage_range", 40.0f);
     m_stallTimeout    = sConfigMgr->GetIntDefault("siege_stall_timeout", 20);
@@ -146,6 +149,14 @@ void CapitalSiegeMgr::LoadConfig()
         m_duration = MINUTE;
     if (m_pvpMode > 2)
         m_pvpMode = 1;
+    // Il faut laisser la majorite de l effectif aux degats, sinon la horde ne
+    // tue plus rien.
+    if (m_tankPct + m_healerPct > 60)
+    {
+        TC_LOG_ERROR("server.worldserver", "Siege des Capitales: tanks + soigneurs = %u%%, ramene a 10/20.", m_tankPct + m_healerPct);
+        m_tankPct = 10;
+        m_healerPct = 20;
+    }
     // Une portee trop courte rendrait les bots inoffensifs, une portee au-dela
     // de BOTAI_SEARCH_RANGE (32 yards, BotAITool.h) les ferait courir apres
     // toute la ville au lieu de suivre leur route.
@@ -354,6 +365,7 @@ bool CapitalSiegeMgr::StartSiege(TeamId attacker, std::string const& trigger)
     m_recruits.clear();
     m_engagedAccounts.clear();
     m_totalRecruited = 0;
+    m_recruitedByRole[0] = m_recruitedByRole[1] = m_recruitedByRole[2] = 0;
     m_bossLookupFailed = false;
     m_bossRetryTimer = 0;
 
@@ -684,6 +696,8 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
             m_engagedAccounts.erase(it->accountId);
             if (m_totalRecruited)
                 --m_totalRecruited;
+            if (m_recruitedByRole[it->role])
+                --m_recruitedByRole[it->role];
             it = m_recruits.erase(it);
             continue;
         }
@@ -724,6 +738,8 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
                 m_engagedAccounts.erase(it->accountId);
                 if (m_totalRecruited)
                     --m_totalRecruited;
+                if (m_recruitedByRole[it->role])
+                    --m_recruitedByRole[it->role];
                 it = m_recruits.erase(it);
                 continue;
             }
@@ -733,6 +749,8 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
                 m_engagedAccounts.erase(it->accountId);
                 if (m_totalRecruited)
                     --m_totalRecruited;
+                if (m_recruitedByRole[it->role])
+                    --m_recruitedByRole[it->role];
                 it = m_recruits.erase(it);
                 continue;
             }
@@ -758,6 +776,8 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
             m_engagedAccounts.erase(it->accountId);
             if (m_totalRecruited)
                 --m_totalRecruited;
+            if (m_recruitedByRole[it->role])
+                --m_recruitedByRole[it->role];
             it = m_recruits.erase(it);
             continue;
         }
@@ -766,9 +786,44 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
     }
 }
 
+int32 CapitalSiegeMgr::FindSpecIndexForRole(uint8 playerClass, uint8 role)
+{
+    for (uint32 i = 0; i < sChrSpecializationStore.GetNumRows(); ++i)
+    {
+        ChrSpecializationEntry const* spec = sChrSpecializationStore.LookupEntry(i);
+        if (!spec || spec->ClassID != int8(playerClass) || spec->IsPetSpecialization())
+            continue;
+        if (spec->Role != int8(role))
+            continue;
+        // Au-dela de l index 2 la specialisation est hors de portee du re-level,
+        // qui refuse talent > 2. C est le cas de la Restauration du druide, dont
+        // l IA de classe attend de toute facon un druide a trois specialisations.
+        if (spec->OrderIndex > 2)
+            continue;
+        return int32(spec->OrderIndex);
+    }
+    return -1;
+}
+
+// Choisit le role manquant le plus prioritaire au regard des quotas. Les
+// soigneurs et les tanks passent avant : sans eux la horde fond, et c est
+// exactement ce qui se produisait quand le recrutement prenait n importe qui.
+uint8 CapitalSiegeMgr::PickRoleToRecruit() const
+{
+    uint32 const wantedTanks   = std::max<uint32>(1, m_botCount * m_tankPct / 100);
+    uint32 const wantedHealers = std::max<uint32>(1, m_botCount * m_healerPct / 100);
+
+    if (m_recruitedByRole[ROLE_HEALER] < wantedHealers)
+        return ROLE_HEALER;
+    if (m_recruitedByRole[ROLE_TANK] < wantedTanks)
+        return ROLE_TANK;
+    return ROLE_DAMAGE;
+}
+
 bool CapitalSiegeMgr::RecruitOneBot()
 {
     SessionMap const& sessions = sWorld->GetAllSessions();
+    uint8 const wantedRole = PickRoleToRecruit();
 
     // Premier choix : un bot deja connecte et inoccupe. Pas de connexion a
     // payer, et il est deja charge en memoire.
@@ -798,16 +853,22 @@ bool CapitalSiegeMgr::RecruitOneBot()
         if (!IsSiegeCapableClass(player->getClass()))
             continue;
 
+        int32 const specIndex = FindSpecIndexForRole(player->getClass(), wantedRole);
+        if (specIndex < 0)
+            continue;   // cette classe ne peut pas tenir le role demande
+
         uint32 const level = PlayerBotSetting::CheckMaxLevel(m_botLevel);
         BotGlobleSchedule setting(BotGlobleScheduleType::BGSType_Settting, 0);
         setting.parameter1 = level;
         setting.parameter2 = level;
-        setting.parameter3 = 4;
+        // 1 a 3 impose la specialisation, 4 laisserait celle du personnage.
+        setting.parameter3 = uint32(specIndex) + 1;
         session->PushScheduleToQueue(setting);
 
         m_engagedAccounts.insert(session->GetAccountId());
-        m_recruits.push_back(SiegeRecruit(session->GetAccountId()));
+        m_recruits.push_back(SiegeRecruit(session->GetAccountId(), wantedRole));
         ++m_totalRecruited;
+        ++m_recruitedByRole[wantedRole];
         return true;
     }
 
@@ -837,6 +898,7 @@ bool CapitalSiegeMgr::RecruitOneBot()
             continue;
 
         uint64 pickedGuid = 0;
+        uint8 pickedClass = 0;
         for (PlayerBotBaseInfo::CharInfoMap::iterator itChar = accountInfo->characters.begin();
             itChar != accountInfo->characters.end(); ++itChar)
         {
@@ -845,7 +907,10 @@ bool CapitalSiegeMgr::RecruitOneBot()
                 continue;
             if (!IsSiegeCapableClass(uint8(charInfo.profession)))
                 continue;
+            if (FindSpecIndexForRole(uint8(charInfo.profession), wantedRole) < 0)
+                continue;   // cette classe ne peut pas tenir le role demande
             pickedGuid = charInfo.guid;
+            pickedClass = uint8(charInfo.profession);
             break;
         }
 
@@ -861,12 +926,13 @@ bool CapitalSiegeMgr::RecruitOneBot()
         BotGlobleSchedule setting(BotGlobleScheduleType::BGSType_Settting, 0);
         setting.parameter1 = level;
         setting.parameter2 = level;
-        setting.parameter3 = 4;
+        setting.parameter3 = uint32(FindSpecIndexForRole(pickedClass, wantedRole)) + 1;
         session->PushScheduleToQueue(setting);
 
         m_engagedAccounts.insert(session->GetAccountId());
-        m_recruits.push_back(SiegeRecruit(session->GetAccountId()));
+        m_recruits.push_back(SiegeRecruit(session->GetAccountId(), wantedRole));
         ++m_totalRecruited;
+        ++m_recruitedByRole[wantedRole];
         return true;
     }
 
