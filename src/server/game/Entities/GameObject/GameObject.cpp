@@ -981,7 +981,18 @@ void GameObject::SaveToDB(uint32 mapid, std::vector<Difficulty> const& spawnDiff
     stmt->setUInt64(index++, m_spawnId);
     stmt->setUInt32(index++, GetEntry());
     stmt->setUInt16(index++, uint16(mapid));
-    stmt->setString(index++, StringJoin(data.spawnDifficulties, ","));
+    // `enum Difficulty` a pour type sous-jacent uint8 : le passer tel quel a
+    // StringJoin faisait ecrire par le flux le *caractere* brut au lieu du
+    // nombre. Une difficulte 0 (monde ouvert) donnait donc un octet NUL, la
+    // colonne devenait illisible et le spawn etait rejete au chargement
+    // suivant ("not spawned in any difficulty, skipped") : tout PNJ pose en
+    // jeu disparaissait au redemarrage.
+    std::vector<uint32> difficultyIds;
+    difficultyIds.reserve(data.spawnDifficulties.size());
+    for (Difficulty spawnDifficulty : data.spawnDifficulties)
+        difficultyIds.push_back(uint32(spawnDifficulty));
+
+    stmt->setString(index++, StringJoin(difficultyIds, ","));
     stmt->setUInt32(index++, data.phaseId);
     stmt->setUInt32(index++, data.phaseGroup);
     stmt->setFloat(index++, GetPositionX());
