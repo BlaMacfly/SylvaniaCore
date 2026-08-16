@@ -37,7 +37,16 @@ enum MercenaryGossipAction
     GOSSIP_ACTION_SUMMON_HEAL = 2,
     GOSSIP_ACTION_SUMMON_DPS  = 3,
     GOSSIP_ACTION_DISMISS_ALL = 10,
-    GOSSIP_ACTION_EXPLAIN     = 11
+    GOSSIP_ACTION_EXPLAIN     = 11,
+
+    // Manuel des ordres. Les mercenaires obeissent au systeme de commandes du
+    // core (BotGroupAI::ProcessBotCommand) : le portail ne fait que l enseigner.
+    GOSSIP_ACTION_ORDERS      = 20,
+    GOSSIP_ACTION_ORDERS_MOVE = 21,
+    GOSSIP_ACTION_ORDERS_FIGHT= 22,
+    GOSSIP_ACTION_ORDERS_WHO  = 23,
+    GOSSIP_ACTION_ORDERS_GEAR = 24,
+    GOSSIP_ACTION_MAIN        = 25
 };
 
 class npc_mercenary_portal : public CreatureScript
@@ -55,6 +64,29 @@ class npc_mercenary_portal : public CreatureScript
                   << "Jusqu'à " << sMercenaryMgr->GetMaxPerPlayer() << ", de quoi former un groupe complet. "
                   << "Mais sache-le : le lien est fragile.";
             creature->Whisper(pitch.str(), LANG_UNIVERSAL, player);
+        }
+
+        // Les ordres sont ecrits dans le canal de groupe (chef de groupe
+        // uniquement, ChatHandler.cpp) ou chuchotes a un mercenaire precis.
+        // Le manuel est envoye en messages systeme : le client les garde dans
+        // la fenetre de discussion, contrairement au texte d une boite de
+        // dialogue qui disparait avec elle.
+        static void SendLines(Player* player, char const* const* lines, size_t count)
+        {
+            ChatHandler handler(player->GetSession());
+            for (size_t i = 0; i < count; ++i)
+                handler.PSendSysMessage("%s", lines[i]);
+        }
+
+        static void SendOrdersMenu(Player* player, Creature* creature)
+        {
+            ClearGossipMenuFor(player);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Les faire bouger", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ORDERS_MOVE);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Les faire combattre", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ORDERS_FIGHT);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "N'en désigner qu'un seul, ou un rôle", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ORDERS_WHO);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Leur équipement et leur spécialisation", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ORDERS_GEAR);
+            AddGossipItemFor(player, GOSSIP_ICON_TALK, "Revenir au portail", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_MAIN);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
         }
 
         bool OnGossipHello(Player* player, Creature* creature) override
@@ -99,6 +131,7 @@ class npc_mercenary_portal : public CreatureScript
                 AddGossipItemFor(player, GOSSIP_ICON_TALK, dismiss.str(), GOSSIP_SENDER_MAIN, GOSSIP_ACTION_DISMISS_ALL);
             }
 
+            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, "Comment leur donner des ordres ?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ORDERS);
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Quelles sont les règles de ce pacte ?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_EXPLAIN);
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Rien pour l'instant.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_CLOSE);
 
@@ -120,6 +153,78 @@ class npc_mercenary_portal : public CreatureScript
                         "déconnecte-toi, et il retourne au néant sur-le-champ. Chaque nouvelle invocation se paie, sans exception.",
                         LANG_UNIVERSAL, player);
                     return true;
+                case GOSSIP_ACTION_ORDERS:
+                    SendOrdersMenu(player, creature);
+                    return true;
+                case GOSSIP_ACTION_MAIN:
+                    return OnGossipHello(player, creature);
+                case GOSSIP_ACTION_ORDERS_MOVE:
+                {
+                    static char const* const lines[] =
+                    {
+                        "|cff00ff00[Mercenaires - les faire bouger]|r",
+                        "Écrivez l'ordre dans le canal de groupe : il s'adresse à toute la compagnie, et il faut en être le chef.",
+                        "Pour n'en viser qu'un : |cffffd100/w <nom du mercenaire> <ordre>|r",
+                        "  |cffffd100summon|r - il vous rejoint sur-le-champ, où que vous soyez",
+                        "  |cffffd100follow|r - il reprend sa marche derrière vous",
+                        "  |cffffd100stop|r - il s'arrête et ne bouge plus",
+                        "  |cffffd100flee|r - il rompt le combat et se replie"
+                    };
+                    SendLines(player, lines, sizeof(lines) / sizeof(lines[0]));
+                    SendOrdersMenu(player, creature);
+                    return true;
+                }
+                case GOSSIP_ACTION_ORDERS_FIGHT:
+                {
+                    static char const* const lines[] =
+                    {
+                        "|cff00ff00[Mercenaires - les faire combattre]|r",
+                        "  |cffffd100attack|r - il attaque la cible que vous avez sélectionnée",
+                        "  |cffffd100flee|r - il décroche et cesse le combat",
+                        "  |cffffd100rite|r - il lance son rituel d'invocation, si sa classe en possède un et que vous êtes à portée",
+                        "  |cffffd100<numéro de sort>|r - il lance ce sort précis s'il le connaît : tapez son identifiant",
+                        "Sans ordre, un mercenaire se bat de lui-même : il choisit ses cibles, soigne et suit sa spécialisation."
+                    };
+                    SendLines(player, lines, sizeof(lines) / sizeof(lines[0]));
+                    SendOrdersMenu(player, creature);
+                    return true;
+                }
+                case GOSSIP_ACTION_ORDERS_WHO:
+                {
+                    static char const* const lines[] =
+                    {
+                        "|cff00ff00[Mercenaires - n'en désigner qu'un, ou un rôle]|r",
+                        "Dans le canal de groupe, faites précéder l'ordre d'une cible :",
+                        "  par rôle : |cffffd100@tank|r  |cffffd100@heal|r  |cffffd100@dps|r  |cffffd100@melee|r  |cffffd100@ranged|r",
+                        "  par classe : |cffffd100@zs|r guerrier, |cffffd100@qs|r paladin, |cffffd100@lr|r chasseur, |cffffd100@dz|r voleur, |cffffd100@ms|r prêtre",
+                        "  |cffffd100@dk|r chevalier de la mort, |cffffd100@sm|r chaman, |cffffd100@fs|r mage, |cffffd100@ss|r démoniste, |cffffd100@xd|r druide",
+                        "Exemple : |cffffd100@heal stop|r - seuls les guérisseurs s'arrêtent.",
+                        "Sans préfixe, l'ordre vaut pour toute la compagnie."
+                    };
+                    SendLines(player, lines, sizeof(lines) / sizeof(lines[0]));
+                    SendOrdersMenu(player, creature);
+                    return true;
+                }
+                case GOSSIP_ACTION_ORDERS_GEAR:
+                {
+                    static char const* const lines[] =
+                    {
+                        "|cff00ff00[Mercenaires - équipement et spécialisation]|r",
+                        "Collez le lien de l'objet (Maj + clic sur l'objet) à la suite de l'ordre :",
+                        "  |cffffd100c|r - il énumère ce qu'il transporte",
+                        "  |cffffd100e <objet>|r - il l'équipe",
+                        "  |cffffd100ue <objet>|r - il le retire",
+                        "  |cffffd100s <objet>|r - il vous le remet",
+                        "  |cffffd100u <objet>|r - il l'utilise",
+                        "  |cffffd100destroy <objet>|r - il le détruit",
+                        "  |cffffd100talent 1|r, |cffffd1002|r ou |cffffd1003|r - il change de spécialisation",
+                        "  |cffffd100setting|r - il se remet à votre niveau et se rééquipe",
+                        "Ces ordres-là sont refusés tant que le mercenaire est en combat."
+                    };
+                    SendLines(player, lines, sizeof(lines) / sizeof(lines[0]));
+                    SendOrdersMenu(player, creature);
+                    return true;
+                }
                 case GOSSIP_ACTION_DISMISS_ALL:
                     CloseGossipMenuFor(player);
                     sMercenaryMgr->DismissAll(player->GetGUID());
