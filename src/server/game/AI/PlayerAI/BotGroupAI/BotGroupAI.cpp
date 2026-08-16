@@ -285,6 +285,14 @@ void BotGroupAI::ProcessStopCommand()
 	me->SetSelection(ObjectGuid::Empty);
 	m_SeduceTarget = ObjectGuid::Empty;
 	m_StopFollow = true;
+	// SylvaniaCore : sans ces trois lignes, l ordre restait sans effet visible.
+	// Le suivi est un generateur MoveFollow pose sur le MotionMaster ;
+	// ClearMovement() se contente d appeler StopMoving(), et le generateur,
+	// toujours en tete de pile, relance la poursuite au tick suivant. Il faut
+	// vider la pile de mouvement pour que le mercenaire se fige vraiment.
+	m_Movement->ClearMovement();
+	me->GetMotionMaster()->Clear();
+	me->StopMoving();
 }
 
 void BotGroupAI::ProcessSetting()

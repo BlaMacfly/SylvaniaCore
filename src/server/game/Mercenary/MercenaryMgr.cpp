@@ -16,6 +16,7 @@
  */
 
 #include "MercenaryMgr.h"
+#include "BotGroupAI.h"
 #include "CapitalSiegeMgr.h"
 #include "Chat.h"
 #include "Config.h"
@@ -161,6 +162,8 @@ bool MercenaryMgr::IsAccountHired(uint32 accountId) const
 bool MercenaryMgr::FindCandidate(Player* owner, uint8 role, uint32& accountId, uint64& charGuid, bool& alreadyOnline) const
 {
     SessionMap const& sessions = sWorld->GetAllSessions();
+    std::vector<uint32> onlineCandidates;
+    std::vector<std::pair<uint32, uint64> > offlineCandidates;
 
     for (SessionMap::const_iterator it = sessions.begin(); it != sessions.end(); ++it)
     {
@@ -194,7 +197,15 @@ bool MercenaryMgr::FindCandidate(Player* owner, uint8 role, uint32& accountId, u
         if (FindSpecIndexForRole(bot->getClass(), role) < 0)
             continue;
 
-        accountId = session->GetAccountId();
+        onlineCandidates.push_back(session->GetAccountId());
+    }
+
+    // Tirage au sort parmi TOUS les candidats, et non premier trouve : la carte
+    // des sessions est ordonnee par identifiant de compte, si bien qu un choix
+    // sequentiel ramenait invariablement le meme mercenaire.
+    if (!onlineCandidates.empty())
+    {
+        accountId = onlineCandidates[urand(0, uint32(onlineCandidates.size()) - 1)];
         charGuid = 0;
         alreadyOnline = true;
         return true;
@@ -235,11 +246,19 @@ bool MercenaryMgr::FindCandidate(Player* owner, uint8 role, uint32& accountId, u
             if (FindSpecIndexForRole(uint8(charInfo.profession), role) < 0)
                 continue;
 
-            accountId = session->GetAccountId();
-            charGuid = charInfo.guid;
-            alreadyOnline = false;
-            return true;
+            offlineCandidates.push_back(std::make_pair(session->GetAccountId(), charInfo.guid));
+            break;      // un seul personnage retenu par compte
         }
+    }
+
+    if (!offlineCandidates.empty())
+    {
+        std::pair<uint32, uint64> const& picked =
+            offlineCandidates[urand(0, uint32(offlineCandidates.size()) - 1)];
+        accountId = picked.first;
+        charGuid = picked.second;
+        alreadyOnline = false;
+        return true;
     }
 
     return false;
@@ -518,6 +537,22 @@ void MercenaryMgr::Update(uint32 diff)
                 ReleaseBot(contract);
                 continue;
             }
+
+            // Materialisation aupres de l employeur, au premier tick qui suit
+            // l entree dans le groupe. On passe par l ordre « summon » de l IA
+            // plutot que par un TeleportTo direct : un bot n a pas de client
+            // pour accuser reception du teleport, c est BotAITeleport qui
+            // simule cet echange en trois etapes. Un TeleportTo pose ici laisse
+            // le mercenaire a son ancienne place aux yeux de tout le monde.
+            if (it->summonPending)
+            {
+                if (BotGroupAI* groupAI = dynamic_cast<BotGroupAI*>(bot->GetAI()))
+                {
+                    groupAI->ProcessBotCommand(owner, "summon");
+                    it->summonPending = false;
+                }
+            }
+
             ++it;
             continue;
         }
@@ -581,15 +616,12 @@ void MercenaryMgr::Update(uint32 diff)
 
         it->botGuid = bot->GetGUID();
         it->stage = MERC_STAGE_ACTIVE;
+        // Le mercenaire doit encore se materialiser aupres de son employeur :
+        // c est fait au tick suivant, une fois que l IA de groupe aura reconnu
+        // son maitre. Voir la branche MERC_STAGE_ACTIVE.
+        it->summonPending = true;
 
         PlayerBotMgr::SwitchPlayerBotAI(bot, PlayerBotAIType::PBAIT_GROUP, true);
-
-        // Le mercenaire se materialise aupres de son employeur. L ajout au
-        // groupe precede volontairement le teleport : c est ce qui autorise
-        // l entree dans l instance ou se trouve deja le joueur.
-        float x, y, z;
-        owner->GetClosePoint(x, y, z, 2.0f, 3.0f);
-        bot->TeleportTo(owner->GetMapId(), x, y, z, owner->GetOrientation());
 
         ChatHandler(owner->GetSession()).PSendSysMessage(
             "|cff00ff00[Portail]|r %s, %s mercenaire, répond à votre appel.",

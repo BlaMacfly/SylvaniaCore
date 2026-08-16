@@ -1043,6 +1043,20 @@ void BotAITeleport::Update(uint32 diff, BotBGAIMovement* pMovement)
 			me->SendMessageToSet(&data, me);
 			me->CombatStop(true);
 			me->SetSelection(ObjectGuid::Empty);
+			// SylvaniaCore : le paquet diffuse ci-dessus porte un opcode CLIENT
+			// (CMSG_MOVE_FALL_LAND), que les clients voisins ne savent pas lire.
+			// Resultat : le bot avait bien change de place cote serveur - positions
+			// identiques en base - mais restait affiche a son ancien emplacement,
+			// jusqu au prochain passage hors puis dans le champ de vision. On force
+			// donc la reconstruction de l objet chez les joueurs alentour.
+			me->DestroyForNearbyPlayers();
+			me->UpdateObjectVisibility(true);
+			// mod-playerbots (PlayerbotAI::HandleTeleportAck) vide le MotionMaster
+			// et arrete le mouvement a chaque acquittement de teleport. Sans cela,
+			// le generateur de suivi encore en place fait repartir le bot depuis
+			// l ancienne trajectoire.
+			me->GetMotionMaster()->Clear(true);
+			me->StopMoving();
 			m_TeleportPositon.m_positionX = m_TeleportPositon.m_positionY = m_TeleportPositon.m_positionZ = 0;
 			m_TeleportStep = 0;
 		}
