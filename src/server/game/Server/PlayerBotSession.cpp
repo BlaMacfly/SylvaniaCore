@@ -704,6 +704,11 @@ bool PlayerBotSession::ProcessDelayLevelup(BotGlobleSchedule& schedule)
 		ClearAllSchedule();
 		return false;
 	}
+	// Le rehabillage retire puis rend tout l equipement : hors de question de
+	// desarmer le bot en pleine bagarre. Renvoyer false laisse le schedule en
+	// tete de file, il sera retente au tick suivant.
+	if (player->IsInCombat())
+		return false;
 	player->OnLevelupToBotAI();
 	return true;
 }

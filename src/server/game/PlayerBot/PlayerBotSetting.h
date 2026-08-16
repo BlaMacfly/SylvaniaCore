@@ -120,7 +120,9 @@ public:
 	uint32 SwitchPlayerTalent(uint32 talent);
 	void SupplementAmmo();
 	void UpdateReset();
+	void RefreshEquipment();
 	void LearnSpells();
+	void ActivateSpecialization();
 	void LearnTalents();
 	bool EquipItem(Item* pItem);
 

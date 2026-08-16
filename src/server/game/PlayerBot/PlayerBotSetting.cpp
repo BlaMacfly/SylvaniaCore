@@ -1742,7 +1742,7 @@ bool PlayerBotSetting::ResetPlayerToLevel(uint32 level, uint32 talent, bool tena
 		m_Player->GiveLevel(level);
 		m_Player->SetUInt32Value(PLAYER_XP, 0);
 	}
-	m_ResetStep = 1;
+	m_ResetStep = 0;
 	m_Finish = false;
 	m_TenacitySetting = tenacity;
 	return true;
@@ -1758,6 +1758,32 @@ void PlayerBotSetting::SupplementAmmo()
 	
 }
 
+// Rehabille le bot a son niveau courant.
+//
+// C est exactement le bloc equipement du re-level complet -- les etapes 6 a 10
+// de UpdateReset() -- isole pour pouvoir etre rejoue a chaque montee de niveau.
+// On ne repasse volontairement NI par ResetTalents NI par ActivateSpecialization :
+// la reattribution de specialisation en cours de partie est le chemin des crashs
+// connus de PlayerBotSetting, et les talents comme les sorts sont deja tenus a
+// jour par OnLevelupToBotAI().
+//
+// L ordre compte : AddEquipFromAll() remplit m_NeedEquips, UpequipFromAll() le
+// consomme et le vide.
+void PlayerBotSetting::RefreshEquipment()
+{
+	if (!m_Player || !m_Player->IsInWorld() || m_Player->IsInCombat())
+		return;
+
+	UnequipFromAll();
+	CheckInventroy();
+	AddEquipFromAll();
+	UpequipFromAll();
+	SupplementOtherItems();
+
+	m_Player->UpdateAllStats();
+	m_Player->SaveToDB();
+}
+
 void PlayerBotSetting::UpdateReset()
 {
 	if (m_Finish)
@@ -1767,6 +1793,13 @@ void PlayerBotSetting::UpdateReset()
 		m_Player->CombatStop(true);
 	switch (m_ResetStep)
 	{
+	case 0:
+		// Sur son propre tick, avant l effacement des talents : changer de
+		// specialisation pendant que les stats et les auras sont recalculees
+		// est precisement ce qui faisait exploser la pile.
+		ActivateSpecialization();
+		++m_ResetStep;
+		break;
 	case 1:
 		m_Player->ResetTalents(true);
 		++m_ResetStep;
@@ -1837,6 +1870,35 @@ void PlayerBotSetting::UpdateReset()
 	}
 	if (m_Finish)
 		m_TenacitySetting = false;
+}
+
+// Bascule le bot sur la specialisation demandee par le re-level, en passant par
+// le chemin officiel du core. Une version precedente ecrivait
+// PLAYER_FIELD_CURRENT_SPEC_ID a la main en plein re-level et provoquait un
+// debordement de pile : ActivateTalentGroup fait le travail complet, y compris
+// InitTalentForLevel, les boutons d action, la puissance et les auras de forme.
+void PlayerBotSetting::ActivateSpecialization()
+{
+	if (!m_Player)
+		return;
+
+	// 3 signifie  garder la specialisation du personnage  : rien a faire.
+	if (m_ActiveTalentType > 2)
+		return;
+
+	uint8 const playerClass = m_Player->getClass();
+	for (uint32 i = 0; i < sChrSpecializationStore.GetNumRows(); ++i)
+	{
+		ChrSpecializationEntry const* spec = sChrSpecializationStore.LookupEntry(i);
+		if (!spec || spec->ClassID != int8(playerClass) || spec->IsPetSpecialization())
+			continue;
+		if (uint32(spec->OrderIndex) != m_ActiveTalentType)
+			continue;
+
+		// ActivateTalentGroup ne fait rien si la specialisation est deja active.
+		m_Player->ActivateTalentGroup(spec);
+		return;
+	}
 }
 
 void PlayerBotSetting::LearnTalents()

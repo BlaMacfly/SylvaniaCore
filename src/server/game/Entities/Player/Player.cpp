@@ -492,6 +492,10 @@ void Player::OnLevelupToBotAI()
         {
             uint32 type = ReupdateTalents();
             m_PlayerBotSetting->LearnSpells();
+            // Seuls les talents et les sorts suivaient la montee de niveau : le
+            // bot gardait pour tout le contrat l equipement recu a l embauche et
+            // devenait de plus en plus fragile.
+            m_PlayerBotSetting->RefreshEquipment();
             pAI->OnLevelUp(type);
         }
     }
