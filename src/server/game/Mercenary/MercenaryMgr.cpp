@@ -428,15 +428,23 @@ void MercenaryMgr::DismissAll(ObjectGuid ownerGuid)
 // Un membre a quitte un groupe, de son plein gre ou expulse. Si c est un
 // mercenaire, son contrat s arrete la ; si c est son employeur, toute sa
 // compagnie se dissout.
+//
+// On se contente de MARQUER les contrats, la liberation a lieu au tick suivant.
+// Ce hook est appele depuis Group::RemoveMember et depuis Group::Disband ;
+// congedier sur-le-champ rappelle Group::RemoveMember par en dessous, or
+// RemoveMember disband le groupe des qu il repasse sous deux membres et
+// Disband() se termine par `delete this`. L appel exterieur reprenait alors la
+// main sur un Group libere et le liberait une seconde fois -- double liberation
+// qui corrompait le tas et faisait tomber le serveur bien plus tard, dans un
+// malloc sans rapport.
 void MercenaryMgr::OnPlayerLeftGroup(ObjectGuid guid)
 {
     if (m_releasing)
         return;
 
-    if (IsMercenary(guid))
-        DismissOne(guid);
-    else
-        DismissAll(guid);
+    for (MercenaryContract& contract : m_contracts)
+        if (contract.botGuid == guid || contract.ownerGuid == guid)
+            contract.pendingRelease = true;
 }
 
 void MercenaryMgr::OnGroupDisband(Group* group)
@@ -444,13 +452,12 @@ void MercenaryMgr::OnGroupDisband(Group* group)
     if (m_releasing || !group || m_contracts.empty())
         return;
 
-    Group::MemberSlotList const& members = group->GetMemberSlots();
-    std::vector<ObjectGuid> guids;
-    for (Group::MemberSlot const& slot : members)
-        guids.push_back(slot.guid);
-
-    for (ObjectGuid const& guid : guids)
-        OnPlayerLeftGroup(guid);
+    // Meme regle que ci-dessus : ne rien toucher pendant que le core demonte le
+    // groupe. Disband() retire lui-meme tous les membres juste apres ce hook.
+    for (Group::MemberSlot const& slot : group->GetMemberSlots())
+        for (MercenaryContract& contract : m_contracts)
+            if (contract.botGuid == slot.guid || contract.ownerGuid == slot.guid)
+                contract.pendingRelease = true;
 }
 
 void MercenaryMgr::OnPlayerLogout(Player* player)
@@ -473,6 +480,22 @@ void MercenaryMgr::Update(uint32 diff)
 
     for (std::vector<MercenaryContract>::iterator it = m_contracts.begin(); it != m_contracts.end(); )
     {
+        // Contrat rompu par un hook de groupe : la liberation a ete differee
+        // jusqu ici pour ne pas reentrer dans Group::RemoveMember / Disband().
+        if (it->pendingRelease)
+        {
+            MercenaryContract const contract = *it;
+            it = m_contracts.erase(it);
+
+            if (Player* owner = ObjectAccessor::FindConnectedPlayer(contract.ownerGuid))
+                ChatHandler(owner->GetSession()).PSendSysMessage(
+                    "|cff00ff00[Portail]|r Votre %s retourne d'où il vient. Il vous faudra payer de nouveau pour en invoquer un autre.",
+                    GetRoleName(contract.role));
+
+            ReleaseBot(contract);
+            continue;
+        }
+
         // L employeur d abord : plus de maitre, plus de contrat. C est le filet
         // de securite si un hook n a pas ete appele (crash client, timeout...).
         Player* owner = ObjectAccessor::FindConnectedPlayer(it->ownerGuid);

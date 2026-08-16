@@ -63,7 +63,8 @@ enum MercenaryResult
 
 struct MercenaryContract
 {
-    MercenaryContract() : accountId(0), role(0), stage(MERC_STAGE_SUMMONING), waitSeconds(0) { }
+    MercenaryContract() : accountId(0), role(0), stage(MERC_STAGE_SUMMONING), waitSeconds(0),
+        pendingRelease(false) { }
 
     uint32     accountId;       // compte bot reserve
     ObjectGuid ownerGuid;       // joueur qui a paye
@@ -71,6 +72,10 @@ struct MercenaryContract
     uint8      role;            // ROLE_TANK, ROLE_HEALER ou ROLE_DAMAGE
     uint8      stage;
     uint32     waitSeconds;
+
+    // Contrat rompu par un hook de groupe du core, mais dont la liberation est
+    // differee au prochain Update() : voir MercenaryMgr::OnPlayerLeftGroup().
+    bool       pendingRelease;
 };
 
 class TC_GAME_API MercenaryMgr

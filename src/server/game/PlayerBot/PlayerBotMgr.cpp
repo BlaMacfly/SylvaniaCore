@@ -31,6 +31,7 @@
 #include "LFGMgr.h"
 #include "Config.h"
 #include "PlayerBotSession.h"
+#include "MercenaryMgr.h"
 #include "AccountMgr.h"
 #include "BattlenetAccountMgr.h"
 #include "CharacterPackets.h"
@@ -3515,7 +3516,12 @@ void PlayerBotMgr::UpdateIdleBotLogout()
         bool inSiege = false;
         if (BotBGAI* botAI = dynamic_cast<BotBGAI*>(player->GetAI()))
             inSiege = botAI->IsSiegeMode();
-        bool busy = inSiege || pSession->HasSchedules() || player->InBattleground() || player->InArena()
+        // Module Mercenaires : un bot loue est sous contrat meme s il reste
+        // immobile aupres de son employeur. Sans cette exemption le balayage
+        // d inactivite le deconnectait au bout de pbotbg_idlelogout secondes et
+        // le mercenaire disparaissait sans explication.
+        bool const hired = sMercenaryMgr->IsAccountHired(accId);
+        bool busy = inSiege || hired || pSession->HasSchedules() || player->InBattleground() || player->InArena()
             || player->InBattlegroundQueue() || player->GetMap()->IsDungeon() || player->isUsingLfg()
             || player->IsInCombat();
         if (busy)
