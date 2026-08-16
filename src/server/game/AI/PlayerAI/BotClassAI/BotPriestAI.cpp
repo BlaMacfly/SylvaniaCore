@@ -20,6 +20,11 @@
 
 void BotPriestAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
 	PriestIDLE_AllHardRes = FindMaxRankSpellByExist(43939);
 	PriestIDLE_HardRes = FindMaxRankSpellByExist(23948);
 	PriestIDLE_SoulFire = FindMaxRankSpellByExist(48168);
@@ -28,7 +33,7 @@ void BotPriestAI::InitializeSpells()
 	PriestIDLE_Bloodsucker = FindMaxRankSpellByExist(15286);
 	PriestIDLE_AllShadowRes = FindMaxRankSpellByExist(53915);
 	PriestIDLE_ShadowRes = FindMaxRankSpellByExist(53915);
-	PriestIDLE_ShadowStatus = FindMaxRankSpellByExist(16592);
+	PriestIDLE_ShadowStatus = FindMaxRankSpellByExist(232698);   // Forme d ombre
 
 	PriestGuard_ShadowFear = FindMaxRankSpellByExist(34984);
 	PriestGuard_AOEFear = FindMaxRankSpellByExist(8122);
@@ -44,18 +49,18 @@ void BotPriestAI::InitializeSpells()
 	PriestAssist_AllDispel = FindMaxRankSpellByExist(4526);
 	PriestAssist_Dispel = FindMaxRankSpellByExist(528);
 	PriestAssist_ShadowDemon = FindMaxRankSpellByExist(10060);
-	PriestAssist_Silence = FindMaxRankSpellByExist(8988);
+	PriestAssist_Silence = FindMaxRankSpellByExist(15487);   // Silence
 	PriestAssist_AllResMana = FindMaxRankSpellByExist(64843);
 	PriestAssist_AllResLife = FindMaxRankSpellByExist(64843);
 
-	PriestDebuf_Ache = FindMaxRankSpellByExist(11639);
-	PriestDebuf_Drown = FindMaxRankSpellByExist(41375);
-	PriestDebuf_Plague = FindMaxRankSpellByExist(138490);
+	PriestDebuf_Ache = FindMaxRankSpellByExist(589);   // Mot de l ombre : douleur
+	PriestDebuf_Drown = FindMaxRankSpellByExist(32379);   // Mot de l ombre : mort
+	PriestDebuf_Plague = FindMaxRankSpellByExist(228260);   // Eruption du Vide
 	PriestAOE_ShadowExplode = FindMaxRankSpellByExist(138490);
 	PriestAOE_HolyNova = FindMaxRankSpellByExist(20694);
 
-	PriestShadow_ShadowTouch = FindMaxRankSpellByExist(18152);
-	PriestShadow_Knocking = FindMaxRankSpellByExist(17194);
+	PriestShadow_ShadowTouch = FindMaxRankSpellByExist(34914);   // Toucher vampirique
+	PriestShadow_Knocking = FindMaxRankSpellByExist(8092);   // Attaque mentale
 	PriestShadow_Lech = FindMaxRankSpellByExist(15407);
 	PriestHoly_Smite = FindMaxRankSpellByExist(585);
 	PriestHoly_BigFire = FindMaxRankSpellByExist(17141);
@@ -63,7 +68,7 @@ void BotPriestAI::InitializeSpells()
 
 	PriestHeal_LowHeal = FindMaxRankSpellByExist(8812);
 	PriestHeal_Resume = FindMaxRankSpellByExist(27606);
-	PriestHeal_FastHeal = FindMaxRankSpellByExist(27608);
+	PriestHeal_FastHeal = FindMaxRankSpellByExist(2061);   // Soins rapides
 	PriestHeal_BigHeal = FindMaxRankSpellByExist(34119);
 	PriestHeal_LinkHeal = FindMaxRankSpellByExist(32546);
 	PriestHeal_UnionHeal = FindMaxRankSpellByExist(225275);

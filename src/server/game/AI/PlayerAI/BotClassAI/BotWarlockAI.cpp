@@ -27,6 +27,11 @@
 
 void BotWarlockAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
 	WarlockIDLE_LowArmor = FindMaxRankSpellByExist(20798);
 	WarlockIDLE_Armor = FindMaxRankSpellByExist(13787);
 	WarlockIDLE_HighArmor = FindMaxRankSpellByExist(44520);
@@ -58,9 +63,9 @@ void BotWarlockAI::InitializeSpells()
 
 	WarlockAOE_MeleeFire = FindMaxRankSpellByExist(22539);
 	WarlockAOE_RainFire = FindMaxRankSpellByExist(16005);
-	WarlockAOE_ShadowRage = FindMaxRankSpellByExist(39082);
+	WarlockAOE_ShadowRage = FindMaxRankSpellByExist(198590);   // Drain d ame
 
-	WarlockCurse_UpDmg = FindMaxRankSpellByExist(79956);
+	WarlockCurse_UpDmg = FindMaxRankSpellByExist(980);   // Agonie
 	WarlockCurse_MoveLow = FindMaxRankSpellByExist(29539);
 	WarlockCurse_MgcDmg = FindMaxRankSpellByExist(14868);
 	WarlockCurse_MeleeLow = FindMaxRankSpellByExist(8552);
@@ -69,7 +74,7 @@ void BotWarlockAI::InitializeSpells()
 	WarlockDot_LeechSoul = FindMaxRankSpellByExist(48181);
 	WarlockDot_HighDmg = FindMaxRankSpellByExist(30108);
 	WarlockDot_LowDmg = FindMaxRankSpellByExist(172);
-	WarlockDot_AOEDmg = FindMaxRankSpellByExist(32863);
+	WarlockDot_AOEDmg = FindMaxRankSpellByExist(27243);   // Semence de corruption
 	WarlockDot_Sacrifice = FindMaxRankSpellByExist(15505);
 
 	WarlockCast_ShadowArrow = FindMaxRankSpellByExist(9613);

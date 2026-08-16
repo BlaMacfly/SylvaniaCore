@@ -22,6 +22,11 @@
 
 void BotPaladinAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
 	PaladinIDLE_MountAura = FindMaxRankSpellByExist(225454);
 	PaladinIDLE_CastAura = FindMaxRankSpellByExist(81455);
 	PaladinIDLE_JudgeAura = FindMaxRankSpellByExist(8990);
@@ -35,7 +40,7 @@ void BotPaladinAI::InitializeSpells()
 	PaladinGuard_UnShield = FindMaxRankSpellByExist(29381);
 	PaladinGuard_FreeAura = FindMaxRankSpellByExist(1044);
 	PaladinGuard_Invincible = FindMaxRankSpellByExist(642);
-	PaladinGuard_Sacrifice = FindMaxRankSpellByExist(187190);
+	PaladinGuard_Sacrifice = FindMaxRankSpellByExist(184662);   // Bouclier de vengeance
 	PaladinGuard_AOESacrifice = FindMaxRankSpellByExist(13903);
 	PaladinGuard_BlockShield = FindMaxRankSpellByExist(31904);
 	PaladinGuard_PhyImmune = FindMaxRankSpellByExist(66009);
@@ -48,28 +53,28 @@ void BotPaladinAI::InitializeSpells()
 	PaladinAssist_StunStamp = FindMaxRankSpellByExist(50907);
 	PaladinAssist_ComStamp = FindMaxRankSpellByExist(13903);
 	PaladinAssist_Confession = FindMaxRankSpellByExist(173315);
-	PaladinAssist_StunMace = FindMaxRankSpellByExist(66863);
+	PaladinAssist_StunMace = FindMaxRankSpellByExist(853);   // Marteau de la justice
 	PaladinAssist_ReviveMana = FindMaxRankSpellByExist(173521);
 	PaladinAssist_HealCrit = FindMaxRankSpellByExist(210294);
 	PaladinAssist_LowMana = FindMaxRankSpellByExist(20271);
-	PaladinAssist_AuraUP = FindMaxRankSpellByExist(31821);
+	PaladinAssist_AuraUP = FindMaxRankSpellByExist(31884);   // Colere vengeresse
 	PaladinAssist_Dispel = FindMaxRankSpellByExist(4987);
 
 	PaladinHeal_FastHoly = FindMaxRankSpellByExist(19750);
-	PaladinHeal_BigHoly = FindMaxRankSpellByExist(13952);
+	PaladinHeal_BigHoly = FindMaxRankSpellByExist(210191);   // Verbe de gloire
 	PaladinHeal_FullHoly = FindMaxRankSpellByExist(9257);
 
-	PaladinMelee_AOEOffertory = FindMaxRankSpellByExist(251152);
+	PaladinMelee_AOEOffertory = FindMaxRankSpellByExist(26573);   // Consecration
 	PaladinMelee_KillMace = FindMaxRankSpellByExist(37259);
 	PaladinMelee_FlyShield = FindMaxRankSpellByExist(31935);
 	PaladinMelee_ShieldAtt = FindMaxRankSpellByExist(53600);
-	PaladinMelee_MaceAtt = FindMaxRankSpellByExist(53595);
-	PaladinMelee_HolyAtt = FindMaxRankSpellByExist(25914);
+	PaladinMelee_MaceAtt = FindMaxRankSpellByExist(184575);   // Lame de justice
+	PaladinMelee_HolyAtt = FindMaxRankSpellByExist(85256);   // Verdict du templier
 	PaladinMelee_LifeJudge = FindMaxRankSpellByExist(31804);
 	PaladinMelee_ManaJudge = FindMaxRankSpellByExist(41368);
 	PaladinMelee_FleeJudge = FindMaxRankSpellByExist(201371);
 	PaladinMelee_WeaponAtt = FindMaxRankSpellByExist(213844);
-	PaladinMelee_HolyStrom = FindMaxRankSpellByExist(163888);
+	PaladinMelee_HolyStrom = FindMaxRankSpellByExist(53385);   // Tempete divine
 
 	PaladinFlag_MomentHoly = 251152;
 	PaladinFlag_Discipline = 25771;

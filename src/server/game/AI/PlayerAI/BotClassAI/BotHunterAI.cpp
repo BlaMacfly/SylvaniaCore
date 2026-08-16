@@ -22,6 +22,11 @@
 
 void BotHunterAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
 	HunterIDLE_SummonPet = FindMaxRankSpellByExist(23498);// 883			????
 	HunterIDLE_RevivePet = FindMaxRankSpellByExist(982);// 982			????
 	HunterIDLE_ManaAura = FindMaxRankSpellByExist(210754);// 34074			??????
@@ -47,26 +52,26 @@ void BotHunterAI::InitializeSpells()
 	uint32 HunterAssist_FalseDead = FindMaxRankSpellByExist(5384);// 5384		??
 	uint32 HunterAssist_BackJump = FindMaxRankSpellByExist(781);// 781			??
 	uint32 HunterAssist_FastSpeed = FindMaxRankSpellByExist(3045);// 3045		????BUF
-	uint32 HunterAssist_ReadyCD = FindMaxRankSpellByExist(203551);// 23989		????CD(???)
+	uint32 HunterAssist_ReadyCD = FindMaxRankSpellByExist(193530);   // Aspect du sauvage// 23989		????CD(???)
 	
 	uint32 HunterMelee_BackRoot = FindMaxRankSpellByExist(116599);// 48999		???????(???)
 	uint32 HunterMelee_NoDamage = FindMaxRankSpellByExist(31567);// 19263		?? ????
 	uint32 HunterMelee_DecSpeed = FindMaxRankSpellByExist( 195645);// 2974			?? ??????
 	uint32 HunterMelee_NextAtt = FindMaxRankSpellByExist(31566);// 48996			next??????
-	uint32 HunterMelee_MeleeAtt = FindMaxRankSpellByExist(190928);// 53339		????
+	uint32 HunterMelee_MeleeAtt = FindMaxRankSpellByExist(120679);   // Bete sauvage// 53339		????
 
 	HunterDebug_Damage = FindMaxRankSpellByExist(160503);
 	HunterDebug_Mana = FindMaxRankSpellByExist(31407);
 	HunterDebug_Sleep = FindMaxRankSpellByExist(19386);
 
-	HunterShot_AOEShot = FindMaxRankSpellByExist(22908);
+	HunterShot_AOEShot = FindMaxRankSpellByExist(120360);   // Barrage
 	HunterShot_CharmShot = FindMaxRankSpellByExist(23601);
 	HunterShot_Explode = FindMaxRankSpellByExist(15495);
-	HunterShot_Aim = FindMaxRankSpellByExist(48871);
+	HunterShot_Aim = FindMaxRankSpellByExist(34026);   // Commandement de tuer
 	HunterShot_Silence = FindMaxRankSpellByExist(248919);
 	HunterShot_Shock = FindMaxRankSpellByExist(5116);
 	HunterShot_Cast = FindMaxRankSpellByExist(65867);
-	HunterShot_MgcShot = FindMaxRankSpellByExist(69989);
+	HunterShot_MgcShot = FindMaxRankSpellByExist(193455);   // Tir de cobra
 	HunterShot_KillShot = FindMaxRankSpellByExist(69989);
 	HunterShot_MulShot = FindMaxRankSpellByExist(2643);
 	HunterShot_QMLShot = FindMaxRankSpellByExist(53209);

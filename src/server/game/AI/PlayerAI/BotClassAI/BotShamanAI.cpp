@@ -21,6 +21,11 @@
 
 void BotShamanAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
 	ShamanIDLE_LifeWeapon = FindMaxRankSpellByExist(32911);
 	ShamanIDLE_IceWeapon = FindMaxRankSpellByExist(78273);
 	ShamanIDLE_FireWeapon = FindMaxRankSpellByExist(160098);
@@ -32,8 +37,8 @@ void BotShamanAI::InitializeSpells()
 	ShamanShield_Lightning = FindMaxRankSpellByExist(20545);
 
 	ShamanAssist_Frog = FindMaxRankSpellByExist(11641);
-	ShamanAssist_HealCrit = FindMaxRankSpellByExist(137531);
-	ShamanAssist_MomentHeal = FindMaxRankSpellByExist(127316);
+	ShamanAssist_HealCrit = FindMaxRankSpellByExist(73920);   // Pluie de soins
+	ShamanAssist_MomentHeal = FindMaxRankSpellByExist(108280);   // Totem de maree de soins
 	ShamanAssist_MomentCast = FindMaxRankSpellByExist(16166);
 	ShamanAssist_BlockCast = FindMaxRankSpellByExist(52870);
 	ShamanAssist_Cleansing = FindMaxRankSpellByExist(370);
@@ -41,25 +46,25 @@ void BotShamanAI::InitializeSpells()
 	ShamanAssist_Heroic = FindMaxRankSpellByExist(32182);
 
 	ShamanAtt_StormStrike = FindMaxRankSpellByExist(17364);
-	ShamanAtt_FireStrike = FindMaxRankSpellByExist(60103);
+	ShamanAtt_FireStrike = FindMaxRankSpellByExist(51505);   // Explosion de lave
 
-	ShamanCast_LightningArrow = FindMaxRankSpellByExist(218013);
+	ShamanCast_LightningArrow = FindMaxRankSpellByExist(403);   // Eclair
 	ShamanCast_LightningChain = FindMaxRankSpellByExist(190332);
 	ShamanCast_LightningStorm = FindMaxRankSpellByExist(71935);
-	ShamanCast_FireThud = FindMaxRankSpellByExist(23038);
+	ShamanCast_FireThud = FindMaxRankSpellByExist(188389);   // Salve de flammes
 	ShamanCast_IceThud = FindMaxRankSpellByExist(22582);
 	ShamanCast_EarthThud = FindMaxRankSpellByExist(43305);
 	ShamanCast_FireStrike = FindMaxRankSpellByExist(58972);
 
-	ShamanHealth_Fast = FindMaxRankSpellByExist(71985);
-	ShamanHealth_Bast = FindMaxRankSpellByExist(253330);
-	ShamanHealth_Chain = FindMaxRankSpellByExist(237925);
-	ShamanHealth_Torrent = FindMaxRankSpellByExist(237920);
-	ShamanDispel_Refine = FindMaxRankSpellByExist(234893);
+	ShamanHealth_Fast = FindMaxRankSpellByExist(8004);   // Salve de soins
+	ShamanHealth_Bast = FindMaxRankSpellByExist(77472);   // Vague de soins
+	ShamanHealth_Chain = FindMaxRankSpellByExist(1064);   // Chaine de soins
+	ShamanHealth_Torrent = FindMaxRankSpellByExist(61295);   // Vague de rappel
+	ShamanDispel_Refine = FindMaxRankSpellByExist(77130);   // Purification de l esprit
 
 	ShamanTotem_Recycle = FindMaxRankSpellByExist(5394);
 
-	ShamanTotem_Life = FindMaxRankSpellByExist(35199);
+	ShamanTotem_Life = FindMaxRankSpellByExist(98008);   // Totem de lien spirituel
 	ShamanTotem_Mana = FindMaxRankSpellByExist(24854);
 	ShamanTotem_BMana = FindMaxRankSpellByExist(24854);
 

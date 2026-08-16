@@ -22,6 +22,11 @@
 
 void BotDruidAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
 	DruidIDLE_AOEFerityWish = FindMaxRankSpellByExist(165754);
 
 	DruidStatus_Travel = FindMaxRankSpellByExist(783);
@@ -31,7 +36,7 @@ void BotDruidAI::InitializeSpells()
 	DruidStatus_Tree = FindMaxRankSpellByExist(33891);
 
 	DruidGuard_Sneak = FindMaxRankSpellByExist(5215);
-	DruidGuard_Harden = FindMaxRankSpellByExist(182872);
+	DruidGuard_Harden = FindMaxRankSpellByExist(192081);   // Fourrure de fer
 	DruidGuard_Thorns = FindMaxRankSpellByExist(209334);
 	DruidGuard_AutoTwine = FindMaxRankSpellByExist(66071);
 	DruidGuard_Twine = FindMaxRankSpellByExist(339);
@@ -41,29 +46,29 @@ void BotDruidAI::InitializeSpells()
 
 	DruidAssist_PersonSpirit = FindMaxRankSpellByExist(770);
 	DruidAssist_BeastSpirit = FindMaxRankSpellByExist(16857);
-	DruidAssist_Active = FindMaxRankSpellByExist(6950);
+	DruidAssist_Active = FindMaxRankSpellByExist(194223);   // Alignement celeste
 
-	DruidCast_Moonfire = FindMaxRankSpellByExist(65856);
-	DruidCast_Insect = FindMaxRankSpellByExist(65855);
-	DruidCast_Anger = FindMaxRankSpellByExist(65862);
-	DruidCast_Spark = FindMaxRankSpellByExist(98993);
+	DruidCast_Moonfire = FindMaxRankSpellByExist(194153);   // Frappe lunaire
+	DruidCast_Insect = FindMaxRankSpellByExist(93402);   // Feu solaire
+	DruidCast_Anger = FindMaxRankSpellByExist(190984);   // Courroux solaire
+	DruidCast_Spark = FindMaxRankSpellByExist(78674);   // Poussee d etoiles
 
 	DruidAOE_Hurricane = FindMaxRankSpellByExist(55881);
 	DruidAOE_Typhoon = FindMaxRankSpellByExist(51817);
-	DruidAOE_FallStar = FindMaxRankSpellByExist(100806);
+	DruidAOE_FallStar = FindMaxRankSpellByExist(191034);   // Pluie d etoiles
 
 	DruidHeal_Nourishing = FindMaxRankSpellByExist(63556);
 	DruidHeal_Relife = FindMaxRankSpellByExist(774);
 	DruidHeal_Coalescence = FindMaxRankSpellByExist(66067);
 	DruidHeal_Touch = FindMaxRankSpellByExist(5185);
-	DruidHeal_LifeBurst = FindMaxRankSpellByExist(57763);
+	DruidHeal_LifeBurst = FindMaxRankSpellByExist(22842);   // Regeneration frenetique
 	DruidHeal_MergerLife = FindMaxRankSpellByExist(18562);
 	DruidHeal_MomentHeal = FindMaxRankSpellByExist(127316);
 
 	DruidHeal_AOETranquility = FindMaxRankSpellByExist(740);
 	DruidHeal_AOEFerity = FindMaxRankSpellByExist(173170);
 
-	DruidCat_Stun = FindMaxRankSpellByExist(203123);
+	DruidCat_Stun = FindMaxRankSpellByExist(33917);   // Mutilation, rotation Gardien
 	DruidCat_Bite = FindMaxRankSpellByExist(22568);
 	DruidCat_Roar = FindMaxRankSpellByExist(52610);
 	DruidCat_Separate = FindMaxRankSpellByExist(1943);

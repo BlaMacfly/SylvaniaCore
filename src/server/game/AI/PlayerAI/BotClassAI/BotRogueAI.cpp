@@ -26,15 +26,20 @@
 
 void BotRogueAI::InitializeSpells()
 {
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
 	RogueGuard_Sneak = FindMaxRankSpellByExist(1784);
 	RogueGuard_ShadowCloak = FindMaxRankSpellByExist(31224);
 	RogueGuard_Disappear = FindMaxRankSpellByExist(1856);
-	RogueGuard_Dodge = FindMaxRankSpellByExist(248777);
+	RogueGuard_Dodge = FindMaxRankSpellByExist(5277);   // Evasion
 	RogueGuard_Sprint = FindMaxRankSpellByExist(65864);
 
 	RogueSneak_Stick = FindMaxRankSpellByExist(30980);
 	RogueSneak_Premeditate = FindMaxRankSpellByExist(235777);
-	RogueSneak_Ambush = FindMaxRankSpellByExist(8676);
+	RogueSneak_Ambush = FindMaxRankSpellByExist(703);   // Garrot
 	RogueSneak_Surprise = FindMaxRankSpellByExist(1833);
 
 	RogueAssist_ShadowDance = FindMaxRankSpellByExist(185313);
@@ -42,7 +47,7 @@ void BotRogueAI::InitializeSpells()
 	RogueAssist_ReadyCD = FindMaxRankSpellByExist(145426);
 	RogueAssist_Blind = FindMaxRankSpellByExist(2094);
 	RogueAssist_Disarm = FindMaxRankSpellByExist(236077);
-	RogueAssist_NextCrit = FindMaxRankSpellByExist(213981);
+	RogueAssist_NextCrit = FindMaxRankSpellByExist(79140);   // Vendetta
 	RogueAssist_blood = FindMaxRankSpellByExist(60177);
 	RogueAssist_FastEnergy = FindMaxRankSpellByExist(13750);
 	RogueAssist_BlockCast = FindMaxRankSpellByExist(1766);
@@ -52,14 +57,14 @@ void BotRogueAI::InitializeSpells()
 	RogueAOE_Knife = FindMaxRankSpellByExist(51723);
 	RogueAOE_AllDance = FindMaxRankSpellByExist(51723);
 
-	RogueAttack_Blood = FindMaxRankSpellByExist(65954);
+	RogueAttack_Blood = FindMaxRankSpellByExist(1943);   // Rupture
 	RogueAttack_Ghost = FindMaxRankSpellByExist(123437);
-	RogueAttack_Injure = FindMaxRankSpellByExist(31022);
+	RogueAttack_Injure = FindMaxRankSpellByExist(1329);   // Mutilation
 	RogueAttack_PoisonAtt = FindMaxRankSpellByExist(76511);
 	RogueAttack_BackAtt = FindMaxRankSpellByExist(53);
 	RogueAttack_EvilAtt = FindMaxRankSpellByExist(1752);
 
-	RogueAttack_Damage = FindMaxRankSpellByExist(196819);
+	RogueAttack_Damage = FindMaxRankSpellByExist(32645);   // Envenimer
 	RogueAttack_Separate = FindMaxRankSpellByExist(1079);
 	RogueAttack_Stun = FindMaxRankSpellByExist(408);
 	RogueAttack_PoisonDmg = FindMaxRankSpellByExist(145416);

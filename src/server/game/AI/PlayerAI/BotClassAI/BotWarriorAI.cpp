@@ -103,12 +103,17 @@ bool BotWarriorAI::NeedWaitSpecialSpell(uint32 diff)
 
 void BotWarriorAI::InitializeSpells()
 {
-	WarriorIDLE_AOEAddLife = FindMaxRankSpellByExist(45517);
+	// SylvaniaCore: recalibration Legion. Les identifiants d origine dataient
+	// d une version bien anterieure du jeu et n existaient plus dans le livre de
+	// sorts des bots : la constante valait 0 et toute la branche etait sautee en
+	// silence. Valeurs verifiees presentes en base chez les bots de niveau 110.
+
+	WarriorIDLE_AOEAddLife = FindMaxRankSpellByExist(118038);   // Mourir l arme a la main
 	WarriorIDLE_AOEAddPower = FindMaxRankSpellByExist(27578);
 	WarriorWeapon_Status = FindMaxRankSpellByExist(122990);
 	WarriorDefance_Status = FindMaxRankSpellByExist(71);
 	WarriorRage_Status = FindMaxRankSpellByExist(122989);
-	WarriorCommon_PowerAtt = FindMaxRankSpellByExist(25712);
+	WarriorCommon_PowerAtt = FindMaxRankSpellByExist(1464);   // Salve
 	WarriorCommon_PowerThrow = FindMaxRankSpellByExist(57755);
 	WarriorCommon_PowerRelife = FindMaxRankSpellByExist(184364);
 	WarriorCommon_ClearCtrl = FindMaxRankSpellByExist(18499);
@@ -116,34 +121,34 @@ void BotWarriorAI::InitializeSpells()
 	WarriorCommon_SweepAtt = FindMaxRankSpellByExist(231833);
 	WarriorCommon_AddPower = FindMaxRankSpellByExist(173401);
 	WarriorCommon_AOEDecPower = FindMaxRankSpellByExist(27579);
-	WarriorDefance_HPojia = FindMaxRankSpellByExist(186688);
-	WarriorDefance_Fuchou = FindMaxRankSpellByExist(40392);
-	WarriorDefance_ShieldBlock = FindMaxRankSpellByExist(38031);
+	WarriorDefance_HPojia = FindMaxRankSpellByExist(190456);   // Ignorer la douleur
+	WarriorDefance_Fuchou = FindMaxRankSpellByExist(6572);   // Vengeance
+	WarriorDefance_ShieldBlock = FindMaxRankSpellByExist(2565);   // Blocage
 	WarriorDefance_ShieldAtt = FindMaxRankSpellByExist(23922);
 	WarriorDefance_Pojia = FindMaxRankSpellByExist(25051);
 	WarriorDefance_MaxLife = FindMaxRankSpellByExist(12975);
 	WarriorDefance_ShiledWall = FindMaxRankSpellByExist(871);
 	WarriorDefance_Disarm = FindMaxRankSpellByExist(11879);
-	WarriorDefance_Support = FindMaxRankSpellByExist(41198);
+	WarriorDefance_Support = FindMaxRankSpellByExist(1160);   // Cri demoralisant
 	WarriorDefance_Conk = FindMaxRankSpellByExist(22427);
-	WarriorDefance_AOEConk = FindMaxRankSpellByExist(46968);
+	WarriorDefance_AOEConk = FindMaxRankSpellByExist(6343);   // Coup de tonnerre
 	WarriorWeaponDefance_AOEAtt = FindMaxRankSpellByExist(165749);
 	WarriorWeaponDefance_Bleed = FindMaxRankSpellByExist(43931);
-	WarriorWeaponDefance_SpellReflect = FindMaxRankSpellByExist(57643);
+	WarriorWeaponDefance_SpellReflect = FindMaxRankSpellByExist(23920);   // Renvoi de sort
 	WarriorWeaponDefance_ShieldHit = FindMaxRankSpellByExist(149383);
 	WarriorWeapon_SwordStorm = FindMaxRankSpellByExist(9632);
-	WarriorWeapon_HighThrow = FindMaxRankSpellByExist(65940);
+	WarriorWeapon_HighThrow = FindMaxRankSpellByExist(167105);   // Broyeur de colosse
 	WarriorWeapon_Charge = FindMaxRankSpellByExist(100);
 	WarriorWeapon_Suppress = FindMaxRankSpellByExist(7384);
 	WarriorWeapon_Backstorm = FindMaxRankSpellByExist(22857);
-	WarriorWeapon_DeadAtt = FindMaxRankSpellByExist(27580);
-	WarriorWeaponRage_FullKill = FindMaxRankSpellByExist(5308);
+	WarriorWeapon_DeadAtt = FindMaxRankSpellByExist(12294);   // Frappe mortelle
+	WarriorWeaponRage_FullKill = FindMaxRankSpellByExist(163201);   // Execution
 	WarriorWeaponRage_WinAttack = FindMaxRankSpellByExist(34428);
 	WarriorWeaponRage_Backfillet = FindMaxRankSpellByExist(1715);
 	WarriorRage_Harsh = FindMaxRankSpellByExist(12323);
 	WarriorRage_HeadAtt = FindMaxRankSpellByExist(6552);
 	WarriorRage_Intercept = FindMaxRankSpellByExist(20615);
-	WarriorRage_Whirlwind = FindMaxRankSpellByExist(12950);
+	WarriorRage_Whirlwind = FindMaxRankSpellByExist(1680);   // Tourbillon
 	WarriorRage_Impertinency = FindMaxRankSpellByExist(13847);
 	WarriorRage_Needdead = FindMaxRankSpellByExist(199261);
 	WarriorRage_Bloodthirsty = FindMaxRankSpellByExist(39071);
