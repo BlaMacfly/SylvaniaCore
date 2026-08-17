@@ -7,7 +7,7 @@
 **Le core C++ du royaume [La Légion de Sylvania](https://legendesylvania.com)**
 Émulateur de serveur *World of Warcraft®* — Legion 7.3.5
 
-[![Discord](https://img.shields.io/badge/Discord-Rejoindre%20le%20royaume-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/qmQBXbuXkx)
+[![Discord contributeurs](https://img.shields.io/badge/Discord-Espace%20contributeurs-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/qmQBXbuXkx)
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](./LICENSE)
 [![Stars](https://img.shields.io/github/stars/BlaMacfly/SylvaniaCore.svg?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/stargazers)
 [![Forks](https://img.shields.io/github/forks/BlaMacfly/SylvaniaCore.svg?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/network/members)
@@ -95,11 +95,6 @@ Plateformes supportées : **Linux, Windows, macOS**.
 Le serveur de jeu est ouvert et le site officiel explique comment s'y connecter :
 **[legendesylvania.com](https://legendesylvania.com)**
 
-Pour discuter avec l'équipe et les autres joueurs, signaler un souci en jeu ou suivre les
-annonces du royaume, rejoignez le Discord :
-
-<a href="https://discord.gg/qmQBXbuXkx"><img src="https://img.shields.io/badge/Discord-La%20L%C3%A9gion%20de%20Sylvania-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Rejoindre le Discord"></a>
-
 ---
 
 ## 🤝 Contribuer
@@ -110,6 +105,13 @@ ou nouvelle fonctionnalité :
 1. Forkez le dépôt
 2. Créez une branche dédiée
 3. Ouvrez une pull request
+
+Un Discord est ouvert **aux contributeurs et aux personnes qui souhaitent participer au
+développement du core** : c'est l'endroit où discuter d'un correctif avant de se lancer, poser
+des questions sur l'architecture ou faire relire une PR. (Ce n'est pas le Discord des joueurs
+du royaume.)
+
+<a href="https://discord.gg/qmQBXbuXkx"><img src="https://img.shields.io/badge/Discord-Espace%20contributeurs-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Rejoindre le Discord des contributeurs"></a>
 
 ---
 
