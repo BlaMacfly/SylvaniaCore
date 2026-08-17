@@ -805,6 +805,15 @@ uint32 BotBGAI::CountFriendlyAttackers(Unit* pTarget)
 
 Unit* BotBGAI::SearchEnemy(float range)
 {
+    // SylvaniaCore (module BG BotFill): doctrine du porteur de drapeau. Un FC ne s arrete
+    // jamais pour combattre : il court au but pendant que son escorte le protege. Sans
+    // cette regle il engageait le premier ennemi croise et mourait au milieu du terrain.
+    if (me->IsPlayer() && TargetIsFlagCarrier(me->ToPlayer()))
+    {
+        me->SetSelection(ObjectGuid::Empty);
+        return NULL;
+    }
+
     NearPlayerList playersNearby;
     QueryNearPlayerList(range, playersNearby);
     NearPlayerVec enemyPlayers, invinciblePlayers;
@@ -1554,20 +1563,16 @@ void BotBGAI::UpdateBotAI(uint32 diff)
         return;
     }
     m_CheckStoped.UpdatePosition(diff);
-    TC_LOG_INFO("server.loading", "PBOT 1 %s %d %d", me->GetName().c_str(), m_AIBGStateType, me->GetBattleground()->GetStatus());
     ClearMechanicAura();
     if (!IsNotMovement())
         ProcessHorror(diff);
 
     if (NeedWaitSpecialSpell(BOTAI_UPDATE_TICK))
         return;
-    TC_LOG_INFO("server.loading", "PBOT 2");
     if (m_FastAid.TryDoingFastAidForMe())
         return;
-    TC_LOG_INFO("server.loading", "PBOT 3");
     if (!me->IsInCombat() && ProcessNormalSpell())
         return;
-    TC_LOG_INFO("server.loading", "PBOT 4");
     Battleground* pBattleground = me->GetBattleground();
     BattlegroundStatus bgStatus = pBattleground->GetStatus();
     if (m_AIBGStateType == BotAIBGState::AIBGState_Ready && bgStatus == BattlegroundStatus::STATUS_WAIT_JOIN)
