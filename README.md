@@ -128,6 +128,11 @@ SylvaniaCore n'existerait pas sans le travail des projets dont il descend :
 
 - [DestinyCore](https://github.com/slash-design/DestinyCore) — le core amont dont ce dépôt est un fork
 - [TrinityCore](https://github.com/TrinityCore/TrinityCore) — la lignée d'origine
+- [**ArgusCore**](https://github.com/Trion-Control-Panel/ArgusCore), le projet de
+  [FlyingPhoenix](https://github.com/fIyingPhoenix) — une référence majeure pour SylvaniaCore.
+  Un travail considérable y a été mené sur le moteur, la couche réseau et les mécaniques de
+  classes en 7.3.5 ; nous nous en inspirons régulièrement pour remettre en état des pans entiers
+  du core. Merci pour tout ce qui est partagé ouvertement.
 - [mod-playerbots](https://github.com/liyunfan1223/mod-playerbots) — référence sur la logique des bots joueurs
 
 État de la CI du dépôt amont :
