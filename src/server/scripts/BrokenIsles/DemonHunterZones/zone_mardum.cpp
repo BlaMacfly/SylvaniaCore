@@ -100,6 +100,8 @@ enum MardumCreatures
 {
     NPC_POWER_QUEST_KILL_CREDIT                       = 105946,
     NPC_FEL_SECRETS_KILL_CREDIT                       = 99071,
+    NPC_KEYSTONE_DOWNSTAIRS_CREDIT                    = 101760,
+    NPC_KEYSTONE_ACTIVATED_CREDIT                     = 100651,
     NPC_COLOSSAL_INFERNAL                             = 96159,
     NPC_LEGION_GATEWAY_KILL_CREDIT                    = 94406,
     NPC_FIRST_SUMMONED_GUARDIAN_QUEST_KILL_CREDIT     = 97831,
@@ -1636,7 +1638,17 @@ public:
 
     bool OnGossipHello(Player* player, GameObject* /*go*/) override
     {
-        player->KilledMonsterCredit(100651);
+        // Objectif « Find the way downstairs » de la quete 38728 : la cle se
+        // trouve justement en bas, c'est donc l'endroit logique pour le
+        // valider. Le script de Tyranna l'accorde a sa mort, mais uniquement
+        // aux joueurs presents dans sa liste de menace au coup fatal - si
+        // cela echoue, le joueur descend, trouve la cle, et se retrouve
+        // bloque sans aucun recours sur place.
+        if (player->GetQuestStatus(QUEST_THE_KEYSTONE) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(NPC_KEYSTONE_DOWNSTAIRS_CREDIT);
+
+        // Credit de la quete SUIVANTE (38729, Retour au Temple noir).
+        player->KilledMonsterCredit(NPC_KEYSTONE_ACTIVATED_CREDIT);
         return false;
     }
 };
