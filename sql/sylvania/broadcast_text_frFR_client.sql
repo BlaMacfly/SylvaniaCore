@@ -1,10 +1,10 @@
 -- =====================================================================
 -- Traductions frFR officielles extraites du client 7.3.5 (build 26972)
 --
--- Complète  avec les chaînes françaises
+-- Complète `dc_hotfixes.broadcast_text_locale` avec les chaînes françaises
 -- présentes dans le BroadcastText.db2 du client mais absentes de notre
--- base. Extraites via  puis relues avec la
--- structure du core (DB2Metadata.h : types sshhhbbii, tailles
+-- base. Extraites via `mapextractor -e 2 -l frFR` puis relues avec la
+-- structure du core (DB2Metadata.h : types "sshhhbbii", tailles
 -- {1,1,3,3,1,1,1,1,2}, identifiant en table d'index).
 --
 -- Apport réel mesuré : +907 entrées (88 288 -> 89 195), puis +2 dialogues
