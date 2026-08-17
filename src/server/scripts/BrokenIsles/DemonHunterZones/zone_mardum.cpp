@@ -45,7 +45,15 @@ enum MardumQuests
     QUEST_HIDDEN_NO_MORE                              = 39495,
     QUEST_ON_FELBAT_WINGS                             = 39663,
     QUEST_THE_KEYSTONE                                = 38728,
+    // Cry Havoc existe en DEUX versions strictement jumelles - memes cinq
+    // objectifs, meme donneur (Kayn 93127) - une par specialisation :
+    //   39516 Semer la devastation (Devastation)
+    //   39515 A moi la vengeance ! (Vengeance)
+    // Le script ne connaissait que la premiere : pour un joueur Vengeance,
+    // aucun des cinq PNJ ne reagissait au dialogue. Le script de la Vigie
+    // brisee, lui, gere bien ses variantes (_H/_V, _DMG_SPEC/_TANK_SPEC).
     QUEST_CRY_HAVOC                                   = 39516,
+    QUEST_CRY_HAVOC_VENGEANCE                         = 39515,
     QUEST_THEIR_NUMBERS_ARE_LEGION                    = 38819
 };
 
@@ -961,7 +969,7 @@ public:
 
     bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest)
     {
-        if (quest->GetQuestId() == QUEST_CRY_HAVOC)
+        if ((quest->GetQuestId() == QUEST_CRY_HAVOC || quest->GetQuestId() == QUEST_CRY_HAVOC_VENGEANCE))
             creature->AI()->Talk(SAY_KAYN_SUNFURY_TEXT_1);
 
         if (quest->GetQuestId() == QUEST_ON_FELBAT_WINGS)
@@ -978,7 +986,7 @@ public:
         if (creature->IsQuestGiver())
             player->PrepareQuestMenu(creature->GetGUID());
 
-        if (player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE)
+        if ((player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_CRY_HAVOC_VENGEANCE) == QUEST_STATUS_INCOMPLETE))
         {
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Kayn, I'll show you what I've learned about demonic mysteries.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
             SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
@@ -1015,7 +1023,7 @@ struct npc_allari : public ScriptedAI
 
     void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId)
     {
-        if (player->HasQuest(QUEST_CRY_HAVOC))
+        if ((player->HasQuest(QUEST_CRY_HAVOC) || player->HasQuest(QUEST_CRY_HAVOC_VENGEANCE)))
         {
             if (gossipListId == 0)
             {
@@ -1034,7 +1042,7 @@ struct npc_cyana : public ScriptedAI
 
     void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId)
     {
-        if (player->HasQuest(QUEST_CRY_HAVOC))
+        if ((player->HasQuest(QUEST_CRY_HAVOC) || player->HasQuest(QUEST_CRY_HAVOC_VENGEANCE)))
         {
             if (gossipListId == 0)
             {
@@ -1053,7 +1061,7 @@ struct npc_korvas : public ScriptedAI
 
     void sGossipSelect(Player* player, uint32 menuId, uint32 gossipListId)
     {
-        if (player->HasQuest(QUEST_CRY_HAVOC))
+        if ((player->HasQuest(QUEST_CRY_HAVOC) || player->HasQuest(QUEST_CRY_HAVOC_VENGEANCE)))
         {
             if (gossipListId == 0)
             {
@@ -1076,7 +1084,7 @@ public:
         if (creature->IsQuestGiver())
             player->PrepareQuestMenu(creature->GetGUID());
 
-        if (player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE)
+        if ((player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_CRY_HAVOC_VENGEANCE) == QUEST_STATUS_INCOMPLETE))
         {
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Get Ready, Mannethrel. I'm going to fill you with the power of the Legion's secrets.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
             SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
