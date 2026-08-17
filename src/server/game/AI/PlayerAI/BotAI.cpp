@@ -754,12 +754,62 @@ void BotBGAI::SearchCreatureListFromRange(Unit* center, NearCreatureVec& nearCre
     }
 }
 
+// SylvaniaCore (module BG BotFill): un soigneur ennemi prolonge indefiniment un combat ;
+// la doctrine PvP le designe comme cible prioritaire apres le porteur de drapeau.
+// Meme regle que Arena::IsHealerBot : classe + specialisation.
+bool BotBGAI::TargetIsHealer(Player* pTarget)
+{
+    if (!pTarget)
+        return false;
+    switch (pTarget->getClass())
+    {
+    case CLASS_PALADIN:
+        return (pTarget->FindTalentType() == 0);
+    case CLASS_PRIEST:
+        return (pTarget->FindTalentType() != 2);
+    case CLASS_SHAMAN:
+    case CLASS_DRUID:
+        return (pTarget->FindTalentType() == 2);
+    default:
+        return false;
+    }
+}
+
+// Porteur d un drapeau de champ de bataille (Chanteguerres ou Oeil du cyclone).
+bool BotBGAI::TargetIsFlagCarrier(Player* pTarget)
+{
+    if (!pTarget)
+        return false;
+    return pTarget->HasAura(23333)      // etendard de Chanteguerre (Horde)
+        || pTarget->HasAura(23335)      // etendard d Aile-argent (Alliance)
+        || pTarget->HasAura(34976);     // drapeau du Nethertempete (Oeil du cyclone)
+}
+
+// Nombre d allies deja au corps a corps sur cette cible : base du feu concentre.
+uint32 BotBGAI::CountFriendlyAttackers(Unit* pTarget)
+{
+    if (!pTarget)
+        return 0;
+    uint32 count = 0;
+    Unit::AttackerSet const& attackers = pTarget->getAttackers();
+    for (Unit::AttackerSet::const_iterator itAtk = attackers.begin(); itAtk != attackers.end(); ++itAtk)
+    {
+        Unit* attacker = *itAtk;
+        if (!attacker || attacker == me)
+            continue;
+        if (attacker->IsPlayer() && attacker->ToPlayer()->GetTeamId() == me->GetTeamId())
+            ++count;
+    }
+    return count;
+}
+
 Unit* BotBGAI::SearchEnemy(float range)
 {
     NearPlayerList playersNearby;
     QueryNearPlayerList(range, playersNearby);
     NearPlayerVec enemyPlayers, invinciblePlayers;
     Player* minHealthPlayer = NULL;
+    float bestScore = 0.0f;
     for (Player* pVisionPlayer : playersNearby)
     {
 #ifdef EXCLUDE_PLAYER
@@ -776,13 +826,26 @@ Unit* BotBGAI::SearchEnemy(float range)
             }
             else
             {
+                // SylvaniaCore (module BG BotFill): notation tactique de la cible.
+                // Bareme issu de la doctrine PvP de champ de bataille : le porteur de
+                // drapeau passe avant tout, puis le soigneur, puis l ennemi a achever,
+                // puis la cible que les allies frappent deja (feu concentre).
                 float hp = pVisionPlayer->GetHealthPct();
-                if (hp < 80.0f)
+                float score = 0.0f;
+                if (TargetIsFlagCarrier(pVisionPlayer))
+                    score += 1000.0f;
+                if (TargetIsHealer(pVisionPlayer))
+                    score += 400.0f;
+                score += (100.0f - hp) * 3.0f;
+                score += float(CountFriendlyAttackers(pVisionPlayer)) * 60.0f;
+                score -= me->GetDistance(pVisionPlayer);
+                if (!me->IsWithinLOSInMap(pVisionPlayer))
+                    score -= 250.0f;
+
+                if (!minHealthPlayer || score > bestScore)
                 {
-                    if (!minHealthPlayer)
-                        minHealthPlayer = pVisionPlayer;
-                    else if (hp < minHealthPlayer->GetHealthPct())
-                        minHealthPlayer = pVisionPlayer;
+                    bestScore = score;
+                    minHealthPlayer = pVisionPlayer;
                 }
                 if (m_NeedFindpathSearch)
                 {
@@ -809,6 +872,8 @@ Unit* BotBGAI::SearchEnemy(float range)
         Player* pVisionPlayer = invinciblePlayers[index];
         return pVisionPlayer;
     }
+    // SylvaniaCore (module BG BotFill): la cible la mieux notee est retenue ; le tirage
+    // au hasard ne subsiste que si la notation n a rien pu departager.
     if (!minHealthPlayer)
     {
         uint32 index = urand(0, enemyPlayers.size() - 1);

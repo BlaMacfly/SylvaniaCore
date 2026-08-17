@@ -161,6 +161,10 @@ protected:
 	virtual bool IsMeleeBotAI();
 	virtual bool IsRangeBotAI();
 	virtual bool IsHealerBotAI();
+	// SylvaniaCore (module BG BotFill): doctrine de ciblage en champ de bataille
+	static bool TargetIsHealer(Player* pTarget);
+	static bool TargetIsFlagCarrier(Player* pTarget);
+	uint32 CountFriendlyAttackers(Unit* pTarget);
 	virtual bool IsAttacker() { return true; }
 	virtual bool TryStartControlCommand() { ClearCruxControlCommand(); return false; }
 
