@@ -91,6 +91,7 @@ enum MardumTexts
 enum MardumCreatures
 {
     NPC_POWER_QUEST_KILL_CREDIT                       = 105946,
+    NPC_FEL_SECRETS_KILL_CREDIT                       = 99071,
     NPC_COLOSSAL_INFERNAL                             = 96159,
     NPC_LEGION_GATEWAY_KILL_CREDIT                    = 94406,
     NPC_FIRST_SUMMONED_GUARDIAN_QUEST_KILL_CREDIT     = 97831,
@@ -915,8 +916,11 @@ class PlayerScript_mardum_spec_choice : public PlayerScript
 public:
     PlayerScript_mardum_spec_choice() : PlayerScript("PlayerScript_mardum_spec_choice") {}
 
-// OnPlayerChoiceResponse
-    void OnCompleteQuestChoice(Player* player, uint32 choiceID, uint32 responseID)
+    // Ce hook s'appelle OnPlayerChoiceResponse : c'est le seul que le core
+    // invoque (QuestHandler.cpp, sur reception du choix). OnCompleteQuestChoice
+    // existe dans ScriptMgr mais n'est appele de nulle part - la methode etait
+    // donc du code mort, et choisir sa specialisation ne faisait rien.
+    void OnPlayerChoiceResponse(Player* player, uint32 choiceID, uint32 responseID) override
     {
         if (choiceID != PLAYER_CHOICE_DH_SPEC_SELECTION)
             return;
@@ -927,17 +931,25 @@ public:
         {
             case PLAYER_CHOICE_DH_SPEC_SELECTION_DEVASTATION:
                 player->CastSpell(player, 194940, true);
+                // La branche Devastation n'activait pas la specialisation, au
+                // contraire de Vengeance : le joueur restait sans spe.
+                if (ChrSpecializationEntry const* spec = sChrSpecializationStore.LookupEntry(577))
+                    player->ActivateTalentGroup(spec);
                 break;
             case PLAYER_CHOICE_DH_SPEC_SELECTION_VENGEANCE:
                 player->CastSpell(player, 194939, true);
 
-                if (ChrSpecializationEntry const* spec = sChrSpecializationStore.AssertEntry(581))
+                if (ChrSpecializationEntry const* spec = sChrSpecializationStore.LookupEntry(581))
                     player->ActivateTalentGroup(spec);
 
                 break;
             default:
-                break;
+                return;
         }
+
+        // Credit de la quete 40051 (Secrets gangrenes) : aucun code ne
+        // l'accordait, la quete restait indefiniment incomplete.
+        player->KilledMonsterCredit(NPC_FEL_SECRETS_KILL_CREDIT);
     }
 };
 
