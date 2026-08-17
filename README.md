@@ -5,106 +5,136 @@
 # SylvaniaCore
 
 **Le core C++ du royaume [La Légion de Sylvania](https://legendesylvania.com)**
-Fork de [DestinyCore](https://github.com/slash-design/DestinyCore) — World of Warcraft® Legion 7.3.5
+Émulateur de serveur *World of Warcraft®* — Legion 7.3.5
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](./LICENSE)
 [![Stars](https://img.shields.io/github/stars/BlaMacfly/SylvaniaCore.svg?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/stargazers)
 [![Forks](https://img.shields.io/github/forks/BlaMacfly/SylvaniaCore.svg?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/network/members)
+[![Fork de DestinyCore](https://img.shields.io/badge/fork%20de-DestinyCore-2ea44f?logo=github)](https://github.com/slash-design/DestinyCore)
 
 </div>
 
 ---
 
-## 🚀 Build Status
+## 📖 Présentation
 
-Windows | GCC | Clang
-:------------: | :------------: | :------------:
-[![Windows x64](https://github.com/slash-design/DestinyCore/actions/workflows/win-x64-build.yml/badge.svg)](https://github.com/slash-design/DestinyCore/actions/workflows/win-x64-build.yml) | [![GCC](https://github.com/slash-design/DestinyCore/actions/workflows/gcc-build.yml/badge.svg)](https://github.com/slash-design/DestinyCore/actions/workflows/gcc-build.yml) | [![Clang](https://github.com/slash-design/DestinyCore/actions/workflows/clang-build.yml/badge.svg)](https://github.com/slash-design/DestinyCore/actions/workflows/clang-build.yml)
+**SylvaniaCore** est le core qui fait tourner **La Légion de Sylvania**, un royaume francophone
+*World of Warcraft®* en version **Legion 7.3.5**. C'est un fork de
+[DestinyCore](https://github.com/slash-design/DestinyCore) (lui-même issu de la lignée TrinityCore),
+maintenu et développé en continu pour les besoins du royaume.
 
----
+Le dépôt sert à la fois de **base de code vivante** et de **sauvegarde** du serveur en production.
 
-## 📖 Introduction
+### Philosophie : « blizz adaptatif »
 
-**DestinyCore** is a modern, modular **MMORPG server framework** written in C++ that supports **multiple platforms** (Windows, Linux, macOS) and builds cleanly with **GCC, Clang, and MSVC**.  
-
-It is designed to be **lightweight, scalable, and extensible**, providing developers and server administrators with a stable foundation for World of Warcraft® (Legion 7.3.5) and beyond.  
-
-Key goals of DestinyCore:
-- ⚡ Modern C++ design (C++20+)
-- 🔌 Modular architecture (authserver, worldserver, shared libs)
-- 🤖 Integrated **PlayerBots** system
-- 🌍 Multi-database support (auth, characters, world)
-- 🛠️ Easy build system (CMake + GitHub Actions CI)
-- 🎮 MMO-ready networking with scalability in mind
+Ce n'est pas un serveur *fun* ni un serveur *rates x∞*. Les valeurs authentiques de Blizzard
+(dégâts, tuning, économie) sont **préservées** ; le travail de fond consiste à **corriger les écarts
+au blizzlike** plutôt qu'à adoucir le jeu. Chaque bug rencontré en jeu est corrigé à la source —
+côté données ou côté core — jamais contourné à coups de commandes MJ.
 
 ---
 
-## 🛠️ Requirements
+## ✨ Ce que SylvaniaCore ajoute
 
-DestinyCore depends on modern development tools and libraries:
+Au-delà du core amont, le royaume apporte ses propres systèmes :
+
+| Module | Description |
+| --- | --- |
+| 🤖 **PlayerBots** | Bots joueurs pilotables (`src/server/game/PlayerBot`) : ordres de groupe, rôles tank/heal, gestion d'équipement, remplissage automatique des champs de bataille |
+| ⚔️ **Siège des Capitales** | Invasion quotidienne des capitales par des raids de bots, avec meneur désigné et joueurs flaggés PvP (`src/server/game/CapitalSiege`) |
+| 💰 **Mercenaires** | PNJ de louage : un joueur solo recrute des compagnons contre pièces d'or, sous contrat (`src/server/game/Mercenary`) |
+| 🇫🇷 **Localisation frFR** | Restitution des textes officiels français extraits du client 7.3.5 (quêtes, dialogues, broadcast texts) et traduction des contenus scriptés manquants |
+| 🐛 **Correctifs de contenu** | Campagnes, donjons et quêtes remis en état zone par zone (Mardum, Île Vagabonde, Cime du Vortex…) |
+
+---
+
+## 🛠️ Prérequis
 
 - **CMake 3.31+**
 - **Boost 1.84.0**
 - **MySQL 8.0**
 - **OpenSSL 3.x**
-- **GCC / Clang / MSVC (Visual Studio 2022 recommended)**
+- **GCC / Clang / MSVC** (Visual Studio 2022 recommandé)
+
+Plateformes supportées : **Linux, Windows, macOS**.
 
 ---
 
-## 📦 Installation
+## 📦 Compilation
 
-1. Clone the repository:
+1. Cloner le dépôt :
    ```bash
-   git clone https://github.com/slash-design/DestinyCore.git
-   cd DestinyCore
+   git clone https://github.com/BlaMacfly/SylvaniaCore.git
+   cd SylvaniaCore
    ```
 
-2. Create a build directory:
+2. Configurer et compiler :
    ```bash
    cmake -S . -B build -DTOOLS=ON
-   cmake --build build
+   cmake --build build -j$(nproc)
    ```
 
-3. Configure your databases (`auth`, `characters`, `world`) and import the SQL structures provided in `/sql/base`.
+3. Créer les bases (`auth`, `characters`, `world`, `hotfixes`) et importer les structures SQL
+   fournies dans `sql/base`.
 
-4. Start the servers:
+4. Lancer les serveurs :
    ```bash
    ./bin/worldserver
    ./bin/bnetserver
    ```
 
----
-
-## 🤝 Contributing
-
-We welcome all contributions!  
-Whether you’re fixing a bug, improving documentation, or adding new features — PRs are always appreciated.
-
-- Fork the repo  
-- Create a feature branch  
-- Submit a pull request  
+> ℹ️ Le code source conserve volontairement les noms internes hérités de l'amont
+> (`DestinyCore`, cibles CMake, chemins de configuration) afin de rester compatible avec les
+> mises à jour amont et de ne pas casser les scripts de déploiement existants.
 
 ---
 
-## 🐛 Reporting Issues
+## 🌍 Rejoindre le royaume
 
-Issues can be reported directly via the [GitHub Issue Tracker](https://github.com/slash-design/DestinyCore/issues).  
-Before creating a new one, please check for existing reports to avoid duplicates.
-
----
-
-## 📜 License
-
-This project is licensed under **GPL v2.0**.  
-See the [LICENSE](./LICENSE) file for details.
+Le serveur de jeu est ouvert et le site officiel explique comment s'y connecter :
+**[legendesylvania.com](https://legendesylvania.com)**
 
 ---
 
-## 🌐 Links
+## 🤝 Contribuer
 
-- 📂 [GitHub Repository](https://github.com/slash-design/DestinyCore)
-- 📌 [Issues](https://github.com/slash-design/DestinyCore/issues)
-- 📖 [Documentation (WIP)](https://github.com/slash-design/DestinyCore/wiki)
+Les contributions sont les bienvenues — correction de bug, amélioration de la documentation
+ou nouvelle fonctionnalité :
+
+1. Forkez le dépôt
+2. Créez une branche dédiée
+3. Ouvrez une pull request
+
+---
+
+## 🐛 Signaler un problème
+
+Ouvrez un ticket sur le [suivi d'issues](https://github.com/BlaMacfly/SylvaniaCore/issues).
+Vérifiez au préalable qu'un rapport identique n'existe pas déjà.
+
+---
+
+## 🙏 Remerciements
+
+SylvaniaCore n'existerait pas sans le travail des projets dont il descend :
+
+- [DestinyCore](https://github.com/slash-design/DestinyCore) — le core amont dont ce dépôt est un fork
+- [TrinityCore](https://github.com/TrinityCore/TrinityCore) — la lignée d'origine
+- [mod-playerbots](https://github.com/liyunfan1223/mod-playerbots) — référence sur la logique des bots joueurs
+
+État de la CI du dépôt amont :
+[![Windows x64](https://github.com/slash-design/DestinyCore/actions/workflows/win-x64-build.yml/badge.svg)](https://github.com/slash-design/DestinyCore/actions/workflows/win-x64-build.yml)
+[![GCC](https://github.com/slash-design/DestinyCore/actions/workflows/gcc-build.yml/badge.svg)](https://github.com/slash-design/DestinyCore/actions/workflows/gcc-build.yml)
+[![Clang](https://github.com/slash-design/DestinyCore/actions/workflows/clang-build.yml/badge.svg)](https://github.com/slash-design/DestinyCore/actions/workflows/clang-build.yml)
+
+---
+
+## 📜 Licence
+
+Distribué sous **GPL v2.0**. Voir le fichier [LICENSE](./LICENSE).
+
+*World of Warcraft® et Blizzard Entertainment® sont des marques déposées de Blizzard Entertainment, Inc.
+Ce projet n'est ni affilié à Blizzard Entertainment, ni approuvé par elle.*
 
 ---
 
@@ -112,6 +142,6 @@ See the [LICENSE](./LICENSE) file for details.
 
 <img src=".github/assets/sylvaniacore-logo.png" alt="SylvaniaCore" width="90">
 
-⭐ Si SylvaniaCore vous plaît, laissez une étoile au projet sur GitHub !
+⭐ Si SylvaniaCore vous plaît, laissez une étoile au projet !
 
 </div>
