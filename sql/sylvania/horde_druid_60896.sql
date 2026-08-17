@@ -1,0 +1,36 @@
+-- =====================================================================
+-- Horde Druid (60896) — cadavres ambulants sur l'Île Vagabonde
+--
+-- Symptôme signalé en jeu (GUID 21001619) : le PNJ est affiché mort par
+-- le client, mais il continue de parcourir son chemin de patrouille.
+--
+-- Cause : dans `Creature::SetSpawnHealth()`, la vie du spawn n'est lue
+-- depuis `creature.curhealth` QUE si le template a `RegenHealth = 0` ;
+-- sinon la créature apparaît à sa vie maximale. Or ce core ne traite pas
+-- `curhealth = 0` comme « pleine vie » : il appelle littéralement
+-- SetHealth(0). La créature reste donc VIVANTE côté serveur (deathState
+-- ALIVE, IA et points de passage actifs) alors que le client, qui ne voit
+-- que 0 PV, l'affiche en cadavre.
+--
+-- Sur cette base, 1 961 spawns de l'île ont `curhealth = 0` sans que cela
+-- se voie : leur template a `RegenHealth = 1`, la valeur est donc ignorée.
+-- Seuls 36 spawns du serveur cumulent `curhealth = 0` ET `RegenHealth = 0` :
+--   * 22 « Injured Sailor » (55999) — statiques, drapeau STUNNED, immunités
+--     et clic-sort de sauvetage : ce sont des blessés couchés VOULUS, on n'y
+--     touche pas.
+--   * 13 « Horde Druid » (60896) — dont les 2 seuls qui patrouillent
+--     (21001619 et 21001822), d'où le cadavre ambulant.
+--   * 1 « Refurbished Steam Tank » (29144, carte 0) — hors périmètre, mais
+--     même défaut : à surveiller côté Forgefer.
+--
+-- Correctif : `RegenHealth = 1` sur l'entrée 60896, ce qui l'aligne sur son
+-- entrée jumelle 60770 (« Horde Druid » strictement identique : même niveau,
+-- même classe, mêmes drapeaux, même HealthModifier) déjà à 1. Le 0 était du
+-- bruit d'import, pas une intention de design : aucun script ne maintient
+-- ces druides à une vie fixe (aucune ligne dans smart_scripts pour 60896).
+--
+-- Nécessite un redémarrage : les spawns déjà en jeu conservent leurs 0 PV
+-- jusqu'à leur prochaine réapparition.
+-- =====================================================================
+
+UPDATE `creature_template` SET `RegenHealth`=1 WHERE `entry`=60896;
