@@ -1,9 +1,17 @@
+<div align="center">
 
-# DestinyCore
+<img src=".github/assets/sylvaniacore-logo.png" alt="SylvaniaCore" width="360">
+
+# SylvaniaCore
+
+**Le core C++ du royaume [La Légion de Sylvania](https://legendesylvania.com)**
+Fork de [DestinyCore](https://github.com/slash-design/DestinyCore) — World of Warcraft® Legion 7.3.5
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](./LICENSE)
-[![Stars](https://img.shields.io/github/stars/slash-design/DestinyCore.svg?style=flat&logo=github)](https://github.com/slash-design/DestinyCore/stargazers)
-[![Forks](https://img.shields.io/github/forks/slash-design/DestinyCore.svg?style=flat&logo=github)](https://github.com/slash-design/DestinyCore/network/members)
+[![Stars](https://img.shields.io/github/stars/BlaMacfly/SylvaniaCore.svg?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/stargazers)
+[![Forks](https://img.shields.io/github/forks/BlaMacfly/SylvaniaCore.svg?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/network/members)
+
+</div>
 
 ---
 
@@ -100,4 +108,10 @@ See the [LICENSE](./LICENSE) file for details.
 
 ---
 
-⭐ If you like DestinyCore, consider giving the project a star on GitHub!
+<div align="center">
+
+<img src=".github/assets/sylvaniacore-logo.png" alt="SylvaniaCore" width="90">
+
+⭐ Si SylvaniaCore vous plaît, laissez une étoile au projet sur GitHub !
+
+</div>
