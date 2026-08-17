@@ -30187,7 +30187,6 @@ void Player::SendPlayerChoice(ObjectGuid sender, int32 choiceId)
     if (playerChoiceLocale)
         ObjectMgr::GetLocaleString(playerChoiceLocale->Question, locale, displayPlayerChoice.Question);
 
-    displayPlayerChoice.Responses.resize(playerChoice->Responses.size());
     displayPlayerChoice.CloseChoiceFrame = false;
     displayPlayerChoice.HideWarboardHeader = playerChoice->HideWarboardHeader;
 
@@ -30198,12 +30197,16 @@ void Player::SendPlayerChoice(ObjectGuid sender, int32 choiceId)
         if (!_playerChoiceResponseTemplate.ResponseId)
             continue;
 
-        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(_playerChoiceResponseTemplate.Reward->SpellID);
-        if (!spellInfo)
-            continue;
+        // Une reponse n'a pas forcement de recompense : sans ce garde, toute
+        // reponse sans sort de recompense etait silencieusement ecartee, ce qui
+        // laissait des boutons vides (ex. choix de specialisation demoniste 231).
+        // Reward peut aussi etre nul : le dereferencer ici plantait le serveur.
+        SpellInfo const* spellInfo = _playerChoiceResponseTemplate.Reward
+            ? sSpellMgr->GetSpellInfo(_playerChoiceResponseTemplate.Reward->SpellID)
+            : nullptr;
 
         bool playerEligible = true;
-        for (SpellEffectInfo const* effect : spellInfo->GetEffectsForDifficulty(DIFFICULTY_NONE))
+        for (SpellEffectInfo const* effect : spellInfo ? spellInfo->GetEffectsForDifficulty(DIFFICULTY_NONE) : SpellEffectInfoVector())
         {
             Quest const* quest = sObjectMgr->GetQuestTemplate(effect->MiscValue);
             if (!quest)
@@ -30235,6 +30238,10 @@ void Player::SendPlayerChoice(ObjectGuid sender, int32 choiceId)
         ChatHandler(GetSession()).PSendSysMessage("Please come back later.");
         return;
     }
+
+    // Dimensionner APRES le filtrage : redimensionner avant laissait des
+    // entrees vides pour chaque reponse ecartee.
+    displayPlayerChoice.Responses.resize(playerChoiceResponses.size());
 
     for (std::size_t i = 0; i < playerChoiceResponses.size(); ++i)
     {
