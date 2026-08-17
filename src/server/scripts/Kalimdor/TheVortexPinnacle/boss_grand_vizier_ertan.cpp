@@ -149,8 +149,8 @@ public:
             me->DespawnCreaturesInArea(NPC_LURKING_TEMPEST, 120.0f);
             me->DespawnCreaturesInArea(NPC_CYCLONE_SHIELD, 120.0f);
 
-            Creature * Slipstream = me->SummonCreature(45455, -765.79f, -44.01f, 641.91f, 4.0f, TEMPSUMMON_CORPSE_DESPAWN, 0);
-            Slipstream->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            if (Creature* slipstream = me->SummonCreature(45455, -765.79f, -44.01f, 641.91f, 4.0f, TEMPSUMMON_CORPSE_DESPAWN, 0))
+                slipstream->SetUInt32Value(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
         }
 
         void UpdateAI(uint32 diff) override
