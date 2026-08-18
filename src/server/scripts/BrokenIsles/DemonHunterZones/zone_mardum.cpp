@@ -1516,6 +1516,19 @@ public:
 
         void JustDied(Unit* /*killer*/) override
         {
+            // Objectif « Find the way downstairs » de la quete 38728.
+            // Il etait accorde uniquement dans DamageTaken, au coup fatal, et
+            // seulement aux joueurs figurant alors dans la liste de menace.
+            // Dans un combat ou quatre PNJ compagnons frappent avec le joueur,
+            // cette conjonction rate : constate en jeu, le joueur tuait bien
+            // Tyranna, ramassait la cle, et restait bloque sur cet objectif.
+            // On le redonne ici par proximite, sans condition de menace.
+            std::list<Player*> nearbyPlayers;
+            me->GetPlayerListInGrid(nearbyPlayers, 100.0f);
+            for (Player* player : nearbyPlayers)
+                if (player->GetQuestStatus(QUEST_THE_KEYSTONE) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(NPC_KEYSTONE_DOWNSTAIRS_CREDIT);
+
             std::list<Creature*> summonedSwarm;
             me->GetCreatureListWithEntryInGrid(summonedSwarm, NPC_TYRANNA_SPAWN, me->GetVisibilityRange());
             for (std::list<Creature*>::const_iterator itr = summonedSwarm.begin(); itr != summonedSwarm.end(); ++itr)
