@@ -58,6 +58,8 @@ public:
 	~BotBGAIMovement();
 
 	ObjectGuid GetTargetObjectID() { return targetGuid; }
+	// SylvaniaCore (module BG BotFill): objectif de position en cours, pour la laisse
+	AIWaypoint* GetTargetWaypoint() { return pTargetAIWP; }
 	void ClearMovement();
 	void AcceptCommand(AIWaypoint* targetAIWP, bool isFlag = false);
 	void AcceptCommand(ObjectGuid guid, bool isFlag = false);

@@ -154,9 +154,49 @@ void CommandWS::RndStartCommand()
     }
 }
 
+// SylvaniaCore (module BG BotFill): escorte du porteur. Doctrine PvP : le porteur court,
+// ses alliers proches le collent pour intercepter ses poursuivants ("peel"). L Oeil du
+// cyclone avait deja ce comportement, Chanteguerres non : le porteur rentrait seul.
+void CommandWS::ProcessEscortFlagCarrier()
+{
+    if (!m_pBattleground)
+        return;
+    BattlegroundWS* pBGWS = dynamic_cast<BattlegroundWS*>(m_pBattleground);
+    if (!pBGWS)
+        return;
+    // notre porteur = celui qui detient le drapeau de l equipe adverse
+    ObjectGuid carrierGuid = pBGWS->GetFlagPickerGUID((m_TeamID == TEAM_ALLIANCE) ? TEAM_HORDE : TEAM_ALLIANCE);
+    if (carrierGuid.IsEmpty())
+        return;
+    Player* carrier = ObjectAccessor::FindPlayer(carrierGuid);
+    if (!carrier || !carrier->IsAlive() || carrier->GetTeamId() != m_TeamID)
+        return;
+
+    uint32 escortCount = 0;
+    for (PlayerStatus::iterator itGuid = m_PlayerGUIDs.begin(); itGuid != m_PlayerGUIDs.end(); itGuid++)
+    {
+        if (escortCount >= 3)   // trois escorteurs suffisent, le reste tient les objectifs
+            break;
+        if (itGuid->first == carrierGuid)
+            continue;
+        Player* escort = GetBGPlayer(itGuid->first);
+        if (!escort || !escort->IsAlive())
+            continue;
+        // seuls les allies deja proches escortent : on ne rappelle pas la defense
+        if (escort->GetDistance(carrier) > 60.0f)
+            continue;
+        if (BotBGAI* pBotAI = GetBotBGAI(itGuid->first))
+        {
+            pBotAI->GetAIMovement()->AcceptCommand(carrierGuid, true);
+            ++escortCount;
+        }
+    }
+}
+
 void CommandWS::ProcessRegulation()
 {
     InsureAttackAndDefance(7);
+    ProcessEscortFlagCarrier();
     ObjectGuid needGuaredTarget = EnemyBGFlagPicker();
     ObjectGuid needAttackTarget = SelfBGFlagPicker();
     bool pickedFlagTarget = (needAttackTarget.IsEmpty()) ? true : false;

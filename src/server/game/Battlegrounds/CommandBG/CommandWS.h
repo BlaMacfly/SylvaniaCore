@@ -57,6 +57,7 @@ private:
 	void TryPickEnemyFlag(ObjectGuid guid);
 	void TryPickSelfFlag(ObjectGuid guid);
 	void TryCaptureFlag(ObjectGuid guid);
+	void ProcessEscortFlagCarrier();   // SylvaniaCore (module BG BotFill)
 	ObjectGuid SelfBGFlagPicker();
 	ObjectGuid EnemyBGFlagPicker();
 	ObjectGuid GetBGFlagFromSelf();

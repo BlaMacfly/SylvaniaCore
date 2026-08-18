@@ -851,6 +851,21 @@ Unit* BotBGAI::SearchEnemy(float range)
                 if (!me->IsWithinLOSInMap(pVisionPlayer))
                     score -= 250.0f;
 
+                // SylvaniaCore (module BG BotFill): laisse tactique. Un bot ne se laisse
+                // pas entrainer loin de son objectif par un fuyard : au-dela de 50 m du
+                // point a tenir, la cible est fortement depriorisee (sauf porteur de
+                // drapeau, qu il faut poursuivre partout). Sans cette regle les defenseurs
+                // desertaient leur base des le premier ennemi croise.
+                if (AIWaypoint* objective = m_Movement->GetTargetWaypoint())
+                {
+                    if (!TargetIsFlagCarrier(pVisionPlayer))
+                    {
+                        Position objPos = objective->GetPosition();
+                        if (pVisionPlayer->GetDistance(objPos.GetPositionX(), objPos.GetPositionY(), objPos.GetPositionZ()) > 50.0f)
+                            score -= 500.0f;
+                    }
+                }
+
                 if (!minHealthPlayer || score > bestScore)
                 {
                     bestScore = score;
