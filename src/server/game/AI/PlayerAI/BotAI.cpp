@@ -351,8 +351,66 @@ bool BotBGAI::InBattleground()
     return true;
 }
 
+// SylvaniaCore (module BG BotFill): apres une resurrection, le bot patiente au cimetiere
+// le temps qu une vague se forme (doctrine PvP : repartir en goutte-a-goutte revient a
+// nourrir l adversaire). Il repart des que trois allies sont a portee, ou au bout de
+// huit secondes, et immediatement si un ennemi vient jusqu au cimetiere.
+bool BotBGAI::WaitRegroupAfterRevive()
+{
+    if (!m_DeathTick)
+        return false;
+    if (me->InArena())
+    {
+        m_DeathTick = 0;
+        return false;
+    }
+    // porteur de drapeau ou bot en peril : aucune attente
+    if (me->IsInCombat() || (me->IsPlayer() && TargetIsFlagCarrier(me->ToPlayer())))
+    {
+        m_DeathTick = 0;
+        return false;
+    }
+    if (!m_ReviveTick)
+        m_ReviveTick = getMSTime();
+    if (GetMSTimeDiffToNow(m_ReviveTick) >= 8000)
+    {
+        m_DeathTick = 0;
+        m_ReviveTick = 0;
+        return false;
+    }
+    uint32 nearAllies = 0;
+    NearPlayerList playersNearby;
+    QueryNearPlayerList(30.0f, playersNearby);
+    for (Player* pVisionPlayer : playersNearby)
+    {
+        if (!pVisionPlayer || pVisionPlayer == me || !pVisionPlayer->IsAlive())
+            continue;
+        if (pVisionPlayer->GetTeamId() == me->GetTeamId())
+            ++nearAllies;
+        else
+        {
+            // un ennemi pousse jusqu au cimetiere : on ne reste pas passif
+            m_DeathTick = 0;
+            m_ReviveTick = 0;
+            return false;
+        }
+    }
+    if (nearAllies >= 3)
+    {
+        m_DeathTick = 0;
+        m_ReviveTick = 0;
+        return false;
+    }
+    m_Movement->ClearMovement();
+    return true;
+}
+
 void BotBGAI::BattlegroundRevive()
 {
+    // SylvaniaCore (module BG BotFill): on note l instant de la mort pour imposer un
+    // temps de regroupement au cimetiere (cf. WaitRegroupAfterRevive).
+    if (!m_DeathTick)
+        m_DeathTick = getMSTime();
     if (me->InArena())
         return;
     if (!me->IsPlayerBot() || !me->InBattleground())
@@ -499,6 +557,8 @@ void BotBGAI::UpdateAI(uint32 diff)
                 packet.SpellID = BattlegroundSpells::SPELL_WAITING_FOR_RESURRECT;
                 me->GetSession()->HandleCancelAuraOpcode(packet);
             }
+            if (WaitRegroupAfterRevive())
+                return;
             if (m_Teleporting.CanMovement())
                 UpdateBotAI(BOTAI_UPDATE_TICK);
             else

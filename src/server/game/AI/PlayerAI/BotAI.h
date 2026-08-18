@@ -117,6 +117,10 @@ protected:
 	uint32 FindPetMaxRankSpellByExist(uint32 spellID);
 	bool InBattleground();
 	void BattlegroundRevive();
+	// SylvaniaCore (module BG BotFill): vague de sortie de cimetiere
+	bool WaitRegroupAfterRevive();
+	uint32 m_DeathTick = 0;
+	uint32 m_ReviveTick = 0;
 	void ProcessHealth();
 	void ProcessCombat(Unit* pTarget);
 	void ChaseTarget(Unit* pTarget, bool isMelee, float range = 5.0f);
