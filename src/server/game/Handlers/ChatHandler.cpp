@@ -426,12 +426,18 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
                 LocaleConstant locale = GetPlayer()->GetSession()->GetSessionDbcLocale();
                 QueryResult result;
 
+                // SylvaniaCore : meme faille que pour le chuchotement, et meme
+                // consequence - une erreur SQL abat le worldserver. Le message est
+                // echappe et borne avant de toucher la requete.
+                std::string safeGroupMsg = msg.size() > 255 ? msg.substr(0, 255) : msg;
+                WorldDatabase.EscapeString(safeGroupMsg);
+
                 // First try locale specific
                 result = WorldDatabase.PQuery(
                     "SELECT `reply` FROM `ai_talk_group_locale` "
                     "WHERE locale = %u AND '%s' REGEXP cname "
                     "ORDER BY RAND() LIMIT 1",
-                    locale, msg.c_str()
+                    locale, safeGroupMsg.c_str()
                 );
 
                 // Fallback in English
@@ -441,7 +447,7 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
                         "SELECT `reply` FROM `ai_talk_group` "
                         "WHERE '%s' REGEXP cname "
                         "ORDER BY RAND() LIMIT 1",
-                        msg.c_str()
+                        safeGroupMsg.c_str()
                     );
                 }
 

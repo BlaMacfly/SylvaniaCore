@@ -745,14 +745,6 @@ bool MercenaryChatMgr::Perform(MercenaryChatRequest const& request, std::string&
             text << ".";
 
         error = text.str();
-
-        // Trace de diagnostic : le corps envoye, jamais l adresse - chez Gemini
-        // la cle voyage dans l URL. Le refus d un fournisseur porte presque
-        // toujours sur ce qu on lui a transmis.
-        TC_LOG_ERROR("server.worldserver", "Mercenaires (dialogue): refus %ld du fournisseur %s. Corps envoye : %s",
-            httpCode, GetProviderName(request.provider), payload.c_str());
-        TC_LOG_ERROR("server.worldserver", "Mercenaires (dialogue): reponse recue : %s", body.c_str());
-
         return false;
     }
 
