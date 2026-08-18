@@ -39,6 +39,7 @@ namespace
     char const* OPENAI_DEFAULT_URL    = "https://api.openai.com/v1/chat/completions";
     char const* ANTHROPIC_DEFAULT_URL = "https://api.anthropic.com/v1/messages";
     char const* GEMINI_DEFAULT_HOST   = "https://generativelanguage.googleapis.com/v1beta/models/";
+    char const* MISTRAL_DEFAULT_URL   = "https://api.mistral.ai/v1/chat/completions";
 
     std::string JsonEscape(std::string const& text)
     {
@@ -272,6 +273,7 @@ char const* MercenaryChatMgr::GetProviderName(uint8 provider)
         case MERC_LLM_OPENAI:    return "OpenAI";
         case MERC_LLM_ANTHROPIC: return "Anthropic";
         case MERC_LLM_GEMINI:    return "Gemini";
+        case MERC_LLM_MISTRAL:   return "Mistral";
         default:                 return "inconnu";
     }
 }
@@ -281,8 +283,10 @@ uint8 MercenaryChatMgr::ParseProvider(std::string const& name)
     std::string lowered = name;
     std::transform(lowered.begin(), lowered.end(), lowered.begin(), ::tolower);
 
+    if (lowered == "mistral" || lowered == "lechat")
+        return MERC_LLM_MISTRAL;
     if (lowered == "openai" || lowered == "compatible" || lowered == "openrouter"
-        || lowered == "mistral" || lowered == "groq" || lowered == "ollama")
+        || lowered == "groq" || lowered == "ollama" || lowered == "cerebras")
         return MERC_LLM_OPENAI;
     if (lowered == "anthropic" || lowered == "claude")
         return MERC_LLM_ANTHROPIC;
@@ -336,9 +340,10 @@ bool MercenaryChatMgr::HandleApiCommand(Player* owner, std::string const& argume
     {
         handler.PSendSysMessage("|cff00ff00[Mercenaire]|r Pour delier la langue de votre mercenaire, fournissez votre propre cle :");
         handler.PSendSysMessage("  |cffffd100!api <fournisseur> <modele> <cle>|r");
-        handler.PSendSysMessage("  fournisseurs : |cffffd100openai|r, |cffffd100anthropic|r, |cffffd100gemini|r");
-        handler.PSendSysMessage("  exemple : |cffffd100!api anthropic claude-sonnet-5 sk-ant-...|r");
-        handler.PSendSysMessage("  service compatible OpenAI : ajoutez l'adresse en fin de ligne.");
+        handler.PSendSysMessage("  fournisseurs : |cffffd100mistral|r, |cffffd100anthropic|r, |cffffd100openai|r, |cffffd100gemini|r");
+        handler.PSendSysMessage("  exemple : |cffffd100!api mistral mistral-small-latest VOTRE_CLE|r");
+        handler.PSendSysMessage("  |cffff8800Gemini ne repond pas depuis ce royaume|r (Google refuse les serveurs).");
+        handler.PSendSysMessage("  service compatible OpenAI (Groq, OpenRouter...) : ajoutez l'adresse en fin de ligne.");
         handler.PSendSysMessage("  |cffffd100!api off|r retire votre cle immediatement.");
         handler.PSendSysMessage("Votre cle n'est jamais enregistree : elle vit en memoire et disparait a la rupture du contrat ou a votre deconnexion.");
         return true;
@@ -591,6 +596,8 @@ std::string MercenaryChatMgr::BuildUrl(MercenaryChatRequest const& request)
     {
         case MERC_LLM_ANTHROPIC:
             return ANTHROPIC_DEFAULT_URL;
+        case MERC_LLM_MISTRAL:
+            return MISTRAL_DEFAULT_URL;
         case MERC_LLM_GEMINI:
         {
             // Gemini porte la cle dans l adresse et le modele dans le chemin.
@@ -711,21 +718,41 @@ bool MercenaryChatMgr::Perform(MercenaryChatRequest const& request, std::string&
         return false;
     }
 
-    if (httpCode == 401 || httpCode == 403)
-    {
-        error = "Votre cle a ete refusee par le fournisseur.";
-        return false;
-    }
-    if (httpCode == 429)
-    {
-        error = "Votre fournisseur refuse le rythme : trop de demandes.";
-        return false;
-    }
     if (httpCode >= 400)
     {
+        // Le fournisseur explique presque toujours son refus dans le corps de la
+        // reponse - modele inconnu, quota depasse, cle sans droits. Renvoyer un
+        // code nu au joueur lui cachait justement la seule information utile.
+        std::string detail;
+        size_t const errorSection = body.find("\"error\"");
+        if (errorSection != std::string::npos)
+            FindJsonString(body, "message", errorSection, detail);
+
         std::ostringstream text;
-        text << "Le fournisseur a repondu par une erreur (" << httpCode << ").";
+        if (httpCode == 401 || httpCode == 403)
+            text << "Votre cle a ete refusee";
+        else if (httpCode == 404)
+            text << "Modele introuvable pour votre cle";
+        else if (httpCode == 429)
+            text << "Votre fournisseur refuse le rythme";
+        else
+            text << "Le fournisseur a repondu par une erreur";
+
+        text << " (" << httpCode << ")";
+        if (!detail.empty())
+            text << " : " << Flatten(detail, 180);
+        else
+            text << ".";
+
         error = text.str();
+
+        // Trace de diagnostic : le corps envoye, jamais l adresse - chez Gemini
+        // la cle voyage dans l URL. Le refus d un fournisseur porte presque
+        // toujours sur ce qu on lui a transmis.
+        TC_LOG_ERROR("server.worldserver", "Mercenaires (dialogue): refus %ld du fournisseur %s. Corps envoye : %s",
+            httpCode, GetProviderName(request.provider), payload.c_str());
+        TC_LOG_ERROR("server.worldserver", "Mercenaires (dialogue): reponse recue : %s", body.c_str());
+
         return false;
     }
 

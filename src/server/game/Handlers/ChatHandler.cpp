@@ -335,12 +335,20 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
                 LocaleConstant locale = sender->GetSession()->GetSessionDbcLocale();
                 QueryResult result;
 
+                // SylvaniaCore : le message etait injecte brut dans la requete. Une
+                // apostrophe - "c'est", "j'ai" - la cassait, et le core repond a
+                // une erreur SQL par un abandon du processus : n importe quel joueur
+                // faisait tomber le royaume en chuchotant a un playerbot, et pouvait
+                // y injecter du SQL. On echappe, et on borne la longueur au passage.
+                std::string safeMsg = msg.size() > 255 ? msg.substr(0, 255) : msg;
+                WorldDatabase.EscapeString(safeMsg);
+
                 // Search for locale-specific response first
                 result = WorldDatabase.PQuery(
                     "SELECT `reply` FROM `ai_talk_whisper_locale` "
                     "WHERE locale = %u AND '%s' REGEXP cname "
                     "ORDER BY RAND() LIMIT 1",
-                    locale, msg.c_str()
+                    locale, safeMsg.c_str()
                 );
 
                 // If nothing is found, English fallback
@@ -350,7 +358,7 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
                         "SELECT `reply` FROM `ai_talk_whisper` "
                         "WHERE '%s' REGEXP cname "
                         "ORDER BY RAND() LIMIT 1",
-                        msg.c_str()
+                        safeMsg.c_str()
                     );
                 }
 

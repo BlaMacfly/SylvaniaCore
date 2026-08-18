@@ -48,9 +48,12 @@ class Player;
 
 enum MercenaryLlmProvider
 {
-    MERC_LLM_OPENAI    = 0,     // et tout service compatible : Mistral, Groq, OpenRouter, Ollama...
+    MERC_LLM_OPENAI    = 0,     // et tout service compatible : Groq, OpenRouter, Ollama...
     MERC_LLM_ANTHROPIC = 1,
     MERC_LLM_GEMINI    = 2,
+    // Mistral parle le dialecte d OpenAI : seule son adresse par defaut change.
+    // Il a droit a son propre nom pour que le joueur n ait pas a la coller.
+    MERC_LLM_MISTRAL   = 3,
     MERC_LLM_UNKNOWN   = 255
 };
 
