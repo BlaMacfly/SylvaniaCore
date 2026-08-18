@@ -48,10 +48,18 @@ target_include_directories(game
   PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR})
 
+# SylvaniaCore (module Mercenaires) : appels HTTPS vers les fournisseurs de
+# modeles de langage, depuis un fil dedie.
+find_package(CURL REQUIRED)
+target_include_directories(game
+  PRIVATE
+    ${CURL_INCLUDE_DIRS})
+
 target_link_libraries(game
   PRIVATE
     trinity-core-interface
     efsw
+    ${CURL_LIBRARIES}
   PUBLIC
     game-interface)
 

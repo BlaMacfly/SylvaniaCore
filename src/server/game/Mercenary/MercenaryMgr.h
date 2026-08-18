@@ -108,6 +108,20 @@ class TC_GAME_API MercenaryMgr
         bool IsMercenary(ObjectGuid botGuid) const;
         bool IsAccountHired(uint32 accountId) const;
 
+        // Ce mercenaire sert-il precisement cet employeur ?
+        bool IsMercenaryOf(ObjectGuid botGuid, ObjectGuid ownerGuid) const;
+
+        // Choisit le mercenaire qui repondra a une replique adressee au groupe
+        // ou lancee a voix haute : celui dont le nom est cite, a defaut le
+        // premier sous contrat. Un seul repond - chaque replique est facturee
+        // au joueur par son fournisseur.
+        Player* PickMercenaryFor(Player* owner, std::string const& message) const;
+
+        // Variante pour le canal de groupe : n importe quel compagnon peut
+        // interpeller un mercenaire de la troupe, quel qu en soit l employeur.
+        // Renvoie le mercenaire et, par « outOwner », celui dont la cle paiera.
+        Player* PickMercenaryInGroup(Player* speaker, std::string const& message, Player*& outOwner) const;
+
         // Rupture du contrat. Le mercenaire quitte le groupe et se deconnecte ;
         // aucune de ces routes ne rembourse, c est la regle du systeme.
         void DismissOne(ObjectGuid botGuid);

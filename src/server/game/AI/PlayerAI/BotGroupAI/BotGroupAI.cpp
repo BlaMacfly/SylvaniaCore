@@ -649,6 +649,14 @@ void BotGroupAI::ProcessBotCommand(Player* srcPlayer, std::string cmd)
 {
 	if (!m_MasterPlayer || !srcPlayer)
 		return;
+	// SylvaniaCore (module Mercenaires) : un ordre commence par "!". Sans ce
+	// prefixe, une simple conversation declencherait des actions par accident -
+	// le mot "stop" au detour d une phrase aurait fige le mercenaire.
+	if (cmd.empty() || cmd[0] != '!')
+		return;
+	cmd.erase(0, 1);
+	if (cmd.empty())
+		return;
 	std::string param;
 	if (!CanReciveCommand(cmd, param))
     	return;

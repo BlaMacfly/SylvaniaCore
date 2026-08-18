@@ -693,6 +693,11 @@ void CapitalSiegeMgr::ProcessPendingRecruits()
         {
             TC_LOG_ERROR("server.worldserver", "Siege des Capitales: recrue abandonnee, le compte bot %u n a pas rejoint la horde en %u s.",
                 it->accountId, SIEGE_RECRUIT_TIMEOUT_SECONDS);
+            // La recrue quitte les registres : personne ne la renverra plus a la
+            // fin de l evenement, ReleaseAllBots ne connaissant que les bots
+            // enroles par le commandant. Sans cette deconnexion, chaque assaut
+            // laissait derriere lui quelques bots a vagabonder indefiniment.
+            sPlayerBotMgr->PlayerBotLogout(it->accountId);
             m_engagedAccounts.erase(it->accountId);
             if (m_totalRecruited)
                 --m_totalRecruited;

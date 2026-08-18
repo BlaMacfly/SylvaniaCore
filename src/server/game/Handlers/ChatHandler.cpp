@@ -39,6 +39,8 @@
 #include "Util.h"
 #include "World.h"
 #include "WorldPacket.h"
+#include "MercenaryMgr.h"
+#include "MercenaryChat.h"
 
 void WorldSession::HandleChatMessageOpcode(WorldPackets::Chat::ChatMessage& chatMessage)
 {
@@ -96,6 +98,19 @@ void WorldSession::HandleChatMessageEmoteOpcode(WorldPackets::Chat::ChatMessageE
 void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg, std::string target /*= ""*/)
 {
     Player* sender = GetPlayer();
+
+    // SylvaniaCore (module Mercenaires) : "!api" transporte la cle d API
+    // personnelle du joueur. Elle est interceptee ici, avant le moindre
+    // journal et avant toute rediffusion - le secret ne doit apparaitre ni
+    // dans le chat des autres, ni dans les fichiers du serveur.
+    if (sender && msg.compare(0, 4, "!api") == 0)
+    {
+        std::string arguments = msg.size() > 4 ? msg.substr(4) : "";
+        size_t const firstChar = arguments.find_first_not_of(" \t");
+        arguments = (firstChar == std::string::npos) ? "" : arguments.substr(firstChar);
+        if (sMercenaryChatMgr->HandleApiCommand(sender, arguments))
+            return;
+    }
 
     if (lang == LANG_UNIVERSAL && type != CHAT_MSG_EMOTE)
     {
@@ -217,6 +232,12 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
             }
 
             sender->Say(msg, Language(lang));
+
+            // SylvaniaCore : le mercenaire repond dans le canal ou on lui parle.
+            if (msg.empty() || msg[0] != '!')
+                if (Player* mercenary = sMercenaryMgr->PickMercenaryFor(sender, msg))
+                    if (mercenary->GetDistance(sender->GetPosition()) < 40.0f)
+                        sMercenaryChatMgr->Talk(sender, mercenary, MERC_REPLY_SAY, msg);
             break;
         }
         case CHAT_MSG_EMOTE:
@@ -302,6 +323,13 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
             else if (BotBGAI* pBGAI = dynamic_cast<BotBGAI*>(pUnitAi))
                 pBGAI->ProcessBotCommand(GetPlayer(), msg);
 
+            // SylvaniaCore : sans le prefixe "!", ce chuchotement n est pas un
+            // ordre mais une replique adressee au mercenaire. Son modele de
+            // langage repond, avec la cle de son employeur.
+            if ((msg.empty() || msg[0] != '!')
+                && sMercenaryMgr->IsMercenaryOf(receiver->GetGUID(), GetPlayer()->GetGUID()))
+                sMercenaryChatMgr->Talk(GetPlayer(), receiver, MERC_REPLY_WHISPER, msg);
+
             if (receiver->IsPlayerBot())
             {
                 LocaleConstant locale = sender->GetSession()->GetSessionDbcLocale();
@@ -367,6 +395,18 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
 
             if (type == CHAT_MSG_PARTY_LEADER)
                 group->ProcessGroupBotCommand(GetPlayer(), msg);
+
+            // SylvaniaCore : hors ordre, un message de groupe s adresse aux
+            // compagnons. Tout membre de la troupe peut interpeller un
+            // mercenaire, mais c est la cle de son employeur qui paie, et un
+            // seul repond - celui qu on nomme, sinon le premier sous contrat.
+            if (msg.empty() || msg[0] != '!')
+            {
+                Player* mercenaryOwner = nullptr;
+                if (Player* mercenary = sMercenaryMgr->PickMercenaryInGroup(GetPlayer(), msg, mercenaryOwner))
+                    if (mercenaryOwner)
+                        sMercenaryChatMgr->Talk(mercenaryOwner, mercenary, MERC_REPLY_PARTY, msg, GetPlayer());
+            }
 
             // AI-PartyTalk
             for (GroupReference* itr = group->GetFirstMember(); itr != nullptr; itr = itr->next())

@@ -19,6 +19,7 @@
 #include "BotGroupAI.h"
 #include "CapitalSiegeMgr.h"
 #include "Chat.h"
+#include "MercenaryChat.h"
 #include "Config.h"
 #include "DB2Stores.h"
 #include "Group.h"
@@ -146,6 +147,82 @@ bool MercenaryMgr::IsMercenary(ObjectGuid botGuid) const
         if (contract.botGuid == botGuid)
             return true;
     return false;
+}
+
+bool MercenaryMgr::IsMercenaryOf(ObjectGuid botGuid, ObjectGuid ownerGuid) const
+{
+    for (MercenaryContract const& contract : m_contracts)
+        if (contract.botGuid == botGuid && contract.ownerGuid == ownerGuid)
+            return true;
+    return false;
+}
+
+Player* MercenaryMgr::PickMercenaryFor(Player* owner, std::string const& message) const
+{
+    if (!owner)
+        return nullptr;
+
+    Player* fallback = nullptr;
+    for (MercenaryContract const& contract : m_contracts)
+    {
+        if (contract.ownerGuid != owner->GetGUID() || contract.stage != MERC_STAGE_ACTIVE)
+            continue;
+
+        Player* bot = ObjectAccessor::FindConnectedPlayer(contract.botGuid);
+        if (!bot || !bot->IsInWorld())
+            continue;
+
+        // Interpelle par son nom : c est lui qui repond, sans ambiguite.
+        if (!message.empty() && message.find(bot->GetName()) != std::string::npos)
+            return bot;
+
+        if (!fallback)
+            fallback = bot;
+    }
+    return fallback;
+}
+
+Player* MercenaryMgr::PickMercenaryInGroup(Player* speaker, std::string const& message, Player*& outOwner) const
+{
+    outOwner = nullptr;
+    if (!speaker)
+        return nullptr;
+
+    Group* group = speaker->GetGroup();
+    if (!group)
+        return nullptr;
+
+    Player* fallback = nullptr;
+    Player* fallbackOwner = nullptr;
+
+    for (MercenaryContract const& contract : m_contracts)
+    {
+        if (contract.stage != MERC_STAGE_ACTIVE)
+            continue;
+
+        Player* bot = ObjectAccessor::FindConnectedPlayer(contract.botGuid);
+        if (!bot || !bot->IsInWorld() || bot->GetGroup() != group)
+            continue;   // mercenaire d une autre troupe
+
+        Player* owner = ObjectAccessor::FindConnectedPlayer(contract.ownerGuid);
+        if (!owner || !owner->IsInWorld())
+            continue;   // l employeur doit etre la : c est sa cle qui paie
+
+        if (!message.empty() && message.find(bot->GetName()) != std::string::npos)
+        {
+            outOwner = owner;
+            return bot;
+        }
+
+        if (!fallback)
+        {
+            fallback = bot;
+            fallbackOwner = owner;
+        }
+    }
+
+    outOwner = fallbackOwner;
+    return fallback;
 }
 
 bool MercenaryMgr::IsAccountHired(uint32 accountId) const
@@ -377,6 +454,13 @@ void MercenaryMgr::Refund(ObjectGuid ownerGuid, char const* reason)
 // doit avoir ete retire de la liste AVANT l appel (reentrance des hooks).
 void MercenaryMgr::ReleaseBot(MercenaryContract const& contract)
 {
+    // Le contrat s arrete : le mercenaire perd la memoire de vos echanges, et si
+    // vous ne commandez plus personne, votre cle d API est effacee sur-le-champ.
+    if (!contract.botGuid.IsEmpty())
+        sMercenaryChatMgr->ForgetBot(contract.botGuid);
+    if (!CountContracts(contract.ownerGuid))
+        sMercenaryChatMgr->ClearCredential(contract.ownerGuid);
+
     WorldSession* session = sWorld->FindSession(contract.accountId);
     if (!session || !session->IsBotSession())
         return;

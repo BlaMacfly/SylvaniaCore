@@ -24,6 +24,7 @@
 #include "Chat.h"
 #include "Creature.h"
 #include "Group.h"
+#include "MercenaryChat.h"
 #include "MercenaryMgr.h"
 #include "Player.h"
 #include "ScriptedGossip.h"
@@ -295,11 +296,24 @@ class mercenary_world_script : public WorldScript
         void OnConfigLoad(bool /*reload*/) override
         {
             sMercenaryMgr->LoadConfig();
+            sMercenaryChatMgr->LoadConfig();
+        }
+
+        // Le fil dedie aux appels d API nait avec le monde et meurt avec lui.
+        void OnStartup() override
+        {
+            sMercenaryChatMgr->Start();
+        }
+
+        void OnShutdown() override
+        {
+            sMercenaryChatMgr->Stop();
         }
 
         void OnUpdate(uint32 diff) override
         {
             sMercenaryMgr->Update(diff);
+            sMercenaryChatMgr->Update(diff);
         }
 };
 

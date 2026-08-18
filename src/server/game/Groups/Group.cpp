@@ -2603,11 +2603,15 @@ void Group::ProcessGroupBotCommand(Player* srcPlayer, std::string& cmd)
 {
     if (!srcPlayer || !IsLeader(srcPlayer->GetGUID()))
         return;
+    // SylvaniaCore (module Mercenaires) : seuls les messages prefixes par "!"
+    // sont des ordres ; le reste appartient a la conversation.
+    if (cmd.empty() || cmd[0] != '!')
+        return;
     std::string groupProcess = cmd;
     std::string groupParam;
     if (groupProcess.empty())
         return;
-    if (srcPlayer && !srcPlayer->InBattleground() && groupProcess == "seduce")
+    if (srcPlayer && !srcPlayer->InBattleground() && groupProcess == "!seduce")
     {
         Creature* pSeduceTarget = NULL;
         if (srcPlayer->GetTarget() != ObjectGuid::Empty)
