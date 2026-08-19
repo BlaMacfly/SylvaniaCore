@@ -86,6 +86,8 @@ public:
 	bool CastingSummonRite() { return m_MovetoUseGO.CastingSummonRite(); }
 	bool SetMovetoUseGOTarget(ObjectGuid target) { return m_MovetoUseGO.SetNeedMovetoUseGO(target); }
 	void Dismount();
+	// Teleporte le bot a un point precis. Module Mercenaires : sortie du portail.
+	void TeleportToPoint(uint32 mapId, Position const& pos);
 
 	void SetVehicle3DNextMoveGap(float gap);
 	void SetVehicle3DMoveTarget(Unit* pTarget, float offset);

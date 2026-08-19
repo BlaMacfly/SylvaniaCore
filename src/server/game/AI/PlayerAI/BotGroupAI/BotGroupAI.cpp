@@ -1219,6 +1219,12 @@ bool BotGroupAI::UpdateMountState()
 	return TryUpMount();
 }
 
+void BotGroupAI::TeleportToPoint(uint32 mapId, Position const& pos)
+{
+	Position target = pos;   // SetTeleport prend une reference modifiable
+	m_Teleporting.SetTeleport(mapId, target);
+}
+
 void BotGroupAI::Dismount()
 {
 	if (!me->HasAura(m_UseMountID))

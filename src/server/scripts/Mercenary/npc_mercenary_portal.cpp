@@ -239,7 +239,7 @@ class npc_mercenary_portal : public CreatureScript
 
             CloseGossipMenuFor(player);
 
-            MercenaryResult const result = sMercenaryMgr->Summon(player, role);
+            MercenaryResult const result = sMercenaryMgr->Summon(player, role, creature);
             if (result != MERC_OK)
             {
                 ChatHandler(player->GetSession()).PSendSysMessage("|cffff0000[Portail]|r %s",

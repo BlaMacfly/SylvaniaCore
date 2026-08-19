@@ -27,8 +27,10 @@
 
 #include "Common.h"
 #include "ObjectGuid.h"
+#include "Position.h"
 #include <vector>
 
+class Creature;
 class Group;
 class Player;
 
@@ -64,7 +66,7 @@ enum MercenaryResult
 struct MercenaryContract
 {
     MercenaryContract() : accountId(0), role(0), stage(MERC_STAGE_SUMMONING), waitSeconds(0),
-        pendingRelease(false), summonPending(false) { }
+        pendingRelease(false), summonPending(false), hasPortal(false), portalMap(0) { }
 
     uint32     accountId;       // compte bot reserve
     ObjectGuid ownerGuid;       // joueur qui a paye
@@ -81,6 +83,12 @@ struct MercenaryContract
     // aupres de son employeur : l ordre part au tick suivant, quand l IA de
     // groupe aura reconnu son maitre.
     bool       summonPending;
+
+    // Le portail d ou part l invocation : le mercenaire doit en sortir, pas
+    // se materialiser aux pieds de son employeur reste en retrait.
+    bool       hasPortal;
+    uint32     portalMap;
+    Position   portalPos;
 };
 
 class TC_GAME_API MercenaryMgr
@@ -101,7 +109,8 @@ class TC_GAME_API MercenaryMgr
 
         // Verifie, encaisse et lance l invocation. Le prelevement n a lieu que
         // si un mercenaire du role demande a effectivement ete reserve.
-        MercenaryResult Summon(Player* owner, uint8 role);
+        // "portal" est la structure invoquante : le mercenaire en sortira.
+        MercenaryResult Summon(Player* owner, uint8 role, Creature* portal = nullptr);
 
         void Update(uint32 diff);
 

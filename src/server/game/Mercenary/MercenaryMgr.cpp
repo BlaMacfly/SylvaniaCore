@@ -22,8 +22,10 @@
 #include "MercenaryChat.h"
 #include "Config.h"
 #include "DB2Stores.h"
+#include "Creature.h"
 #include "Group.h"
 #include "GroupMgr.h"
+#include "Map.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
@@ -341,7 +343,7 @@ bool MercenaryMgr::FindCandidate(Player* owner, uint8 role, uint32& accountId, u
     return false;
 }
 
-MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role)
+MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal)
 {
     if (!m_enabled)
         return MERC_ERR_DISABLED;
@@ -431,6 +433,12 @@ MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role)
     contract.ownerGuid = owner->GetGUID();
     contract.role = role;
     contract.stage = MERC_STAGE_SUMMONING;
+    if (portal)
+    {
+        contract.hasPortal = true;
+        contract.portalMap = portal->GetMapId();
+        contract.portalPos = portal->GetPosition();
+    }
     m_contracts.push_back(contract);
 
     TC_LOG_INFO("server.worldserver", "Mercenaires: %s a paye %u po pour un %s (compte bot %u).",
@@ -632,7 +640,25 @@ void MercenaryMgr::Update(uint32 diff)
             {
                 if (BotGroupAI* groupAI = dynamic_cast<BotGroupAI*>(bot->GetAI()))
                 {
-                    groupAI->ProcessBotCommand(owner, "summon");
+                    if (it->hasPortal)
+                    {
+                        // Il franchit le seuil : quelques pas devant la structure,
+                        // l angle varie pour que quatre mercenaires ne se marchent
+                        // pas dessus, et la hauteur est recalee sur le terrain.
+                        float const angle = it->portalPos.GetOrientation() + frand(-1.0f, 1.0f);
+                        float const distance = frand(1.5f, 3.0f);
+                        float x = it->portalPos.GetPositionX() + distance * std::cos(angle);
+                        float y = it->portalPos.GetPositionY() + distance * std::sin(angle);
+                        float z = it->portalPos.GetPositionZ();
+                        if (Map* map = bot->GetMap())
+                            map->GetHeight(bot->GetPhaseShift(), x, y, z);
+
+                        // Il fait face au portail dont il sort.
+                        Position spot(x, y, z, angle + float(M_PI));
+                        groupAI->TeleportToPoint(it->portalMap, spot);
+                    }
+                    else
+                        groupAI->ProcessBotCommand(owner, "!summon");
                     it->summonPending = false;
                 }
             }
