@@ -162,7 +162,15 @@ class boss_wase_mari : public CreatureScript
 
                     itr->RemoveAllAuras();
 
-                    foutainTrigger[++tab] = itr->GetGUID();
+                    // Le pre-incrementation remplissait les indices 1 a 4 d'un
+                    // tableau de 4 (indices valides 0-3) : l'indice 0 restait vide
+                    // et le 4e ecrivait 16 octets HORS LIMITES, juste par-dessus
+                    // hydrolancePhase. Avec exactement 4 fontaines dans la salle,
+                    // le debordement etait systematique a chaque pull.
+                    if (tab >= 4)
+                        break;
+
+                    foutainTrigger[tab++] = itr->GetGUID();
                 }
 
                 searcher.clear();
@@ -247,7 +255,9 @@ class boss_wase_mari : public CreatureScript
 
                             Talk(TEXT_CALL_WATER);
 
-                            Creature* trigger = ObjectAccessor::GetCreature(*me, foutainTrigger[++foutainCount]);
+                            // Meme decalage a la lecture : le 4e appel relisait
+                            // hydrolancePhase reinterprete en ObjectGuid.
+                            Creature* trigger = ObjectAccessor::GetCreature(*me, foutainTrigger[foutainCount++]);
                             if (trigger)
                             {
                                 me->CastSpell(trigger, SPELL_CALL_WATER, true);
