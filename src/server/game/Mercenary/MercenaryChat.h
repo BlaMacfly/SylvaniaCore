@@ -164,6 +164,9 @@ class TC_GAME_API MercenaryChatMgr
         static std::string BuildPayload(MercenaryChatRequest const& request);
         static std::string BuildUrl(MercenaryChatRequest const& request);
         static bool Perform(MercenaryChatRequest const& request, std::string& answer, std::string& error);
+        // Un seul aller-retour. Renseigne le code HTTP pour que l appelant
+        // sache si le refus vaut la peine d etre retente.
+        static bool PerformOnce(MercenaryChatRequest const& request, std::string& answer, std::string& error, long& httpCode);
         static std::string ExtractAnswer(uint8 provider, std::string const& body, std::string& error);
 
         // Identifiants par employeur.

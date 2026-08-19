@@ -19,6 +19,7 @@
 #include "Chat.h"
 #include "ChatPackets.h"
 #include "Config.h"
+#include "DB2Stores.h"
 #include "Group.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
@@ -30,7 +31,9 @@
 #include <curl/curl.h>
 
 #include <algorithm>
+#include <chrono>
 #include <sstream>
+#include <thread>
 
 namespace
 {
@@ -468,7 +471,34 @@ std::string MercenaryChatMgr::BuildSystemPrompt(Player* owner, Player* bot) cons
            << "!summon). Si ton employeur te demande d'agir en pleine conversation, reponds-lui en personnage "
            << "et rappelle-lui de crier son ordre avec le point d'exclamation.";
 
+    prompt << "\nMONDE : nous sommes en Azeroth, au temps de la troisieme invasion de la Legion "
+           << "ardente. Les Iles Brisees ont resurgi de la mer ; Dalaran la cite mage flotte "
+           << "au-dessus d elles ; les champions se battent pour des armes prodigieuses. Sargeras "
+           << "menace le monde, Illidan Hurlorage est revenu d entre les morts. Les continents "
+           << "connus sont Kalimdor, les Royaumes de l Est, Norfendre, la Pandarie et Draenor. "
+           << "L Alliance tient Hurlevent, Forgefer, Darnassus, l Exodar et Gilneas ; la Horde "
+           << "tient Orgrimmar, les Pitons du Tonnerre, Fossoyeuse, Lune-d Argent et la "
+           << "Baie-du-Butin. On paie en pieces de cuivre, d argent et d or ; cent pieces d or "
+           << "sont une somme. Tu connais les gobelins marchands, les gryphons et les zeppelins, "
+           << "les tavernes, les donjons hantes et les demons de la Legion. "
+           << "Tu n'as JAMAIS entendu parler de ce qui vient apres : ni de la guerre entre l'Alliance "
+           << "et la Horde a Kul Tiras ou Zandalar, ni de l Ombreterre, ni des Dragons. Ces noms ne "
+           << "te disent rien, et tu le dis franchement si on t en parle.";
+
     prompt << "\nSITUATION : ";
+    LocaleConstant const locale = owner->GetSession() ? owner->GetSession()->GetSessionDbcLocale() : LOCALE_frFR;
+    if (AreaTableEntry const* area = sAreaTableStore.LookupEntry(bot->GetAreaId()))
+    {
+        prompt << "vous vous tenez a " << area->AreaName->Str[locale];
+        // La sous-zone porte souvent un nom de hameau ; la zone situe la region.
+        if (bot->GetZoneId() != bot->GetAreaId())
+            if (AreaTableEntry const* zone = sAreaTableStore.LookupEntry(bot->GetZoneId()))
+                prompt << ", en " << zone->AreaName->Str[locale];
+        prompt << ". ";
+    }
+    else if (MapEntry const* map = sMapStore.LookupEntry(bot->GetMapId()))
+        prompt << "vous vous tenez en " << map->MapName->Str[locale] << ". ";
+
     if (Group* group = owner->GetGroup())
         prompt << "vous chevauchez a " << uint32(group->GetMembersCount()) << " en compagnie. ";
 
@@ -656,7 +686,31 @@ std::string MercenaryChatMgr::BuildPayload(MercenaryChatRequest const& request)
     return json.str();
 }
 
+// Un fournisseur sature (503), ou qui trouve le rythme trop soutenu (429),
+// se remet souvent en une seconde. On retente donc deux fois avant de rendre
+// les armes, en espacant les tentatives. Ces attentes se passent dans le fil
+// dedie aux appels : la boucle du monde n en sait rien.
 bool MercenaryChatMgr::Perform(MercenaryChatRequest const& request, std::string& answer, std::string& error)
+{
+    uint32 const maxAttempts = 3;
+    for (uint32 attempt = 0; attempt < maxAttempts; ++attempt)
+    {
+        long httpCode = 0;
+        if (PerformOnce(request, answer, error, httpCode))
+            return true;
+
+        // httpCode nul : la connexion elle-meme a echoue, cela aussi se retente.
+        bool const transient = httpCode == 0 || httpCode == 429 || httpCode == 500
+            || httpCode == 502 || httpCode == 503 || httpCode == 504;
+        if (!transient || attempt + 1 == maxAttempts)
+            return false;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(700 * (attempt + 1)));
+    }
+    return false;
+}
+
+bool MercenaryChatMgr::PerformOnce(MercenaryChatRequest const& request, std::string& answer, std::string& error, long& httpCode)
 {
     CURL* curl = curl_easy_init();
     if (!curl)
@@ -706,7 +760,7 @@ bool MercenaryChatMgr::Perform(MercenaryChatRequest const& request, std::string&
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "SylvaniaCore-Mercenary/1.0");
 
     CURLcode const result = curl_easy_perform(curl);
-    long httpCode = 0;
+    httpCode = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
 
     curl_slist_free_all(headers);
@@ -735,6 +789,8 @@ bool MercenaryChatMgr::Perform(MercenaryChatRequest const& request, std::string&
             text << "Modele introuvable pour votre cle";
         else if (httpCode == 429)
             text << "Votre fournisseur refuse le rythme";
+        else if (httpCode == 503 || httpCode == 502 || httpCode == 504)
+            text << "Votre fournisseur est surcharge, reessayez dans un instant";
         else
             text << "Le fournisseur a repondu par une erreur";
 
