@@ -52,6 +52,7 @@ enum MardumQuests
     // Le script ne connaissait que la premiere : pour un joueur Vengeance,
     // aucun des cinq PNJ ne reagissait au dialogue. Le script de la Vigie
     // brisee, lui, gere bien ses variantes (_H/_V, _DMG_SPEC/_TANK_SPEC).
+    QUEST_FEL_SECRETS                                 = 40051,
     QUEST_CRY_HAVOC                                   = 39516,
     QUEST_CRY_HAVOC_VENGEANCE                         = 39515,
     QUEST_THEIR_NUMBERS_ARE_LEGION                    = 38819
@@ -916,6 +917,15 @@ public:
 
     bool OnGossipHello(Player* player, GameObject* /*go*/) override
     {
+        // Sans cette condition le livre restait recliquable indefiniment : le
+        // joueur pouvait rouvrir le choix et reprendre l'autre specialisation
+        // a volonte. Chaque passage relance LearnSpell + ActivateTalentGroup,
+        // ce qui laisse un etat de specialisation incoherent (constate le
+        // 18/08/2026 : primarySpecialization=577 Devastation sur un personnage
+        // portant l'arme de Vengeance). Le choix doit etre unique.
+        if (player->GetQuestStatus(QUEST_FEL_SECRETS) != QUEST_STATUS_INCOMPLETE)
+            return false;
+
         player->CastSpell(player, 194938, true); // Display player spec choice
         return false;
     }
@@ -933,6 +943,12 @@ public:
     void OnPlayerChoiceResponse(Player* player, uint32 choiceID, uint32 responseID) override
     {
         if (choiceID != PLAYER_CHOICE_DH_SPEC_SELECTION)
+            return;
+
+        // Deuxieme garde-fou, independant du livre : ne jamais appliquer le
+        // choix deux fois, quelle que soit la facon dont la fenetre a ete
+        // rouverte.
+        if (player->GetQuestStatus(QUEST_FEL_SECRETS) != QUEST_STATUS_INCOMPLETE)
             return;
 
         player->LearnSpell(200749, false); // Allow to choose specialization
