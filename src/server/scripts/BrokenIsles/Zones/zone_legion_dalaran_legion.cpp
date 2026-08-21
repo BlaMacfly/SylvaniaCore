@@ -342,7 +342,11 @@ class player_artifact_choice : public PlayerScript
 public:
     player_artifact_choice() : PlayerScript("player_artifact_choice") { }
  
-    void OnCompleteQuestChoice(Player* player, uint32 choiceId, uint32 /*responseId*/)
+    // Hook renomme : OnCompleteQuestChoice est declare dans ScriptMgr mais
+    // appele DE NULLE PART. Le seul hook que le core invoque a la reception
+    // dun choix est OnPlayerChoiceResponse (QuestHandler.cpp). Cette methode
+    // etait donc du code mort.
+    void OnPlayerChoiceResponse(Player* player, uint32 choiceId, uint32 /*responseId*/) override
     {
         switch (choiceId)
         {

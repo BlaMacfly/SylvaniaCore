@@ -1419,6 +1419,7 @@ enum eChoices
     SPELL_NEW_DIRECTION_CHOICE_KAYN_OR_ALTRUIS = 196650,
     SPELL_NEW_DIRECTION_CHOSE_ALTRUIS = 196662,
     SPELL_NEW_DIRECTION_CHOSE_KAYN = 196661,
+    NPC_CREDIT_FOLLOWER_CHOSEN = 99278,
 };
 
 class npc_korvas_bloodthorn : public CreatureScript
@@ -1438,7 +1439,11 @@ class PlayerScript_follower_choice : public PlayerScript
 public:
     PlayerScript_follower_choice() : PlayerScript("PlayerScript_follower_choice") {}
 
-    void OnCompleteQuestChoice(Player* player, uint32 choiceID, uint32 responseID)
+    // Hook renomme : OnCompleteQuestChoice est declare dans ScriptMgr mais
+    // appele DE NULLE PART. Le seul hook que le core invoque a la reception
+    // dun choix est OnPlayerChoiceResponse (QuestHandler.cpp). Cette methode
+    // etait donc du code mort.
+    void OnPlayerChoiceResponse(Player* player, uint32 choiceID, uint32 responseID) override
     {
         if (choiceID != PLAYER_CHOICE_DH_FOLLOWER_SELECTION)
             return;
@@ -1452,8 +1457,15 @@ public:
             player->CastSpell(player, SPELL_NEW_DIRECTION_CHOSE_ALTRUIS, true);
             break;
         default:
-            break;
+            return;
         }
+
+        // Objectif « Choose between Kayn and Altruis » de la quete 40373
+        // (Une nouvelle direction). Aucune source ne laccordait : ni ligne
+        // smart_scripts, ni code. La quete restait donc bloquee meme une fois
+        // le choix effectue.
+        if (player->GetQuestStatus(QUEST_A_NEW_DIRECTION) == QUEST_STATUS_INCOMPLETE)
+            player->KilledMonsterCredit(NPC_CREDIT_FOLLOWER_CHOSEN);
     }
 };
 
