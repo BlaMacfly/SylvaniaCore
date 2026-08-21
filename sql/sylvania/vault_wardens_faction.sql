@@ -1,0 +1,33 @@
+-- =====================================================================
+-- Caveau des Gardiennes — Mirana Lumétoile et Drelanim Murmevent
+-- ripostaient aux dégâts de zone du joueur.
+--
+-- Signalé en jeu : « Mirana m'attaque quand elle combat des démons et que
+-- je l'aide à les battre ».
+--
+-- Elle n'attaquait pas d'elle-même. Déroulé de Unit::GetReactionTo avec sa
+-- faction 2643 (données client FactionTemplate.db2) :
+--   IsHostileTo(joueur)          -> non (groupe ennemi = 8, la Légion)
+--   IsFriendlyTo(joueur)         -> non (groupe ami = 0, personne)
+--   HOSTILE_BY_DEFAULT (0x2000)  -> non (Flags = 32)
+--   => retombe sur REP_NEUTRAL
+-- Neutre signifie ATTAQUABLE : les dégâts de zone d'un chasseur de démons
+-- (Faisceau incandescent, Danse des lames, Aura d'immolation) la touchaient,
+-- et elle ripostait. C'est le joueur qui ouvrait les hostilités sans le
+-- vouloir, en l'aidant.
+--
+-- Ces deux PNJ étaient les SEULS de la carte 1468 en faction 2643 (vérifié).
+-- Tous les autres alliés du Caveau — Allari, Cyana, Jace, Kor'vas, Sevis,
+-- Asha, Cassiel, Lyana, Marius, les Illidari libérés — sont en 2804, qui
+-- déclare explicitement les joueurs comme amis (groupe ami = 1) tout en
+-- restant hostile à la Légion (groupe ennemi = 8, ennemi explicite 73).
+--
+-- On les aligne donc sur leurs pairs : amicaux (donc intouchables par les
+-- dégâts de zone) et toujours hostiles aux démons.
+--
+-- Rechargeable à chaud : reload creature_template <entry> (la commande
+-- accepte la MODIFICATION d'une entrée existante, elle ne refuse que les
+-- entrées nouvelles).
+-- =====================================================================
+
+UPDATE `creature_template` SET `faction`=2804 WHERE `entry` IN (99451,96847);
