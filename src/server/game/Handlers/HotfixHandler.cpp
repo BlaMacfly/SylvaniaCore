@@ -29,6 +29,22 @@ void WorldSession::HandleDBQueryBulk(WorldPackets::Hotfix::DBQueryBulk& dbQuery)
     if (!store)
     {
         TC_LOG_ERROR("network", "CMSG_DB_QUERY_BULK: %s requested unsupported unknown hotfix type: %u", GetPlayerInfo().c_str(), dbQuery.TableHash);
+
+        // Repondre malgre tout, une reponse negative par enregistrement demande.
+        // Sans cela le serveur ne renvoyait RIEN et le client attendait
+        // indefiniment : ecran de chargement fige, joueur incapable dentrer
+        // dans le monde. Constate le 21/08/2026 sur la carte 1468 (Caveau des
+        // Gardiennes) : le client reclamait la table 0xC9D6B6B3, que ce core ne
+        // connait pas, et lerreur apparaissait exactement une fois par
+        // tentative de connexion bloquee.
+        for (WorldPackets::Hotfix::DBQueryBulk::DBQueryRecord const& record : dbQuery.Queries)
+        {
+            WorldPackets::Hotfix::DBReply dbReply;
+            dbReply.TableHash = dbQuery.TableHash;
+            dbReply.RecordID = record.RecordID;
+            dbReply.Timestamp = time(NULL);
+            SendPacket(dbReply.Write());
+        }
         return;
     }
 
