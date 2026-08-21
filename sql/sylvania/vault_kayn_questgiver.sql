@@ -1,0 +1,26 @@
+-- =====================================================================
+-- Caveau des Gardiennes — Kayn Chassesoleil (92984) ne pouvait donner
+-- aucune quête : toute la branche haute de la campagne était inaccessible.
+--
+-- Signalé en jeu : « après avoir rendu Le soulèvement des Illidari je n'ai
+-- plus de quête ». Constat en base : 12 quêtes du Caveau jamais prises, le
+-- joueur passant directement à Dalaran (44663).
+--
+-- Kayn 92984 est déclaré donneur de la quête 39682 « Envole-moi » dans
+-- creature_queststarter, mais son `npcflag` valait **0** — aucun drapeau de
+-- dialogue ni de donneur. Il ne pouvait donc rien proposer.
+--
+-- C'est la quête d'entrée de toute la suite : elle donne la chauve-souris
+-- gangrenée qui permet de monter. Ses deux spawns sont en bas (4079/-307 et
+-- 4057/-309, z=-282) tandis qu'Allari (96675) et Kor'vas (97643), qui
+-- donnent les quatre quêtes suivantes, se trouvent tout en haut (z=126).
+-- Sans Kayn, la branche haute était hors d'atteinte.
+--
+-- Ses deux collègues donneurs de la zone portent npcflag=3 (dialogue +
+-- donneur) ; on l'aligne. Aucune condition ne bloque ces quêtes par
+-- ailleurs (vérifié : aucune ligne conditions de type 19/20).
+--
+-- Rechargeable à chaud : reload creature_template 92984
+-- =====================================================================
+
+UPDATE `creature_template` SET `npcflag`=3 WHERE `entry`=92984;
