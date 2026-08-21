@@ -1428,8 +1428,14 @@ public:
     npc_korvas_bloodthorn() : CreatureScript("npc_korvas_bloodthorn") { }
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
     {
-        player->CastSpell(player, SPELL_NEW_DIRECTION_CHOICE_KAYN_OR_ALTRUIS, true); // Display follower choice
+        // ORDRE CRITIQUE : fermer le dialogue AVANT de lancer le sort.
+        // PlayerMenu::SendCloseGossip() appelle _interactionData.Reset(), ce qui
+        // efface le PlayerChoiceId que SendPlayerChoice vient d'inscrire. Dans
+        // l'ordre inverse, la fenetre s'affichait bien mais le serveur avait
+        // oublie quel choix il autorisait, et rejetait le clic du joueur :
+        //   "tried to respond to invalid player choice 234 (allowed 0)"
         CloseGossipMenuFor(player);
+        player->CastSpell(player, SPELL_NEW_DIRECTION_CHOICE_KAYN_OR_ALTRUIS, true); // Display follower choice
         return true;
     }
 };

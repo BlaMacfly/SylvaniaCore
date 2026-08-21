@@ -220,8 +220,12 @@ public:
         switch (action)
         {
         case GOSSIP_ACTION_INFO_DEF + 1:
-            player->CastSpell(player, SPELL_PLAYERCHOICE, true); // Display player spec choice
+            // ORDRE CRITIQUE : fermer AVANT de lancer le sort. SendCloseGossip()
+            // appelle _interactionData.Reset(), ce qui efface le PlayerChoiceId
+            // que SendPlayerChoice vient d'inscrire, et le serveur rejette
+            // ensuite le clic du joueur.
             CloseGossipMenuFor(player);
+            player->CastSpell(player, SPELL_PLAYERCHOICE, true); // Display player spec choice
             break;
         }
         return true;
