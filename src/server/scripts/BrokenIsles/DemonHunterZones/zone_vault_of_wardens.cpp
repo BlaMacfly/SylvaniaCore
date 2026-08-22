@@ -1086,6 +1086,19 @@ enum eBastillax
     SPELL_BLUR_OF_SHADOWS = 200002,
 };
 
+// 96783 Bastillax
+// Les trois sorts etaient lances en mode DECLENCHE (triggered = true), ce qui
+// les rendait instantanes et non interruptibles. Or ils ont tous un temps
+// d'incantation cote client :
+//   200007 Annihilation gangrenee : 3 s, cone frontal -> il faut en sortir
+//   200027 Ombres ecrasantes      : canalise 5 s      -> interruptible
+//   200002 Effacement tenebreux   : 2 s, +100% esquive -> interruptible
+// Le declenchement supprimait toute parade, et surtout laissait le boss
+// esquiver la quasi-totalite des coups en montant son bouclier d'esquive
+// instantanement toutes les 6 s. Signale en jeu : boss juge intuable en solo,
+// alors que ses statistiques (modificateur de vie 14, rang elite) sont
+// identiques a celles de Sledge, Crusher et Tyranna, deja vaincus.
+// Passage en incantation normale : comportement authentique retabli.
 class npc_bastillax : public CreatureScript
 {
 public:
@@ -1126,19 +1139,19 @@ public:
                 {
                 case EVENT_FEL_ANNIHILATION:
                     if (Unit* target = me->GetVictim())
-                        me->CastSpell(me, SPELL_FEL_ANNIHILATION, true);
+                        me->CastSpell(me, SPELL_FEL_ANNIHILATION, false);
 
                     events.ScheduleEvent(EVENT_FEL_ANNIHILATION, urand(8000, 10000));
                     break;
                 case EVENT_CRUSHING_SHADOWS:
                     if (Unit* target = me->GetVictim())
-                        me->CastSpell(target, SPELL_CRUSHING_SHADOWS, true);
+                        me->CastSpell(target, SPELL_CRUSHING_SHADOWS, false);
 
                     events.ScheduleEvent(EVENT_CRUSHING_SHADOWS, 6000);
                     break;
                 case EVENT_BLUR_OF_SHADOWS:
                     if (Unit* target = me->GetVictim())
-                        me->CastSpell(target, SPELL_BLUR_OF_SHADOWS, true);
+                        me->CastSpell(target, SPELL_BLUR_OF_SHADOWS, false);
 
                     events.ScheduleEvent(EVENT_BLUR_OF_SHADOWS, 6000);
                     break;
