@@ -126,6 +126,7 @@ ConditionMgr::ConditionTypeInfo const ConditionMgr::StaticConditionTypeData[COND
     { "Aura stack amount",    true, true,  false },
     { "Object Entry or Guid", true, true,  true  },
     { "Object TypeMask",      true, false, false },
+    { "Specialization",       true, false, false },
 };
 
 // Checks if object meets the condition
@@ -339,6 +340,12 @@ bool Condition::Meets(ConditionSourceInfo& sourceInfo) const
         case CONDITION_TYPE_MASK:
         {
             condMeets = object->isType(ConditionValue1);
+            break;
+        }
+        case CONDITION_SPECIALIZATION:
+        {
+            if (Player* player = object->ToPlayer())
+                condMeets = player->GetPrimarySpecialization() == ConditionValue1;
             break;
         }
         case CONDITION_RELATION_TO:
@@ -655,6 +662,9 @@ uint32 Condition::GetSearcherTypeMaskForCondition() const
                 mask |= GRID_MAP_TYPE_MASK_CORPSE;
             if (ConditionValue1 & TYPEMASK_AREATRIGGER)
                 mask |= GRID_MAP_TYPE_MASK_AREATRIGGER;
+            break;
+        case CONDITION_SPECIALIZATION:
+            mask |= GRID_MAP_TYPE_MASK_PLAYER;
             break;
         case CONDITION_RELATION_TO:
             mask |= GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_PLAYER;
@@ -2160,6 +2170,15 @@ bool ConditionMgr::isConditionTypeValid(Condition* cond) const
             if (!cond->ConditionValue1 || (cond->ConditionValue1 & ~(TYPEMASK_UNIT | TYPEMASK_PLAYER | TYPEMASK_GAMEOBJECT | TYPEMASK_CORPSE)))
             {
                 TC_LOG_ERROR("sql.sql", "%s has invalid typemask set (%u), skipped.", cond->ToString(true).c_str(), cond->ConditionValue2);
+                return false;
+            }
+            break;
+        }
+        case CONDITION_SPECIALIZATION:
+        {
+            if (!sChrSpecializationStore.LookupEntry(cond->ConditionValue1))
+            {
+                TC_LOG_ERROR("sql.sql", "%s has non existing specialization (%u), skipped.", cond->ToString(true).c_str(), cond->ConditionValue1);
                 return false;
             }
             break;
