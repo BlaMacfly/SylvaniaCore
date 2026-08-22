@@ -106,6 +106,7 @@ enum MardumCreatures
     NPC_COLOSSAL_INFERNAL                             = 96159,
     NPC_LEGION_GATEWAY_KILL_CREDIT                    = 94406,
     NPC_FIRST_SUMMONED_GUARDIAN_QUEST_KILL_CREDIT     = 97831,
+    NPC_SHIVARRA_GATEWAY_KILL_CREDIT                  = 94407,
     NPC_QUEEN_TYRANNA                                 = 95048,
     NPC_BELIASH_CREDIT                                = 106003,
     NPC_ASHTONGUE_CAPTAIN                             = 90247,
@@ -655,9 +656,22 @@ public:
 
     bool OnGossipHello(Player* player, GameObject* /*go*/) override
     {
-        if (player->GetQuestObjectiveData(QUEST_SHIVARRA_FORCES, 0))
+        // Ce bloc etait le seul des trois portails a ne pas accorder de
+        // credit : il appelait ForceCompleteQuest, un raccourci de debogage
+        // qui valide la quete en sautant ses objectifs, et il le faisait sous
+        // la condition INVERSE de ses deux jumeaux (sans le '!'), donc
+        // seulement si l'objectif 0 etait DEJA acquis.
+        // Resultat : l'objectif 2 « Shivarra forces » (credit 94407), qui est
+        // obligatoire et sequence, n'avait aucune source sur tout le serveur
+        // et la quete 38765 restait bloquee.
+        // On applique ici exactement le schema des portails Cendrelangue et
+        // Glissentaille, avec les index d'objectif propres a 38765 :
+        //   index 2 -> 94407 « Enter the Illidari: Shivarra » Legion Gateway
+        //   index 3 -> 97831 First Summoned Guardian (facultatif)
+        if (!player->GetQuestObjectiveData(QUEST_SHIVARRA_FORCES, 2))
         {
-            player->ForceCompleteQuest(QUEST_SHIVARRA_FORCES);
+            player->KilledMonsterCredit(NPC_SHIVARRA_GATEWAY_KILL_CREDIT);              // storageIndex 2
+            player->KilledMonsterCredit(NPC_FIRST_SUMMONED_GUARDIAN_QUEST_KILL_CREDIT); // storageIndex 3
             player->CastSpell(player, SPELL_SCENE_MARDUM_SHIVARRA_FORCES, true);
         }
 

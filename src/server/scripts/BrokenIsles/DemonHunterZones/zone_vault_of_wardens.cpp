@@ -28,6 +28,8 @@
 #include "GameObjectAI.h"
 #include "ObjectAccessor.h"
 #include "SpellAuras.h"
+#include "Item.h"
+#include "ItemTemplate.h"
 #include "SpellScript.h"
 #include "SpellAuraEffects.h"
 #include "SpellHistory.h"
@@ -2309,6 +2311,68 @@ public:
     }
 };
 
+
+// 38669 « Notre dernier espoir » : recuperer ses glaives de guerre.
+// Les deux objectifs sont des credits de type creature accordes par le
+// serveur officiel au moment ou l'arme arrive dans son emplacement :
+//   index 0 -> 97574 « Main-hand glaive equipped »
+//   index 1 -> 98369 « Off-hand glaive equipped »
+// Rien ne les accordait ici : aucune creature, aucun KillCredit, aucun
+// smart_scripts, aucun script C++ ne mentionne ces deux entrees. La quete
+// etait donc impossible a terminer.
+//
+// On ne code en dur AUCUN identifiant d'objet : l'objectif dit « un glaive
+// equipe », on verifie donc exactement cela — une arme de sous-classe
+// ITEM_SUBCLASS_WEAPON_WARGLAIVES dans l'emplacement correspondant. Cela
+// reste vrai quels que soient les glaives remis au joueur.
+//
+// Le crochet employe est PlayerScript::OnItemLevelChange, appele par
+// ScriptMgr::OnPlayerItemLevelChange depuis la fin de Player::EquipItem
+// (Player.cpp) — c'est le seul point d'accroche du core sur un changement
+// d'equipement, il n'existe aucun OnEquip. Les deux premiers tests (classe,
+// puis etat de la quete) ecartent immediatement tous les autres joueurs, le
+// cout est negligeable.
+enum OurLastHopeGlaives
+{
+    QUEST_OUR_LAST_HOPE_GLAIVES = 38669,
+    CREDIT_MAINHAND_GLAIVE      = 97574,
+    CREDIT_OFFHAND_GLAIVE       = 98369,
+};
+
+class PlayerScript_our_last_hope_glaives : public PlayerScript
+{
+public:
+    PlayerScript_our_last_hope_glaives() : PlayerScript("PlayerScript_our_last_hope_glaives") { }
+
+    void OnItemLevelChange(Player* player) override
+    {
+        if (!player || player->getClass() != CLASS_DEMON_HUNTER)
+            return;
+
+        if (player->GetQuestStatus(QUEST_OUR_LAST_HOPE_GLAIVES) != QUEST_STATUS_INCOMPLETE)
+            return;
+
+        if (IsWarglaive(player, EQUIPMENT_SLOT_MAINHAND) && !player->GetQuestObjectiveData(QUEST_OUR_LAST_HOPE_GLAIVES, 0))
+            player->KilledMonsterCredit(CREDIT_MAINHAND_GLAIVE);
+
+        if (IsWarglaive(player, EQUIPMENT_SLOT_OFFHAND) && !player->GetQuestObjectiveData(QUEST_OUR_LAST_HOPE_GLAIVES, 1))
+            player->KilledMonsterCredit(CREDIT_OFFHAND_GLAIVE);
+    }
+
+private:
+    static bool IsWarglaive(Player* player, uint8 slot)
+    {
+        Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
+        if (!item)
+            return false;
+
+        ItemTemplate const* proto = item->GetTemplate();
+        return proto
+            && proto->GetClass() == ITEM_CLASS_WEAPON
+            && proto->GetSubClass() == ITEM_SUBCLASS_WEAPON_WARGLAIVES;
+    }
+};
+
 void AddSC_zone_vault_of_wardens()
 {
     new npc_kayn_cell();
@@ -2342,6 +2406,7 @@ void AddSC_zone_vault_of_wardens()
     new PlayerScript_follower_choice();
     new On100DHArrival();
     new PlayerScript_bonus_objective();
+    new PlayerScript_our_last_hope_glaives();
     new PlayerScript_switch_phases();
     RegisterCreatureAI(npc_vault_of_the_wardens_sledge_or_crusher);
     new npc_altruis_sufferer_freed_99632();
