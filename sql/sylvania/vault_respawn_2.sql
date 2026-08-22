@@ -48,4 +48,4 @@ WHERE `map` = 1468
 -- Alignées sur la valeur déjà présente dans les données (300) plutôt que
 -- sur une valeur inventée. 114358, le portail de transport, n'est jamais
 -- détruit et n'est pas touché.
-UPDATE  SET =300 WHERE uid=1000(blamacfly) gid=1000(blamacfly) groupes=1000(blamacfly),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),100(users),101(netdev),102(scanner),106(bluetooth),108(lpadmin),988(docker)=99501 AND =1468;
+UPDATE `creature` SET `spawntimesecs`=300 WHERE `id`=99501 AND `map`=1468;
