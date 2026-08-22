@@ -2326,12 +2326,13 @@ public:
 // ITEM_SUBCLASS_WEAPON_WARGLAIVES dans l'emplacement correspondant. Cela
 // reste vrai quels que soient les glaives remis au joueur.
 //
-// Le crochet employe est PlayerScript::OnItemLevelChange, appele par
+// Le crochet d'equipement est PlayerScript::OnItemLevelChange, appele par
 // ScriptMgr::OnPlayerItemLevelChange depuis la fin de Player::EquipItem
 // (Player.cpp) — c'est le seul point d'accroche du core sur un changement
-// d'equipement, il n'existe aucun OnEquip. Les deux premiers tests (classe,
-// puis etat de la quete) ecartent immediatement tous les autres joueurs, le
-// cout est negligeable.
+// d'equipement, il n'existe aucun OnEquip. Il ne suffit pas a lui seul :
+// voir le commentaire des trois points d'entree plus bas. Les deux premiers
+// tests (classe, puis etat de la quete) ecartent immediatement tous les
+// autres joueurs, le cout est negligeable.
 enum OurLastHopeGlaives
 {
     QUEST_OUR_LAST_HOPE_GLAIVES = 38669,
@@ -2344,7 +2345,30 @@ class PlayerScript_our_last_hope_glaives : public PlayerScript
 public:
     PlayerScript_our_last_hope_glaives() : PlayerScript("PlayerScript_our_last_hope_glaives") { }
 
-    void OnItemLevelChange(Player* player) override
+    // Trois points d'entree, parce que l'ordre des evenements varie.
+    //
+    // Constate en jeu le 22/08/2026 : le joueur arrive au Caveau avec ses
+    // glaives DEJA EQUIPES. La quete lui demande de les equiper, mais
+    // l'evenement d'equipement ne se produira jamais — il a eu lieu avant.
+    // Ne guetter que OnItemLevelChange laissait donc la quete bloquee pour
+    // le cas le plus courant.
+    //
+    //   OnItemLevelChange : le joueur equipe un glaive apres avoir pris la quete
+    //   OnQuestAccept     : le joueur prend la quete alors qu'il les porte deja
+    //   OnLogin           : rattrape les personnages deja bloques (une simple
+    //                       reconnexion suffit a debloquer la quete)
+    void OnItemLevelChange(Player* player) override { TryGrant(player); }
+
+    void OnQuestAccept(Player* player, Quest const* quest) override
+    {
+        if (quest && quest->GetQuestId() == QUEST_OUR_LAST_HOPE_GLAIVES)
+            TryGrant(player);
+    }
+
+    void OnLogin(Player* player, bool /*firstLogin*/) override { TryGrant(player); }
+
+private:
+    static void TryGrant(Player* player)
     {
         if (!player || player->getClass() != CLASS_DEMON_HUNTER)
             return;
@@ -2359,7 +2383,6 @@ public:
             player->KilledMonsterCredit(CREDIT_OFFHAND_GLAIVE);
     }
 
-private:
     static bool IsWarglaive(Player* player, uint8 slot)
     {
         Item* item = player->GetItemByPos(INVENTORY_SLOT_BAG_0, slot);
