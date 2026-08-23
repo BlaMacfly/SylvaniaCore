@@ -1,0 +1,52 @@
+-- =====================================================================
+-- « Le départ des Illidari » — la version Alliance ne téléportait pas
+--
+-- Signalé en jeu : la quête finale de la campagne Chasseur de démons,
+-- rendue à Khadgar, doit sortir le joueur de la zone. Elle l'a fait pour
+-- un personnage Horde (elfe de sang) et PAS pour un personnage Alliance
+-- (elfe de la nuit), resté bloqué sur la carte 1468.
+--
+-- Cause : le script `npc_khadgar` est correct et bien rattaché, et ses
+-- deux constantes aussi (39689 Alliance, 39690 Horde). Il lance
+-- 192757 « Teleport to Stormwind » ou 192758 « Teleport to Orgrimmar »
+-- selon la quête rendue. Mais `spell_target_position` ne contenait de
+-- destination que pour 192758. Le sort Alliance partait donc dans le
+-- vide : incantation réussie, aucun déplacement.
+--
+-- CHOIX DE LA DESTINATION
+-- Aucune capture de référence n'existe pour 192757 sur ce serveur, il a
+-- donc fallu choisir. Deux points ont été examinés, tous deux issus de
+-- données réelles de la base — rien n'est inventé :
+--
+--  1. (-8998.14, 861.25, 29.62), destination des sorts de téléportation
+--     à Hurlevent déjà présents (3561 et 121857, capture build 22566, la
+--     même que la ligne Horde). ÉCARTÉE : le voisinage montre qu'il
+--     s'agit de la salle des portails du Quartier des mages — Jennea
+--     Cannon, Maginor Dumas, Coridormi sont à moins de 16 m. C'est
+--     l'arrivée du sort de mage, pas celle d'un Illidari.
+--
+--  2. (-8896.0, 1023.0, 124.0), position d'Elerion Chantelame 101004.
+--     RETENUE. Le voisinage est sans ambiguïté : Falara Chantenuit,
+--     Trafiquant illidari, Exécuteur illidari, Langue-de-ver captive et
+--     des gardes de Hurlevent, tous à moins de 22 m. C'est le camp
+--     illidari de Hurlevent. Et Elerion est le donneur Alliance de la
+--     quête suivante, 44663 « D'un battement de cil » — son homologue
+--     Horde étant Elthyn Da'rai à Orgrimmar.
+--
+-- Écart assumé par rapport à la version Horde : celle-ci dépose le
+-- joueur dans la Vallée de la force (gardes d'Orgrimmar, élémentaires),
+-- c'est-à-dire la place d'arrivée générique de la ville, à quelque 360 m
+-- du camp illidari. La symétrie stricte voudrait donc un point équivalent
+-- dans le quartier marchand de Hurlevent. Faute de capture pour le
+-- déterminer sans le fabriquer, on préfère déposer le joueur au camp
+-- illidari : c'est une position réelle, thématiquement juste pour un
+-- Illidari qui quitte le Caveau, et surtout elle le pose devant le
+-- donneur de sa quête suivante. Déplaçable en une ligne si l'on préfère
+-- la symétrie.
+--
+-- Rechargeable à chaud : reload spell_target_position
+-- =====================================================================
+
+DELETE FROM `spell_target_position` WHERE `ID`=192757;
+INSERT INTO `spell_target_position` (`ID`,`EffectIndex`,`MapID`,`PositionX`,`PositionY`,`PositionZ`,`VerifiedBuild`) VALUES
+(192757,0,0,-8896.0,1023.0,124.0,0);
