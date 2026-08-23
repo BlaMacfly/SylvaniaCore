@@ -1,0 +1,26 @@
+-- =====================================================================
+-- Khadgar 86563 : un nom de script fantôme en cachait un vrai
+--
+-- Relevé au démarrage du 23/08/2026 :
+--   « Script named npc_archmage_khadgar_86563 does not have a script
+--     name assigned in database. »
+--
+-- Le script C++ existe donc bel et bien, mais aucune entrée ne le
+-- réclame — tandis que 86563 déclarait `npc_khadgar_dalaran`, qui lui
+-- n'existe nulle part. Deux défauts symétriques qui s'annulent.
+--
+-- Ce script gère la quête 41220 « Direction Azsuna », que 86563 donne
+-- déjà : au choix de dialogue il lance le sort de taxi correspondant à
+-- la faction du joueur (205098 Alliance / 205203 Horde), lequel accorde
+-- le crédit ET envoie le vol. Sans rattachement, ce dialogue ne faisait
+-- rien du tout.
+--
+-- Sans effet sur le SmartAI : ce script ne surcharge PAS `GetAI`, donc
+-- `FactorySelector` continue de retomber sur l'AIName. La règle de
+-- crédit ajoutée pour la campagne du Déclin de la Légion reste active.
+--
+-- ⚠️ Un changement de ScriptName n'affecte que les créatures créées
+-- après coup : redémarrage nécessaire pour que ce soit effectif en jeu.
+-- =====================================================================
+
+UPDATE `creature_template` SET `ScriptName`='npc_archmage_khadgar_86563' WHERE `entry`=86563;
