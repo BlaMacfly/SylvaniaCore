@@ -312,6 +312,73 @@ public:
                 // Blizz handle that case with trigger and aura cast every 250 ms, anyway it's work
                 Map::PlayerList const& PlayerList = instance->GetPlayers();
 
+                // ==========================================================
+                // SylvaniaCore - l'eau ne brule QUE la ou une fontaine est
+                // corrompue.
+                //
+                // SIGNALE EN JEU : le combat etait infaisable. Une sonde
+                // posee ici a montre que le joueur alterne entre deux sols,
+                // 174,698 (coursive seche) et 174,157 (cuvette centrale) ;
+                // toute la cuvette infligeait 950 points toutes les 250 ms,
+                // soit 3800 par seconde, des l'entree en combat. Or la
+                // Sagesse de Mari se tient dedans (174,24) : approcher au
+                // corps a corps revenait a se suicider. Solocraft n'y peut
+                // rien, ces degats ignorent les statistiques.
+                //
+                // CE QUE FAIT LE JEU OFFICIEL
+                // L'infobulle du vrai sort (115167) dit : « les eaux
+                // corrompues DE LA FONTAINE infligent des degats de Givre ».
+                // L'eau n'est donc pas dangereuse en soi : elle le devient
+                // fontaine par fontaine, pendant que la Sagesse de Mari les
+                // souille l'une apres l'autre (une toutes les 29 s dans son
+                // script). D'ou la consigne connue du combat : tourner le
+                // long des zones seches jusqu'a ce que les quatre Ondes
+                // vivantes soient mortes, puis se placer sur l'anneau sec
+                // pour la phase du jet.
+                //
+                // ON REPRODUIT CA : un joueur dans l'eau ne prend des degats
+                // que s'il se trouve a portee d'une fontaine DEJA corrompue.
+                // Consequences, qui sont exactement le deroule officiel :
+                //   - aucune fontaine souillee -> l'eau est inoffensive ;
+                //   - chaque fontaine corrompue noie la moitie de la cuvette
+                //     la plus proche d'elle, les zones seches se reduisent ;
+                //   - les quatre corrompues -> toute la cuvette est mortelle,
+                //     et c'est le moment ou la phase 2 commence.
+                //
+                // La portee n'est pas choisie au hasard : 30 m est le rayon
+                // du sort officiel (SpellRadius ligne 10, build 7.3.5.26972).
+                // Les fontaines etant a 24,7-29,2 m du centre et la cuvette
+                // faisant une dizaine de metres de rayon, ce chiffre decoupe
+                // naturellement la cuvette en deux par fontaine.
+                //
+                // Reset() du boss purge les auras des fontaines : une mort de
+                // groupe remet donc bien le compteur a zero.
+                // ==========================================================
+                uint32 const ENTREE_FONTAINE   = 56586;   // Fountain Stalker
+                uint32 const AURA_CORRUPTION   = 106518;  // Corrupted Fountain
+                float  const PORTEE_FONTAINE   = 30.0f;   // rayon officiel de 115167
+
+                std::vector<Creature*> fontainesCorrompues;
+                if (Creature* mari = instance->GetCreature(wiseMariGUID))
+                {
+                    std::list<Creature*> fontaines;
+                    mari->GetCreatureListWithEntryInGrid(fontaines, ENTREE_FONTAINE, 50.0f);
+                    for (Creature* f : fontaines)
+                        if (f && f->HasAura(AURA_CORRUPTION))
+                            fontainesCorrompues.push_back(f);
+                }
+
+                // Aucune fontaine souillee -> la liste est vide et le test
+                // ci-dessous renvoie faux pour tout le monde : l'eau est
+                // claire, personne ne prend de degats.
+                auto dansEauCorrompue = [&fontainesCorrompues, PORTEE_FONTAINE](Player* p) -> bool
+                {
+                    for (Creature* f : fontainesCorrompues)
+                        if (p->GetExactDist2d(f) < PORTEE_FONTAINE)
+                            return true;
+                    return false;
+                };
+
                 if (!PlayerList.isEmpty())
                 {
                     for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
@@ -330,14 +397,37 @@ public:
                         // position : center of the wise mari's room
                         Position pos = plr->GetPosition();
 
+                        // SONDE TEMPORAIRE - on veut l'altitude REELLE du
+                        // joueur pendant le combat, et savoir laquelle des
+                        // deux bandes de degats l'attrape. Journalise une
+                        // fois par seconde (la boucle tourne a 250 ms).
+                        {
+                            static uint32 sondeCompteur = 0;
+                            if ((++sondeCompteur % 4) == 0)
+                            {
+                                float const zj = plr->GetPositionZ();
+                                TC_LOG_ERROR("misc",
+                                    "TJSWATER %s Z=%.3f dist=%.2f arc=%u bandeHaute=%u bandeBasse=%u fontaines=%u aPortee=%u",
+                                    plr->GetName().c_str(), zj,
+                                    plr->GetDistance(roomCenter),
+                                    uint32(roomCenter.HasInArc((float)M_PI, &pos) ? 1 : 0),
+                                    uint32((zj > 174.05f && zj < 174.23f) ? 1 : 0),
+                                    uint32((zj > 170.19f && zj < 170.215f) ? 1 : 0),
+                                    uint32(fontainesCorrompues.size()),
+                                    uint32(dansEauCorrompue(plr) ? 1 : 0));
+                            }
+                        }
+
                         if ((plr->GetDistance(roomCenter) < 20.00f && roomCenter.HasInArc((float)M_PI, &pos))
                             || (!roomCenter.HasInArc((float)M_PI, &pos) && plr->GetDistance(roomCenter) < 14.00f))
                         {
-                            if (plr->GetPositionZ() > 174.05f && plr->GetPositionZ() < 174.23f)
+                            if (plr->GetPositionZ() > 174.05f && plr->GetPositionZ() < 174.23f
+                                && dansEauCorrompue(plr))
                                 plr->CastSpell(plr, SPELL_CORRUPTED_WATERS, true);
                         }
 
-                        if (plr->GetDistance(roomCenter) < 30.00f && plr->GetPositionZ() > 170.19f && plr->GetPositionZ() < 170.215f)
+                        if (plr->GetDistance(roomCenter) < 30.00f && plr->GetPositionZ() > 170.19f && plr->GetPositionZ() < 170.215f
+                            && dansEauCorrompue(plr))
                             plr->CastSpell(plr, SPELL_CORRUPTED_WATERS, true);
                     }
                 }
