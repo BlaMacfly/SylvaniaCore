@@ -362,7 +362,17 @@ class boss_wase_mari : public CreatureScript
 
                             //me->UpdatePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), facing);
                             me->SetOrientation(facing);
-                            me->SetFacingTo(facing);
+                            // SylvaniaCore : le parametre `force` manquait.
+                            // Unit::SetFacingTo abandonne en silence quand la
+                            // creature n'est pas a l'arret :
+                            //     if (!force && !IsStopped()) return;
+                            // Or on vient de lancer MovePoint vers la position de
+                            // depart : elle EST en deplacement, la rotation ne
+                            // partait donc jamais. Et le SetOrientation qui precede
+                            // ne met a jour que la valeur serveur, sans prevenir les
+                            // clients. Resultat signale en jeu : « Lessiver » restait
+                            // fige au lieu de balayer la salle.
+                            me->SetFacingTo(facing, true);
                             me->CastSpell(me, SPELL_WASH_AWAY, true);
                             events.ScheduleEvent(EVENT_WASH_AWAY, TIMER_WASH_AWAY);
                             break;
@@ -380,7 +390,17 @@ class boss_wase_mari : public CreatureScript
                                 facing -= float(M_PI) *2;
 
                             me->SetOrientation(facing);
-                            me->SetFacingTo(facing);
+                            // SylvaniaCore : le parametre `force` manquait.
+                            // Unit::SetFacingTo abandonne en silence quand la
+                            // creature n'est pas a l'arret :
+                            //     if (!force && !IsStopped()) return;
+                            // Or on vient de lancer MovePoint vers la position de
+                            // depart : elle EST en deplacement, la rotation ne
+                            // partait donc jamais. Et le SetOrientation qui precede
+                            // ne met a jour que la valeur serveur, sans prevenir les
+                            // clients. Resultat signale en jeu : « Lessiver » restait
+                            // fige au lieu de balayer la salle.
+                            me->SetFacingTo(facing, true);
 
                             events.ScheduleEvent(EVENT_WASH_AWAY, TIMER_WASH_AWAY);
                             break;
