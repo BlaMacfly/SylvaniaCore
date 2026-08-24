@@ -146,6 +146,19 @@ uint64 const MAX_MONEY_AMOUNT = 99999999999ULL;
 
 Player::Player(WorldSession* session) : Unit(true), m_sceneMgr(this), m_archaeologyPlayerMgr(this)
 {
+    // SylvaniaCore : m_playerStorage etait DECLARE dans Player.h mais alloue
+    // NULLE PART dans tout le depot. Le pointeur contenait donc des ordures
+    // des la construction du joueur, et GetStorage() les renvoyait telles
+    // quelles. Quatre scripts du Moine le deferencent sans controle
+    // (spell_monk.cpp, maitrise « Frappes combinees » notamment) : le premier
+    // moine a declencher lun deux faisait tomber le worldserver.
+    // Plantage constate le 24/08/2026 dans le Temple du Serpent de jade,
+    // pile : PlayerStorage::IsEntryExists <- spell_monk_mastery_combo_strikes.
+    // La classe PlayerStorage est parfaitement fonctionnelle, il ne manquait
+    // que son allocation : la fonctionnalite devient operante par la meme
+    // occasion.
+    m_playerStorage = new PlayerStorage(this);
+
     _lastSummonedBattlePet = 0;
 
     FakerMoveTimer = 0;
@@ -424,6 +437,10 @@ Player::~Player()
         delete iter->second;                                //if item is duplicated... then server may crash ... but that item should be deallocated
 
     delete PlayerTalkClass;
+
+    // SylvaniaCore : pendant de l'allocation ajoutee au constructeur.
+    delete m_playerStorage;
+    m_playerStorage = nullptr;
 
     for (size_t x = 0; x < ItemSetEff.size(); x++)
         delete ItemSetEff[x];

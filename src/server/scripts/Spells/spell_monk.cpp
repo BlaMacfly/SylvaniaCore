@@ -1283,6 +1283,8 @@ public:
             return false;
 
         PlayerStorage* storage = caster->GetStorage();
+        if (!storage)
+            return false;
 
         // Don't handle first cast after login or death
         if (!storage->IsEntryExists(STORAGE_MONK_COMBO_STRIKES))
@@ -1385,6 +1387,9 @@ public:
                 return;
 
             PlayerStorage* storage = caster->ToPlayer()->GetStorage();
+            if (!storage)
+                return;
+
             int32 spellId = (int32)GetSpellInfo()->Id;
 
             if (storage->IsEntryExists(STORAGE_MONK_COMBO_STRIKES))
@@ -1408,6 +1413,8 @@ public:
                 return;
 
             PlayerStorage* storage = caster->ToPlayer()->GetStorage();
+            if (!storage)
+                return;
             
             // Prevent handling next cast
             storage->SetEntry(STORAGE_MONK_COMBO_STRIKES, (int32)GetSpellInfo()->Id + 1);
@@ -1475,6 +1482,9 @@ public:
 
             Player* player = caster->ToPlayer();
             PlayerStorage* storage = player->GetStorage();
+            if (!storage)
+                return;
+
             int32 spellHandleId;
 
             if (GetSpellInfo()->Id == SPELL_MONK_FISTS_OF_FURY_DAMAGE)
