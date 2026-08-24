@@ -18,6 +18,8 @@
 
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
+#include "SpellScript.h"
+#include "SpellInfo.h"
 
 enum eBoss
 {
@@ -459,8 +461,94 @@ class mob_corrupt_living_water : public CreatureScript
         }
 };
 
+// =====================================================================
+// SylvaniaCore - « Lessiver » (Wash Away), le jet d'eau de la phase 2
+//
+// SIGNALE EN JEU : le sort infligeait des degats aux joueurs places
+// DERRIERE le boss, « comme s'il y avait des degats de zone autour ».
+//
+// CE QUE DISENT LES DONNEES BLIZZARD (build 7.3.5.26972, DB2 officielles)
+//   106329  canalisation ; son effet 1 est un « script cote serveur »,
+//           logique que Blizzard n'a jamais distribuee ;
+//   106331  aura posee sur le boss, declenche 106334 toutes les 250 ms ;
+//   106334  LES DEGATS REELS : ecole Givre, recul 200, rayon 60 m,
+//           « ignore la ligne de vue », ciblage implicite 110.
+//
+//   SpellTargetRestrictions (ID 7514) pour 106334 : ConeDegrees = 12.
+//   SpellRadius (ID 48) : 60 m.
+//   => le jet officiel est un cone FRONTAL de 12 degres sur 60 metres.
+//
+// POURQUOI CA DEBORDAIT
+// Le coeur classe bien la cible 110 en TARGET_SELECT_CATEGORY_CONE, mais
+// l'ouverture vient de `SpellInfo::ConeAngle`, alimente par une entree
+// DB2 optionnelle : `ConeAngle = _target ? _target->ConeDegrees : 0.f`.
+// Le mode de verification associe est TARGET_CHECK_ENTRY, qui sans
+// `conditions` ne filtre NI l'hostilite NI quoi que ce soit d'autre.
+// La forme du jet ne tenait donc qu'a cette seule valeur.
+//
+// On la reimpose ici, en dur et a la valeur officielle, plutot que de
+// dependre d'une donnee qu'on ne maitrise pas. On en profite pour
+// retablir le controle d'hostilite que TARGET_CHECK_ENTRY laisse tomber.
+//
+// A noter : le boss pivote de PI/48 toutes les 300 ms, soit 3,75 deg ;
+// avec un jet de 12 deg, un joueur immobile est balaye environ une
+// seconde par tour de salle. C'est le comportement d'origine.
+// =====================================================================
+class spell_wise_mari_wash_away : public SpellScriptLoader
+{
+    public:
+        spell_wise_mari_wash_away() : SpellScriptLoader("spell_wise_mari_wash_away") { }
+
+        class spell_wise_mari_wash_away_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_wise_mari_wash_away_SpellScript);
+
+            void FiltrerLeCone(std::list<WorldObject*>& targets)
+            {
+                Unit* caster = GetCaster();
+                if (!caster)
+                    return;
+
+                // 12 degres d'ouverture totale, soit 6 de chaque cote de
+                // la direction du regard. HasInArc divise l'arc par 2.
+                float const arc = 12.0f * float(M_PI) / 180.0f;
+
+                targets.remove_if([caster, arc](WorldObject* obj) -> bool
+                {
+                    Unit* unite = obj->ToUnit();
+                    if (!unite)
+                        return true;
+
+                    if (!caster->IsValidAttackTarget(unite))
+                        return true;
+
+                    return !caster->HasInArc(arc, unite);
+                });
+            }
+
+            void Register() override
+            {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+                    spell_wise_mari_wash_away_SpellScript::FiltrerLeCone,
+                    EFFECT_0, TARGET_UNIT_CONE_ENTRY_110);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+                    spell_wise_mari_wash_away_SpellScript::FiltrerLeCone,
+                    EFFECT_1, TARGET_UNIT_CONE_ENTRY_110);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+                    spell_wise_mari_wash_away_SpellScript::FiltrerLeCone,
+                    EFFECT_2, TARGET_UNIT_CONE_ENTRY_110);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_wise_mari_wash_away_SpellScript();
+        }
+};
+
 void AddSC_boss_wise_mari()
 {
     new boss_wase_mari();
     new mob_corrupt_living_water();
+    new spell_wise_mari_wash_away();
 }
