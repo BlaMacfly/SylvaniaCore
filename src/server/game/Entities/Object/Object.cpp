@@ -1831,7 +1831,46 @@ bool WorldObject::IsWithinLOS(float ox, float oy, float oz, VMAP::ModelIgnoreFla
         else
             GetHitSpherePointFor({ ox, oy, oz }, x, y, z);
 
-        return GetMap()->isInLineOfSight(GetPhaseShift(), x, y, z + 2.0f, ox, oy, oz + 2.0f, ignoreFlags);
+        bool const resultat = GetMap()->isInLineOfSight(GetPhaseShift(), x, y, z + 2.0f, ox, oy, oz + 2.0f, ignoreFlags);
+
+        // SylvaniaCore : la Fontaine des Temoins du Temple du Serpent de jade
+        // (carte 960) a des donnees de collision fautives. Signale en jeu :
+        // AUCUN sort a distance n'aboutit sur AUCUN PNJ de cette salle.
+        //
+        // Mesure faite le 24/08/2026 par une sonde posee ici meme. Sur 39
+        // echecs releves :
+        //   - tous tiennent dans une boite de 26 x 18 m, la salle et rien
+        //     qu'elle ; le reste du donjon est indemne ;
+        //   - la tranche d'altitude est etroite, 172,6 a 174,3 ;
+        //   - les distances vont de 4 a 18 m : meme a bout portant, ca bloque ;
+        //   - la Sagesse de Mari elle-meme echoue a viser les joueurs.
+        // Il y a donc de la matiere de collision A L'INTERIEUR de la piece,
+        // dans la tranche ou tout le monde se tient. Les tuiles sont pourtant
+        // presentes et volumineuses (0960_36_30.vmtile, 82 Ko) : c'est
+        // l'extraction du modele qui est fautive, pas un fichier manquant.
+        //
+        // Deplacer les creatures ne servirait a rien : le joueur aussi est
+        // dans la zone fautive. On neutralise donc la ligne de vue, mais
+        // UNIQUEMENT quand les DEUX extremites du rayon sont dans le bassin.
+        // Hors de cette boite, et sur toute autre carte, le calcul reste
+        // strictement inchange.
+        //
+        // A retirer si les cartes de collision de la carte 960 sont un jour
+        // re-extraites correctement.
+        if (!resultat && GetMapId() == 960)
+        {
+            auto dansLeBassin = [](float px, float py, float pz)
+            {
+                return px >= 1005.0f && px <= 1080.0f
+                    && py >= -2595.0f && py <= -2515.0f
+                    && pz >= 164.0f && pz <= 184.0f;
+            };
+
+            if (dansLeBassin(x, y, z) && dansLeBassin(ox, oy, oz))
+                return true;
+        }
+
+        return resultat;
     }
 
     return true;
