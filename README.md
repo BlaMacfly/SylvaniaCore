@@ -75,8 +75,8 @@ Plateformes supportées : **Linux, Windows, macOS**.
    cmake --build build -j$(nproc)
    ```
 
-3. Créer les bases (`auth`, `characters`, `world`, `hotfixes`) et importer les structures SQL
-   fournies dans `sql/base`.
+3. Installer les bases de données — voir la section
+   [Installation de la base de données](#-installation-de-la-base-de-données) ci-dessous.
 
 4. Lancer les serveurs :
    ```bash
@@ -87,6 +87,93 @@ Plateformes supportées : **Linux, Windows, macOS**.
 > ℹ️ Le code source conserve volontairement les noms internes hérités de l'amont
 > (`DestinyCore`, cibles CMake, chemins de configuration) afin de rester compatible avec les
 > mises à jour amont et de ne pas casser les scripts de déploiement existants.
+
+---
+
+## 💾 Installation de la base de données
+
+Le dépôt ne contient **que les schémas** `auth`, `characters` et `shop`. Les bases `world` et
+`hotfixes` sont trop volumineuses pour être versionnées : elles se téléchargent dans les
+**releases du dépôt amont DestinyCore**.
+
+> ⚠️ **N'importez jamais les fichiers de `sql/base/dev/`.** Ce sont des structures **vides**
+> (tables sans aucune donnée) destinées aux développeurs de l'amont. Les importer donne une base
+> `world` creuse : le worldserver démarre, mais le client reste bloqué sur l'écran de chargement.
+
+### 1. Télécharger la base amont
+
+Récupérez la dernière release DB sur
+[slash-design/DestinyCore/releases](https://github.com/slash-design/DestinyCore/releases)
+(à ce jour `DB735.02.rar`, ~84 Mo). L'archive contient deux dumps :
+
+| Fichier | Base | Taille décompressée |
+| --- | --- | --- |
+| `DB_world_735.02.sql` | `world` | ~375 Mo |
+| `DB_hotfixes_735.02.sql` | `hotfixes` | ~127 Mo |
+
+Ces deux dumps effectuent eux-mêmes leur `CREATE DATABASE` puis leur `USE` sur les noms `world` et
+`hotfixes` ; pour utiliser d'autres noms de bases, éditez ces deux lignes en tête de fichier.
+
+### 2. Créer les bases et importer
+
+```bash
+# Bases auth / characters / world / hotfixes
+mysql -u root -p < sql/create/create_mysql.sql
+
+# La base shop n'est pas couverte par le script amont
+mysql -u root -p -e "CREATE DATABASE shop DEFAULT CHARACTER SET utf8;"
+
+# Schémas fournis par le dépôt
+mysql -u trinity -p auth       < sql/base/auth_database.sql
+mysql -u trinity -p characters < sql/base/characters_database.sql
+mysql -u trinity -p shop       < sql/base/shop_database.sql
+
+# Bases complètes issues de la release amont
+mysql -u trinity -p < DB_world_735.02.sql
+mysql -u trinity -p < DB_hotfixes_735.02.sql
+```
+
+### 3. Laisser le core appliquer les mises à jour
+
+N'importez **rien** à la main depuis `sql/updates/`. Dans `worldserver.conf` :
+
+```ini
+Updates.EnableDatabases = 31   # auth + characters + world + hotfixes + shop
+Updates.AutoSetup       = 1
+```
+
+Au premier démarrage, le worldserver applique lui-même les quelque 330 fichiers de
+`sql/updates/world`, ainsi que ceux de `characters` et `hotfixes`. La table `updates` des dumps
+amont est livrée vide : c'est normal, tout l'historique est rejoué. Comptez plusieurs minutes.
+
+### 4. Correctifs de contenu du royaume (optionnel)
+
+`sql/sylvania/` est la trace versionnée des correctifs data appliqués à la base du royaume
+(artefacts, campagnes, donjons, modules Mercenaires et Siège des Capitales…). Ils sont indépendants
+du mécanisme de mise à jour automatique et s'importent à la main, dans l'ordre chronologique, une
+fois les étapes précédentes terminées. La base `world` de production du royaume n'est pas
+distribuée.
+
+### 🩺 Bloqué sur l'écran de chargement ?
+
+Ces deux messages apparaissent à chaque connexion sur **tous** les serveurs de cette lignée et ne
+sont **pas** des erreurs :
+
+```text
+Client tried to call not implemented method ResourceService.GetContentHandle
+Received not handled opcode [CMSG_GET_ACCOUNT_CHARACTER_LIST ...]
+```
+
+`ResourceService` est un service Battle.net resté à l'état d'ébauche en amont, et
+`CMSG_GET_ACCOUNT_CHARACTER_LIST` (liste des personnages inter-royaumes) est délibérément déclaré
+`STATUS_UNHANDLED` dans `src/server/game/Server/Protocol/Opcodes.cpp`. Si le client reste bloqué au
+chargement, cherchez plutôt du côté :
+
+- d'une base `world` ou `hotfixes` mal importée — voir l'avertissement sur `sql/base/dev/` ;
+- du cache du client : videz son dossier `Cache` ;
+- des données extraites — `dbc/`, `maps/`, `vmaps/`, `mmaps/`, `cameras/` et `gt/` doivent provenir
+  d'un client **7.3.5 build 26972**, et `DataDir` doit pointer sur le dossier qui les contient ;
+- de `DBErrors.log` et des lignes de démarrage du worldserver, qui nomment la table fautive.
 
 ---
 
