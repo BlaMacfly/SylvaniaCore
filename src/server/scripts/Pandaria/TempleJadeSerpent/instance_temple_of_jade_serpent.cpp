@@ -19,6 +19,8 @@
 #include "ScriptMgr.h"
 #include "InstanceScript.h"
 #include "ScriptedCreature.h"
+#include "SpellMgr.h"
+#include "SpellInfo.h"
 #include "GameObject.h"
 #include "Item.h"
 
@@ -379,6 +381,48 @@ public:
                     return false;
                 };
 
+                // ==========================================================
+                // SylvaniaCore - degats proportionnels a l'effectif present.
+                //
+                // Le sort 106778 inflige 950 points fixes (EffectBasePoints,
+                // DB2 du build 7.3.5.26972 -- valeur confirmee en jeu par une
+                // sonde : exactement 950 par tic, sans mitigation). A quatre
+                // tics par seconde, cela fait 3800 par seconde, un chiffre
+                // calibre pour un groupe de cinq.
+                //
+                // Or le donjon se joue le plus souvent en solo chez nous, et
+                // ce sont des degats BRUTS : ni l'armure ni les statistiques
+                // ne les reduisent, donc Solocraft n'y peut rien (verifie, il
+                // s'applique bien : +400 % de statistiques). Un joueur seul
+                // encaisse donc la charge prevue pour cinq.
+                //
+                // On applique le meme rapport que Solocraft : la valeur est
+                // multipliee par l'effectif present et divisee par les cinq
+                // joueurs pour lesquels le contenu est calibre. Un joueur
+                // seul prend donc un cinquieme, cinq joueurs la totalite.
+                // Les maitres de jeu ne comptent pas dans l'effectif.
+                //
+                // La valeur de base est relue dans le sort lui-meme plutot
+                // que recopiee, pour qu'un changement de donnees ne laisse
+                // pas un chiffre perime ici.
+                // ==========================================================
+                uint32 nbJoueurs = 0;
+                for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
+                    if (Player* p = i->GetSource())
+                        if (!p->IsGameMaster())
+                            ++nbJoueurs;
+
+                if (!nbJoueurs)
+                    nbJoueurs = 1;
+
+                int32 degatsEau = 950;   // repli si le sort venait a manquer
+                if (SpellInfo const* infoEau = sSpellMgr->GetSpellInfo(SPELL_CORRUPTED_WATERS))
+                    if (SpellEffectInfo const* effetEau = infoEau->GetEffect(EFFECT_0))
+                        if (effetEau->BasePoints > 0)
+                            degatsEau = effetEau->BasePoints;
+
+                degatsEau = std::max<int32>(1, degatsEau * int32(std::min<uint32>(nbJoueurs, 5)) / 5);
+
                 if (!PlayerList.isEmpty())
                 {
                     for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
@@ -397,38 +441,17 @@ public:
                         // position : center of the wise mari's room
                         Position pos = plr->GetPosition();
 
-                        // SONDE TEMPORAIRE - on veut l'altitude REELLE du
-                        // joueur pendant le combat, et savoir laquelle des
-                        // deux bandes de degats l'attrape. Journalise une
-                        // fois par seconde (la boucle tourne a 250 ms).
-                        {
-                            static uint32 sondeCompteur = 0;
-                            if ((++sondeCompteur % 4) == 0)
-                            {
-                                float const zj = plr->GetPositionZ();
-                                TC_LOG_ERROR("misc",
-                                    "TJSWATER %s Z=%.3f dist=%.2f arc=%u bandeHaute=%u bandeBasse=%u fontaines=%u aPortee=%u",
-                                    plr->GetName().c_str(), zj,
-                                    plr->GetDistance(roomCenter),
-                                    uint32(roomCenter.HasInArc((float)M_PI, &pos) ? 1 : 0),
-                                    uint32((zj > 174.05f && zj < 174.23f) ? 1 : 0),
-                                    uint32((zj > 170.19f && zj < 170.215f) ? 1 : 0),
-                                    uint32(fontainesCorrompues.size()),
-                                    uint32(dansEauCorrompue(plr) ? 1 : 0));
-                            }
-                        }
-
                         if ((plr->GetDistance(roomCenter) < 20.00f && roomCenter.HasInArc((float)M_PI, &pos))
                             || (!roomCenter.HasInArc((float)M_PI, &pos) && plr->GetDistance(roomCenter) < 14.00f))
                         {
                             if (plr->GetPositionZ() > 174.05f && plr->GetPositionZ() < 174.23f
                                 && dansEauCorrompue(plr))
-                                plr->CastSpell(plr, SPELL_CORRUPTED_WATERS, true);
+                                plr->CastCustomSpell(plr, SPELL_CORRUPTED_WATERS, &degatsEau, nullptr, nullptr, true);
                         }
 
                         if (plr->GetDistance(roomCenter) < 30.00f && plr->GetPositionZ() > 170.19f && plr->GetPositionZ() < 170.215f
                             && dansEauCorrompue(plr))
-                            plr->CastSpell(plr, SPELL_CORRUPTED_WATERS, true);
+                            plr->CastCustomSpell(plr, SPELL_CORRUPTED_WATERS, &degatsEau, nullptr, nullptr, true);
                     }
                 }
                 waterDamageTimer = 250;
