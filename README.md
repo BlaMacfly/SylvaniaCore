@@ -53,7 +53,7 @@ Au-delà du core amont, le royaume apporte ses propres systèmes :
 
 - **CMake 3.31+**
 - **Boost 1.84.0**
-- **MySQL 8.0**
+- **MySQL 8.0** ou **MariaDB 10.6+** (le royaume tourne sur MariaDB 11.4)
 - **OpenSSL 3.x**
 - **GCC / Clang / MSVC** (Visual Studio 2022 recommandé)
 
