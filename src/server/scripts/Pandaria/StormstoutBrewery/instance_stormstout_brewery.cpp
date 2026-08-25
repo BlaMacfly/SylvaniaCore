@@ -195,6 +195,11 @@ public:
 
         void OnUnitDeath(Unit* unit) override
         {
+            // SONDE TEMPORAIRE - toute mort de creature, comptee ou non.
+            if (unit && unit->ToCreature())
+                TC_LOG_ERROR("misc", "SSBDBG mort entree=%u nom=%s | compteur avant=%u",
+                    unit->GetEntry(), unit->GetName().c_str(), hozenSlain);
+
             if (unit->ToCreature())
             {
                 switch (unit->GetEntry())
@@ -208,11 +213,20 @@ public:
                 case NPC_HOZEN_PARTY_ANIMAL3:
                     hozenSlain++;
                     SetData(DATA_HOZEN_SLAIN, hozenSlain);
+                    // SONDE TEMPORAIRE
+                    TC_LOG_ERROR("misc", "SSBDBG   COMPTE -> hozenSlain=%u / 40", hozenSlain);
                     payersInList.clear();
                     GetPlayerListInGrid(payersInList, unit, 200.0f);
 
                     for (auto&& itr : payersInList)
-                        if (itr->HasAura(SPELL_BANANA_BAR) && itr->GetPower(POWER_ALTERNATE_POWER) + 1 < 40)
+                        // SylvaniaCore : le test portait sur la valeur APRES
+                        // incrementation (« + 1 < 40 »), si bien que la barre
+                        // s'arretait a 39 et n'affichait jamais 40/40. Signale
+                        // en jeu : « Ook-Ook apparait avant que le compteur
+                        // arrive a 40/40 » -- il apparaissait en fait au bon
+                        // moment, c'est l'affichage qui etait en retard d'une
+                        // unite.
+                        if (itr->HasAura(SPELL_BANANA_BAR) && itr->GetPower(POWER_ALTERNATE_POWER) < 40)
                             itr->SetPower(POWER_ALTERNATE_POWER, itr->GetPower(POWER_ALTERNATE_POWER) + 1);
                     break;
                 }
@@ -255,12 +269,25 @@ public:
                 {
                     events.ScheduleEvent(1, 7000);
 
+                    // SONDE TEMPORAIRE - etat du test a chaque passage.
+                    TC_LOG_ERROR("misc", "SSBDBG tick evenement 1 : hozenSlain=%u etatBoss=%u guidOokOok=%s",
+                        hozenSlain, uint32(GetBossState(DATA_OOK_OOK)),
+                        GetGuidData(DATA_OOK_OOK).ToString().c_str());
+
                     if (hozenSlain >= 40 && GetBossState(DATA_OOK_OOK) != DONE)
                     {
                         events.CancelEvent(1);
 
+                        // SONDE TEMPORAIRE
+                        TC_LOG_ERROR("misc", "SSBDBG   SEUIL ATTEINT, recherche de la creature Ook-Ook");
+                        if (!instance->GetCreature(GetGuidData(DATA_OOK_OOK)))
+                            TC_LOG_ERROR("misc", "SSBDBG   ECHEC : Ook-Ook INTROUVABLE sur la carte");
+
                         if (Creature* ookOok = instance->GetCreature(GetGuidData(DATA_OOK_OOK)))
                         {
+                            // SONDE TEMPORAIRE
+                            TC_LOG_ERROR("misc", "SSBDBG   Ook-Ook trouve, vivant=%u, appel DoAction(0)",
+                                uint32(ookOok->IsAlive()));
                             SetBossState(DATA_OOK_OOK, SPECIAL);
                             ookOok->AI()->DoAction(0);
 

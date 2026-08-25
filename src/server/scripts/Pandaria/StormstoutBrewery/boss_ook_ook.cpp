@@ -112,6 +112,9 @@ public:
         bool introDone, initializedBarrels;
         ObjectGuid targetGuid;
 
+        // Identifiant du saut d'entree en arene.
+        static uint32 const POINT_ATTERRISSAGE = 3300;
+
         void InitializeAI() override
         {
             me->setActive(true);
@@ -164,14 +167,47 @@ public:
             events.CancelEvent(EVENT_INTROCHECK);
 
             me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-            me->SetReactState(REACT_AGGRESSIVE);
+
+            // ==========================================================
+            // SylvaniaCore - Ook-Ook ne descendait jamais dans l'arene.
+            //
+            // SIGNALE EN JEU : « une fois les 40/40 Ook-Ook ne vient pas »,
+            // et par ailleurs il etait attaquable trop tot sur son
+            // perchoir. Une sonde a confirme que le chemin scripte
+            // fonctionne : « SEUIL ATTEINT », puis « Ook-Ook trouve,
+            // appel DoAction(0) », puis StartIntro. Le probleme est donc
+            // ici, entre l'intro et l'arrivee au sol.
+            //
+            // DEUX DEFAUTS SE CUMULAIENT.
+            //
+            // 1. L'appel a MoveJump passait CINQ arguments :
+            //        MoveJump(x, y, z, 25.0f, 25.0f)
+            //    alors que la surcharge correspondante est
+            //        MoveJump(x, y, z, o, speedXY, speedZ, ...)
+            //    Le premier 25.0f atterrissait donc sur l'ORIENTATION et
+            //    le second sur la vitesse horizontale. On passe par la
+            //    surcharge qui prend une Position : plus d'ambiguite, et
+            //    l'orientation d'arrivee vient de ookJumpPos elle-meme.
+            //
+            // 2. Il passait en reaction AGRESSIVE juste avant de sauter.
+            //    Les joueurs sont seize metres plus bas, donc a portee
+            //    d'agression : il acquerait une cible aussitot, et le
+            //    mouvement de poursuite ecrasait le saut. N'ayant aucun
+            //    chemin pour descendre de son perchoir, il restait plante.
+            //    Il reste desormais PASSIF pendant le saut et ne devient
+            //    agressif qu'a l'atterrissage (voir MovementInform).
+            //
+            // Le domicile est fixe AVANT le saut : sinon un retour a la
+            // position d'origine le ramenerait sur son perchoir.
+            // ==========================================================
+            me->SetReactState(REACT_PASSIVE);
 
             DoAction(1);
 
             Talk(TALK_INTRO);
-            me->GetMotionMaster()->MoveJump(ookJumpPos.GetPositionX(), ookJumpPos.GetPositionY(), ookJumpPos.GetPositionZ(), 25.0f, 25.0f);
-            me->SetReactState(REACT_AGGRESSIVE);
+
             me->SetHomePosition(ookJumpPos);
+            me->GetMotionMaster()->MoveJump(ookJumpPos, 25.0f, 25.0f, POINT_ATTERRISSAGE);
         }
 
         void EnterCombat(Unit* who) override
@@ -236,6 +272,15 @@ public:
 
         void MovementInform(uint32 type, uint32 pointId) override
         {
+            // Un saut est rapporte en EFFECT_MOTION_TYPE, pas en
+            // POINT_MOTION_TYPE : il doit donc etre traite avant le
+            // filtre ci-dessous, qui l'ecartait.
+            if (type == EFFECT_MOTION_TYPE && pointId == POINT_ATTERRISSAGE)
+            {
+                me->SetReactState(REACT_AGGRESSIVE);
+                return;
+            }
+
             if (type != POINT_MOTION_TYPE)
                 return;
 
@@ -391,7 +436,13 @@ public:
             // sortirait de la salle, ce qui serait pire que le defaut
             // corrige. Sur un sol degage, le chemin calcule est de toute
             // facon quasi rectiligne.
-            me->GetMotionMaster()->MovePoint(POINT_ROULEMENT, x, y, me->GetPositionZ());
+            // On suit le sol plutot que de conserver l'altitude de depart :
+            // un tonneau qui roule doit epouser le plancher.
+            float z = me->GetMap()->GetHeight(me->GetPhaseShift(), x, y, me->GetPositionZ(), true);
+            if (z <= -100000.0f)
+                z = me->GetPositionZ();
+
+            me->GetMotionMaster()->MovePoint(POINT_ROULEMENT, x, y, z);
         }
 
         void MovementInform(uint32 type, uint32 id) override
@@ -470,7 +521,22 @@ public:
             float x, y, z;
 
             GetPositionWithDistInOrientation(me, frand(5.0f, 10.0f), me->GetOrientation(), x, y);
-            z = 146.79f;
+
+            // SylvaniaCore : l'altitude etait figee a 146.79, c'est-a-dire
+            // le sol de l'arene (ookJumpPos vaut 146.92). Or les Hurleurs
+            // se tiennent sur la coursive, entre 155,6 et 161,5 : le
+            // tonneau etait donc depose neuf a quinze metres SOUS son
+            // lanceur, a la verticale du balcon mais a l'altitude du
+            // plancher -- donc encastre dans la structure. Signale en jeu
+            // avec capture a l'appui : les tonneaux apparaissaient fiches
+            // dans les poutres.
+            //
+            // On interroge desormais le sol reel sous le point vise. La ou
+            // le Hurleur fait face a l'arene, cela redonne naturellement
+            // les 146,9 attendus ; ailleurs, le tonneau se pose sur la
+            // coursive au lieu de disparaitre dans le decor.
+            float const zSol = me->GetMap()->GetHeight(me->GetPhaseShift(), x, y, me->GetPositionZ(), true);
+            z = (zSol > -100000.0f) ? zSol : 146.79f;
 
             me->CastSpell(x, y, z, SPELL_BARREL_TOSS, false);
         }
