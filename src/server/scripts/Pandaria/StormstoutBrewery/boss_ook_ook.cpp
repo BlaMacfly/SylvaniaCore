@@ -121,8 +121,19 @@ public:
             initializedBarrels = false;
             events.ScheduleEvent(EVENT_INTROCHECK, 3000);
 
+            // SONDE TEMPORAIRE
+            TC_LOG_ERROR("misc",
+                "OOKDBG InitializeAI : etatBoss=%u nonAttaquable=%u reactState=%u",
+                instance ? uint32(instance->GetBossState(DATA_OOK_OOK)) : 999,
+                uint32(me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE) ? 1 : 0),
+                uint32(me->GetReactState()));
+
             if (instance && instance->GetBossState(DATA_OOK_OOK) == SPECIAL)
+            {
+                // SONDE TEMPORAIRE
+                TC_LOG_ERROR("misc", "OOKDBG   etat SPECIAL persistant -> intro lancee des l initialisation");
                 me->AI()->DoAction(0);
+            }
         }
 
         void Reset() override
@@ -146,6 +157,9 @@ public:
 
         void StartIntro()
         {
+            // SONDE TEMPORAIRE
+            TC_LOG_ERROR("misc", "OOKDBG StartIntro appelee (introDone valait %u)", uint32(introDone ? 1 : 0));
+
             introDone = true;
             events.CancelEvent(EVENT_INTROCHECK);
 
@@ -160,8 +174,19 @@ public:
             me->SetHomePosition(ookJumpPos);
         }
 
-        void EnterCombat(Unit* /*who*/) override
+        void EnterCombat(Unit* who) override
         {
+            // SONDE TEMPORAIRE - c'est la question centrale : qui l'engage,
+            // et dans quel etat etait-il a ce moment-la ?
+            TC_LOG_ERROR("misc",
+                "OOKDBG EnterCombat par %s (type=%u entree=%u) | nonAttaquable=%u reactState=%u introDone=%u",
+                who ? who->GetName().c_str() : "INCONNU",
+                who ? uint32(who->GetTypeId()) : 999,
+                (who && who->GetTypeId() == TYPEID_UNIT) ? who->GetEntry() : 0,
+                uint32(me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE) ? 1 : 0),
+                uint32(me->GetReactState()),
+                uint32(introDone ? 1 : 0));
+
             _EnterCombat();
 
             Talk(TALK_AGGRO);
@@ -175,6 +200,9 @@ public:
 
         void DoAction(int32 actionId) override
         {
+            // SONDE TEMPORAIRE
+            TC_LOG_ERROR("misc", "OOKDBG DoAction(%d)", actionId);
+
             if (actionId == 0)
                 StartIntro();
             else if (actionId == 1)
@@ -301,6 +329,18 @@ public:
         {
             me->SetReactState(REACT_PASSIVE);
             me->AddAura(SPELL_ROLLING_BARREL_COSMETIC, me);
+
+            // SylvaniaCore : le tonneau part desormais dans la direction du
+            // lancer. Il est invoque par un sort a 5-10 m devant le Hurleur
+            // (npc_hozen_hollerer::DoCastBarrel), mais son orientation
+            // propre n'etait jamais fixee : rien ne garantissait qu'il
+            // roule vers la salle plutot que dans n'importe quel sens.
+            if (summoner)
+            {
+                float const cap = summoner->GetOrientation();
+                me->SetOrientation(cap);
+                me->SetFacingTo(cap, true);
+            }
             me->SetSpeed(MOVE_WALK, 0.85f);
             me->SetSpeed(MOVE_RUN, 0.85f);
             me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
@@ -317,14 +357,47 @@ public:
             me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
         }
 
+        // SylvaniaCore - deplacement des tonneaux.
+        //
+        // SIGNALE EN JEU : « les tonneaux sont completement bugges, ils se
+        // deplacent bizarrement ».
+        //
+        // L'ancienne version relancait un MovePoint vers un point situe a
+        // 5 m devant, TOUTES LES 300 ms. Or le tonneau avance a 0,85 de
+        // vitesse, soit environ 5,95 m/s : parcourir ces 5 m lui demande
+        // 840 ms. Le trajet etait donc reinitialise alors qu'il n'en avait
+        // effectue qu'un tiers, et cela quatre fois de suite pour chaque
+        // segment. Cote client, chaque reinitialisation est une rupture de
+        // trajectoire : d'ou le roulement saccade.
+        //
+        // On ne relance donc plus au chronometre mais A L'ARRIVEE, via
+        // MovementInform. Le segment est aussi allonge : moins de coutures,
+        // donc un roulement continu.
+        static uint32 const POINT_ROULEMENT = 100;
+
         void Move()
         {
+            // 20 m par segment : assez long pour que le roulement paraisse
+            // continu, assez court pour que le tonneau reste reactif.
+            float const DISTANCE_ROULEMENT = 20.0f;
+
             float x = 0, y = 0;
-            GetPositionWithDistInOrientation(me, 5.0f, me->GetOrientation(), x, y);
+            GetPositionWithDistInOrientation(me, DISTANCE_ROULEMENT, me->GetOrientation(), x, y);
 
-            me->GetMotionMaster()->MovePoint(100, x, y, me->GetPositionZ());
+            // On conserve volontairement la generation de chemin. Un tonneau
+            // devrait rouler en ligne droite, et la couper ferait mieux sur
+            // le papier -- mais elle est aussi ce qui garde le tonneau sur
+            // le sol praticable. Sans elle il traverserait les murs et
+            // sortirait de la salle, ce qui serait pire que le defaut
+            // corrige. Sur un sol degage, le chemin calcule est de toute
+            // facon quasi rectiligne.
+            me->GetMotionMaster()->MovePoint(POINT_ROULEMENT, x, y, me->GetPositionZ());
+        }
 
-            events.ScheduleEvent(EVENT_MOVE, 300);
+        void MovementInform(uint32 type, uint32 id) override
+        {
+            if (type == POINT_MOTION_TYPE && id == POINT_ROULEMENT)
+                Move();
         }
 
         void UpdateAI(uint32 diff) override
@@ -338,9 +411,6 @@ public:
             {
                 switch (eventId)
                 {
-                case EVENT_MOVE:
-                    Move();
-                    break;
                 case EVENT_EXPLOSION_BREAK:
                     initiate = true;
                     break;
