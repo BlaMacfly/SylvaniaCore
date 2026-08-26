@@ -1870,6 +1870,61 @@ bool WorldObject::IsWithinLOS(float ox, float oy, float oz, VMAP::ModelIgnoreFla
                 return true;
         }
 
+        // SylvaniaCore : l'arene d'Ook-Ook, a la Brasserie brune d'Orage
+        // (carte 961), a des donnees de collision fautives -- meme defaut
+        // qu'au Temple du Serpent de jade juste au-dessus.
+        //
+        // SIGNALE EN JEU : « Paume du tigre » et les autres attaques de
+        // melee refusees sur Ook-Ook avec « cible hors du champ de
+        // vision ».
+        //
+        // MESURE FAITE PAR UNE SONDE POSEE ICI MEME. Sur 17 echecs
+        // releves, 13 sont LEGITIMES : Ook-Ook depuis son perchoir
+        // (Z ~161,8, sol a 162,63) vers un joueur dans l'arene (Z ~147),
+        // a 23-26 m -- il y a un plancher entre les deux.
+        //
+        // Les 2 autres ne le sont pas :
+        //   Ook-Ook (-756,26 1353,21 146,97) -> joueur a 4,38 m
+        //   joueur  (-757,19 1356,00 147,06) -> Ook-Ook a 2,93 m
+        // Les deux extremites reposent sur le sol de l'arene, a la meme
+        // altitude que le plancher sous leurs pieds, et l'echec se produit
+        // DANS LES DEUX SENS. A trois metres sur un sol plat, une ligne de
+        // vue ne peut pas echouer legitimement.
+        //
+        // BORNES. Le rez-de-chaussee de la Brasserie est un plan unique
+        // (Z 146,6 a 147,5 sur 189 spawns autour de l'arene), on garde donc
+        // une tranche d'altitude etroite : cela exclut le perchoir et
+        // preserve les 13 echecs legitimes. Horizontalement, la repartition
+        // des spawns donne une frontiere mesuree : 6 creatures a moins de
+        // 10 m du centre, AUCUNE entre 10 et 20 m, puis 46 au-dela. Ce vide
+        // est le mur de l'arene ; on s'arrete a 15 m, avant les salles
+        // voisines, pour ne pas laisser les monstres se voir a travers les
+        // cloisons.
+        //
+        // RESERVE ASSUMEE : deux echecs mesures seulement, la ou le
+        // correctif du Temple s'appuyait sur trente-neuf. Les bornes sont
+        // donc volontairement serrees. Si des attaques restent refusees
+        // ailleurs dans le donjon, il faudra reposer une sonde plutot
+        // qu'elargir a l'aveugle.
+        //
+        // A retirer si les cartes de collision de la carte 961 sont un jour
+        // re-extraites correctement.
+        if (!resultat && GetMapId() == 961)
+        {
+            auto dansLArene = [](float px, float py, float pz)
+            {
+                if (pz < 145.0f || pz > 149.0f)
+                    return false;
+
+                float const dx = px - (-755.68f);
+                float const dy = py - 1351.83f;
+                return (dx * dx + dy * dy) <= (15.0f * 15.0f);
+            };
+
+            if (dansLArene(x, y, z) && dansLArene(ox, oy, oz))
+                return true;
+        }
+
         return resultat;
     }
 

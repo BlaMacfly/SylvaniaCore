@@ -187,9 +187,25 @@ public:
                 break;
             }
             case NPC_DRUNKEN_HOZEN_BRAWLER:
+            {
                 creature->setRegeneratingHealth(false);
-                creature->SetHealth((uint32)creature->GetMaxHealth() * 0.1f);
+
+                // SylvaniaCore : le calcul pouvait deposer la creature a
+                // ZERO point de vie si le maximum n'etait pas encore
+                // renseigne a cet instant. Une creature vivante a 0 PV
+                // s'affiche comme un cadavre chez le client tout en
+                // continuant de frapper. On garantit au minimum 1.
+                uint32 const pvMax = creature->GetMaxHealth();
+                uint32 const pvPose = std::max<uint32>(1, uint32(pvMax * 0.1f));
+
+                // SONDE TEMPORAIRE
+                TC_LOG_ERROR("misc",
+                    "CADAVREDBG creation hozen ivre : pvMax=%u -> pvPose=%u",
+                    pvMax, pvPose);
+
+                creature->SetHealth(pvPose);
                 break;
+            }
             }
         }
 

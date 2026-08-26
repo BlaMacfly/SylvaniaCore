@@ -756,6 +756,19 @@ uint32 Unit::DealDamage(Unit* victim, uint32 damage, CleanDamage const* cleanDam
                     damage = 0;
             }
 
+    // SONDE TEMPORAIRE - signale en jeu : « un cadavre bagarreur hozen
+    // ivre m'attaque ». On journalise toute creature qui inflige des
+    // degats alors qu'elle est morte ou a zero point de vie. Cas rare par
+    // construction : le journal ne peut pas etre noye.
+    if (damage && GetTypeId() == TYPEID_UNIT && (!IsAlive() || GetHealth() == 0))
+    {
+        TC_LOG_ERROR("misc",
+            "CADAVREDBG %s (entree %u, carte %u) frappe pour %u | vivant=%u pv=%u/%u | victime=%s",
+            GetName().c_str(), GetEntry(), GetMapId(), damage,
+            uint32(IsAlive() ? 1 : 0), uint32(GetHealth()), uint32(GetMaxHealth()),
+            victim ? victim->GetName().c_str() : "?");
+    }
+
     if (victim->IsAIEnabled)
         victim->GetAI()->DamageTaken(this, damage);
 
