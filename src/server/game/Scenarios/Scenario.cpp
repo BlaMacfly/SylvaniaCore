@@ -192,7 +192,7 @@ bool Scenario::CanCompleteCriteriaTree(CriteriaTree const* tree)
     return true;
 }
 
-void Scenario::CompletedCriteriaTree(CriteriaTree const* tree, Player* /*referencePlayer*/)
+void Scenario::CompletedCriteriaTree(CriteriaTree const* tree, Player* referencePlayer)
 {
     ScenarioStepEntry const* step = tree->ScenarioStep;
     if (!step)
@@ -203,6 +203,53 @@ void Scenario::CompletedCriteriaTree(CriteriaTree const* tree, Player* /*referen
 
     if (GetStepState(step) == SCENARIO_STEP_DONE)
         return;
+
+    // =================================================================
+    // SylvaniaCore - une etape ne s'acheve que si TOUS ses criteres le
+    // sont.
+    //
+    // SIGNALE EN JEU : a la Brasserie brune d'Orage, la liste des boss
+    // disparaissait entierement des qu'Ook-Ook tombait, au lieu de
+    // cocher « 1/1 » et de conserver les deux autres.
+    //
+    // POURQUOI. Le scenario 537 n'a qu'UNE etape (972), dont l'arbre de
+    // criteres 36317 porte trois feuilles :
+    //     36318 Ook-Ook, 36319 Hoptallus, 36320 Yan-Zhu.
+    //
+    // Or `CriteriaMgr::LoadCriteriaList` attribue l'etape via une aide
+    // qui REMONTE la chaine des parents jusqu'a trouver une
+    // correspondance. Chaque feuille herite donc de l'etape 972. Et le
+    // moteur n'evalue que les feuilles : `GetCriteriaTreesByCriteria`
+    // ne renvoie que les arbres portant directement le critere, jamais
+    // la racine.
+    //
+    // Resultat : la premiere feuille achevee marquait l'ETAPE ENTIERE
+    // terminee. `CompleteStep` ne trouvait alors aucune etape suivante,
+    // `IsComplete()` repondait oui, et le scenario etait cloture des le
+    // premier boss.
+    //
+    // On verifie donc l'arbre RACINE de l'etape avant de conclure. Un
+    // garde naif sur « tree doit etre la racine » ne conviendrait pas :
+    // la racine n'etant jamais transmise ici, l'etape ne s'acheverait
+    // alors JAMAIS.
+    //
+    // `CheckCompletedCriteriaTree` peut, en cas de succes, rappeler
+    // cette fonction avec la racine : on relit donc l'etat de l'etape
+    // ensuite, faute de quoi `CompleteStep` serait execute deux fois et
+    // la quete de recompense octroyee en double.
+    // =================================================================
+    if (step->Criteriatreeid && step->Criteriatreeid != tree->Entry->ID)
+    {
+        CriteriaTree const* racine = sCriteriaMgr->GetCriteriaTree(step->Criteriatreeid);
+        if (!racine)
+            return;
+
+        if (!CheckCompletedCriteriaTree(racine, referencePlayer))
+            return;
+
+        if (GetStepState(step) == SCENARIO_STEP_DONE)
+            return;
+    }
 
     SetStepState(step, SCENARIO_STEP_DONE);
     CompleteStep(step);
