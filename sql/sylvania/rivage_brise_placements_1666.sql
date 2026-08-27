@@ -1,23 +1,20 @@
 -- =====================================================================
--- Assaut du Rivage brise (carte 1666) -- PLACEMENTS
+-- Rivage brise -- PLACEMENTS de la carte 1666
 --
 -- Transpose depuis le dump world de dufernst/LegionCore-7.3.5, meme
--- lignee uwow que notre fork. Les deux schemas divergent : la
--- correspondance ci-dessous est pilotee par les NOMS de colonnes, et le
+-- lignee uwow que notre fork. Les schemas divergent : la
+-- correspondance est pilotee par les NOMS de colonnes, et le
 -- generateur s'arrete plutot que de produire un decalage silencieux.
 --
--- DECISIONS, etablies sur donnees et non supposees :
---   spawnMask 4096 = 2^12 -> spawnDifficulties '12', la difficulte 12
---   etant « Normal Scenario » d'apres Difficulty.db2 du build
---   7.3.5.26972 (type instance 5, 5 joueurs).
---   GUID renumerotes a partir de 290100000 (creatures) et 210200000 (objets),
---   au-dessus de nos maxima 290000114 et 210120986.
---   PhaseId : chaine vide cote reference -> 0 chez nous (entier).
+-- DIFFICULTE : deduite, pas supposee. Les 593 placements portent tous
+-- spawnMask 4096 = 2^12, d'ou spawnDifficulties '12'.
 --
--- ABANDONNE faute d'equivalent : npcflag2, AiID, MovementID, MeleeID,
--- isActive (creature), skipClone, personal_size, isTeemingSpawn.
--- 12 creatures portaient AiID=7424, une table d'IA propre au coeur de
--- reference : leur comportement est PERDU et reste a refaire.
+-- GUID renumerotes a partir de 290100000 (creatures) et 210200000 (objets),
+-- au-dessus de nos maxima connus 290000114 et 210120986.
+-- PhaseId : chaine vide cote reference -> 0 chez nous (colonne entiere).
+--
+-- ABANDONNE faute d'equivalent chez nous : npcflag2, AiID, MovementID,
+-- MeleeID, isActive (creature), skipClone, personal_size, isTeemingSpawn.
 --
 -- Contenu : 593 creatures, 59 objets, 180 chemins (1495 points).
 -- =====================================================================
