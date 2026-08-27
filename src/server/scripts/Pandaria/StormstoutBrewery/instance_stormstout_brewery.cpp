@@ -411,6 +411,12 @@ public:
             if (!InstanceScript::SetBossState(type, state))
                 return false;
 
+            // SylvaniaCore : sans ceci, seule la mort d'un hozen declenchait
+            // une sauvegarde (via SetData). Un boss tue ne laissait aucune
+            // trace, et la progression du donjon etait perdue au moindre
+            // rechargement.
+            SaveToDB();
+
             if (type == DATA_OOK_OOK)
             {
                 if (state == DONE)
@@ -435,26 +441,47 @@ public:
             return true;
         }
 
-        void Save()
+        // ==============================================================
+        // SylvaniaCore - sauvegarde de l'instance.
+        //
+        // SIGNALE EN JEU : « le donjon semble avoir declenche le done
+        // total au 1er boss, je n'ai plus la liste des autres boss ».
+        //
+        // L'instance n'enregistrait RIEN. La chaine etait construite par
+        // une methode `Save()` qui n'etait appelee nulle part ; le tampon
+        // `SaveDataBuffer` restait donc vide, et `InstanceScript::SaveToDB`
+        // abandonne des que la chaine est vide :
+        //
+        //     std::string data = GetSaveData();
+        //     if (data.empty())
+        //         return;
+        //
+        // Ni l'etat des boss ni le masque des rencontres accomplies
+        // n'atteignaient la base. Constate directement en base :
+        // `completedEncounters = 0` et `data = ''` apres un boss tue.
+        //
+        // Second defaut, cumule : `Save()` n'ecrivait pas l'en-tete
+        // « S S B » que `Load()` exige pour accepter la chaine. Meme
+        // appelee, la relecture aurait echoue.
+        //
+        // `GetSaveData()` construit desormais la chaine elle-meme, en-tete
+        // compris. C'est le motif habituel de TrinityCore, et il supprime
+        // du meme coup le besoin du tampon et de `Save()`.
+        // ==============================================================
+        std::string GetSaveData() override
         {
             OUT_SAVE_INST_DATA;
 
             std::ostringstream saveStream;
+            saveStream << "S S B ";
 
             for (uint8 i = 0; i < MAX_ENCOUNTER; ++i)
                 saveStream << GetBossState(i) << ' ';
 
             saveStream << hozenSlain;
-            SaveDataBuffer = saveStream.str();
 
-            SaveToDB();
             OUT_SAVE_INST_DATA_COMPLETE;
-            NeedSave = false;
-        }
-
-        std::string GetSaveData() override
-        {
-            return SaveDataBuffer;
+            return saveStream.str();
         }
 
         void Load(char const* in) override
@@ -494,9 +521,6 @@ public:
             OUT_LOAD_INST_DATA_COMPLETE;
         }
 
-    protected:
-        bool   NeedSave;
-        std::string SaveDataBuffer;
     };
 
     InstanceScript* GetInstanceScript(InstanceMap* map) const override
