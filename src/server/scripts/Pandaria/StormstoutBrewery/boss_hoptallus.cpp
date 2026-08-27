@@ -469,8 +469,47 @@ public:
             hopperWaves = 0;
         }
 
-        void DoAction(int32 actionId) override
+        // =============================================================
+        // SylvaniaCore - vague pre-evenement de la salle des tonneaux.
+        //
+        // SIGNALE EN JEU : « il y a beaucoup trop de Cognedur et de
+        // Sautilleur, c'est totalement anormal », et plus tot « les
+        // lapins bouclent ».
+        //
+        // CE QUI SE PASSAIT. Le script d'instance appelle DoAction toutes
+        // les 12 a 14 secondes, EN BOUCLE, tant que l'etat de Hoptallus
+        // n'est pas SPECIAL -- c'est-a-dire tant qu'il n'a pas jailli de
+        // son tonneau. Et la boucle demarre dix secondes apres la
+        // creation de l'instance. Chaque passage invoquait 3 a 4
+        // Sautillons et 1 a 2 Sautilleurs, sans AUCUNE limite et sans
+        // qu'aucun joueur ait besoin d'etre present.
+        //
+        // Consequence : pendant qu'on affronte Ook-Ook, a 105 metres de
+        // la, la salle des tonneaux se remplit toute seule. Sur vingt
+        // minutes de donjon, cela represente de l'ordre de quatre cents
+        // creatures vivantes accumulees.
+        //
+        // En jeu officiel, ces vermifuges sortent quand le joueur CASSE
+        // les tonneaux. Faute de cette mecanique, on garde le minuteur
+        // mais on lui pose deux garde-fous :
+        //
+        //   - personne a proximite, personne n'est invoque. 60 m couvrent
+        //     la salle sans jamais atteindre l'arene d'Ook-Ook, mesuree
+        //     a 105 m d'ici ;
+        //   - au-dela de 20 vermifuges vivants, on saute la vague. La
+        //     salle reste peuplee, elle cesse de deborder.
+        //
+        // `summons` suit deja les invocations vivantes : JustSummoned les
+        // y enregistre, et elles en sortent a leur mort.
+        // =============================================================
+        void DoAction(int32 /*actionId*/) override
         {
+            if (summons.size() >= 20)
+                return;
+
+            if (!me->SelectNearestPlayer(60.0f))
+                return;
+
             DoSummonHoplings(urand(3, 4));
             DoSummonHoppers(urand(1, 2));
         }
