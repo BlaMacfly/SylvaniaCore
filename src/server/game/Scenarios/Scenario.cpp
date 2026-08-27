@@ -192,7 +192,7 @@ bool Scenario::CanCompleteCriteriaTree(CriteriaTree const* tree)
     return true;
 }
 
-void Scenario::CompletedCriteriaTree(CriteriaTree const* tree, Player* referencePlayer)
+void Scenario::CompletedCriteriaTree(CriteriaTree const* tree, Player* /*referencePlayer*/)
 {
     ScenarioStepEntry const* step = tree->ScenarioStep;
     if (!step)
@@ -233,10 +233,28 @@ void Scenario::CompletedCriteriaTree(CriteriaTree const* tree, Player* reference
     // la racine n'etant jamais transmise ici, l'etape ne s'acheverait
     // alors JAMAIS.
     //
-    // `CheckCompletedCriteriaTree` peut, en cas de succes, rappeler
-    // cette fonction avec la racine : on relit donc l'etat de l'etape
-    // ensuite, faute de quoi `CompleteStep` serait execute deux fois et
-    // la quete de recompense octroyee en double.
+    // LA VERIFICATION DOIT ETRE PUREMENT LECTRICE.
+    //
+    // Une premiere version appelait `CheckCompletedCriteriaTree` sur la
+    // racine. C'ETAIT UNE ERREUR, et elle a fait planter le serveur par
+    // debordement de pile (SIGSEGV, vidage de 389 Mo contre 120 Mo en
+    // temps normal). Enchainement :
+    //
+    //   feuille achevee -> Scenario::CompletedCriteriaTree(feuille)
+    //     -> CheckCompletedCriteriaTree(racine)
+    //       -> operateur ALL : parcourt les enfants
+    //         -> CheckCompletedCriteriaTree(enfant)
+    //           -> enfant complet ET absent de _completedCriteriaTree
+    //             -> CompletedCriteriaTree(enfant)  ... et on reboucle.
+    //
+    // Le garde anti-reentrance existe pourtant (ligne 1109 de
+    // CriteriaHandler.cpp), mais l'insertion dans `_completedCriteriaTree`
+    // se fait dans `CriteriaHandler::CompletedCriteriaTree` -- que cette
+    // surcharge ne rappelle jamais. L'arbre n'est donc jamais enregistre
+    // et le garde ne se declenche pas.
+    //
+    // On se contente donc de LIRE la progression des criteres, sans
+    // jamais repasser par le moteur d'evaluation.
     // =================================================================
     if (step->Criteriatreeid && step->Criteriatreeid != tree->Entry->ID)
     {
@@ -244,10 +262,17 @@ void Scenario::CompletedCriteriaTree(CriteriaTree const* tree, Player* reference
         if (!racine)
             return;
 
-        if (!CheckCompletedCriteriaTree(racine, referencePlayer))
-            return;
+        bool complet = true;
+        CriteriaMgr::WalkCriteriaTree(racine, [this, &complet](CriteriaTree const* noeud)
+        {
+            if (!complet || !noeud->Criteria)
+                return;
 
-        if (GetStepState(step) == SCENARIO_STEP_DONE)
+            if (!IsCompletedCriteria(noeud->Criteria, noeud->Entry->Amount))
+                complet = false;
+        });
+
+        if (!complet)
             return;
     }
 
