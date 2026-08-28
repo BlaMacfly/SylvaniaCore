@@ -14,6 +14,7 @@
 #include "TemporarySummon.h"
 #include "MotionMaster.h"
 #include "Player.h"
+#include "GameObject.h"
 #include "ObjectMgr.h"
 #include "TaskScheduler.h"
 
@@ -71,7 +72,39 @@ enum BrokenShoreCreatures
 enum BrokenShoreMisc
 {
     PHASE_NORMAL            = 169,
-    KILLS_BEACH             = 12,
+
+    // ==============================================================
+    // SylvaniaCore - etape 1 « Storm The Beach » : seuils OFFICIELS.
+    //
+    // SIGNALE EN JEU : « la phase 1 ou il fallait tuer 33 demons ainsi
+    // que d'autres objectifs a ete skip et je suis passe en phase 3
+    // direct », et « les objectifs ne se remplissent jamais ».
+    //
+    // Le script comptait ses propres demons et cloturait l'etape a 12,
+    // un chiffre invente qui ne correspondait a rien. Pendant ce temps
+    // le client affichait les vrais criteres, figes a zero.
+    //
+    // Les valeurs ci-dessous viennent de l'arbre de criteres 42935
+    // (« Broken Shore - Stage 1 », operateur ALL) du build 7.3.5.26972 :
+    //     43010  Demons slain             33   critere 27653
+    //     46549  Fel Lords slain           3   critere 29377
+    //     46548  Spires of Woe destroyed   3   critere 27619
+    //
+    // Les trois criteres sont de type CRITERIA_TYPE_SEND_EVENT_SCENARIO
+    // (92) : ils ne se remplissent PAS en tuant, mais quand le script
+    // emet l'evenement correspondant. C'est ce qui manquait.
+    // ==============================================================
+    KILLS_BEACH             = 33,   // etait 12, valeur inventee
+    FEL_LORDS_BEACH         = 3,
+    SPIRES_BEACH            = 3,
+
+    EVENT_DEMONS_SLAIN      = 44095,
+    EVENT_FEL_LORDS_SLAIN   = 52643,
+    EVENT_SPIRES_DESTROYED  = 44077,
+
+    GO_SPIRE_OF_WOE         = 240194,
+    DATA_SPIRE_USED         = 9001,   // signal envoye par le script d'objet
+
     KILLS_CITY              = 10,
     KILLS_FINALE            = 8,
     ANCHORS_PORTAL          = 2,
@@ -121,6 +154,8 @@ struct scenario_broken_shore_intro : public InstanceScript
         stage = STAGE_INTRO;
         introDone = false;
         beachKills = 0;
+        felLordKills = 0;
+        spiresDown = 0;
         cityKills = 0;
         finaleKills = 0;
         anchorsDown = 0;
@@ -261,6 +296,20 @@ struct scenario_broken_shore_intro : public InstanceScript
             case NPC_INFERNAL_DESTROYER:
                 OnDemonDied();
                 break;
+            // Les treize Seigneurs gangrebois places sur la carte. L'etape
+            // en exige trois ; on les enumere explicitement plutot que de
+            // filtrer sur le nom, qui n'est pas une donnee stable.
+            case 91588:  case 102703: case 102704: case 102705:
+            case 109586: case 109587: case 111156: case 113036:
+            case 113037: case 113038: case 113057: case 113058:
+            case 113059:
+                if (stage == STAGE_STORM_BEACH)
+                {
+                    ++felLordKills;
+                    DoSendEventScenario(EVENT_FEL_LORDS_SLAIN);
+                    TryFinishBeach();
+                }
+                break;
             case NPC_ARGANOTH:
                 if (stage == STAGE_COMMANDER)
                 {
@@ -292,21 +341,47 @@ struct scenario_broken_shore_intro : public InstanceScript
         }
     }
 
+    // Le script d'objet des Fleches de la Detresse passe par ici : un
+    // objet de type 10 est ACTIONNE, pas detruit, et aucun point d'entree
+    // d'instance ne rapporte cette utilisation.
+    void SetData(uint32 type, uint32 /*data*/) override
+    {
+        if (type != DATA_SPIRE_USED || stage != STAGE_STORM_BEACH)
+            return;
+
+        ++spiresDown;
+        DoSendEventScenario(EVENT_SPIRES_DESTROYED);
+        TryFinishBeach();
+    }
+
+    // L'etape ne s'acheve que si les TROIS criteres officiels sont
+    // remplis -- operateur ALL de l'arbre 42935.
+    void TryFinishBeach()
+    {
+        if (stage != STAGE_STORM_BEACH)
+            return;
+
+        if (beachKills < KILLS_BEACH || felLordKills < FEL_LORDS_BEACH || spiresDown < SPIRES_BEACH)
+            return;
+
+        stage = STAGE_COMMANDER;
+        CompleteStep();
+
+        if (Creature* arganoth = Summon(NPC_ARGANOTH, Anchors().commander))
+        {
+            arganoth->AI()->Talk(0);
+            arganoth->SetInCombatWithZone();
+        }
+    }
+
     void OnDemonDied()
     {
         switch (stage)
         {
             case STAGE_STORM_BEACH:
-                if (++beachKills >= KILLS_BEACH)
-                {
-                    stage = STAGE_COMMANDER;
-                    CompleteStep();
-                    if (Creature* arganoth = Summon(NPC_ARGANOTH, Anchors().commander))
-                    {
-                        arganoth->AI()->Talk(0);
-                        arganoth->SetInCombatWithZone();
-                    }
-                }
+                ++beachKills;
+                DoSendEventScenario(EVENT_DEMONS_SLAIN);
+                TryFinishBeach();
                 break;
             case STAGE_RAZE_CITY:
                 if (++cityKills >= KILLS_CITY)
@@ -447,6 +522,8 @@ private:
     uint32 stage = STAGE_INTRO;
     bool introDone = false;
     uint8 beachKills = 0;
+    uint8 felLordKills = 0;
+    uint8 spiresDown = 0;
     uint8 cityKills = 0;
     uint8 finaleKills = 0;
     uint8 anchorsDown = 0;
@@ -458,7 +535,26 @@ private:
     TaskScheduler scheduler;
 };
 
+// Fleche de la Detresse : objet de type 10 (actionnable). GameObject::Use
+// appelle sScriptMgr->OnGossipHello avant tout traitement specifique, ce
+// qui nous donne le seul point d'accroche disponible. On renvoie false
+// pour laisser le comportement normal se poursuivre.
+class go_spire_of_woe : public GameObjectScript
+{
+public:
+    go_spire_of_woe() : GameObjectScript("go_spire_of_woe") { }
+
+    bool OnGossipHello(Player* /*player*/, GameObject* go) override
+    {
+        if (InstanceScript* instance = go->GetInstanceScript())
+            instance->SetData(DATA_SPIRE_USED, 1);
+
+        return false;
+    }
+};
+
 void AddSC_scenario_broken_shore_intro()
 {
     RegisterInstanceScript(scenario_broken_shore_intro, 1460);
+    new go_spire_of_woe();
 }
