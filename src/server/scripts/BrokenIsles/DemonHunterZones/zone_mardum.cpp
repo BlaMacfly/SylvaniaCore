@@ -1709,8 +1709,22 @@ class spell_mardum_back_to_black_temple : public SpellScript
             {
                 player->EquipNewItem(15, 132243, true);
                 player->EquipNewItem(16, 128956, true);
-                player->TeleportTo(1468, 4325.46f, -620.53f, -281.40f, 1.517563f);
-                player->SetHomebind(player->GetWorldLocation(), 7873);
+                // SylvaniaCore : l'ordre etait fautif. TeleportTo est
+                // ASYNCHRONE -- le joueur n'est pas deplace a la ligne
+                // suivante, si bien que GetWorldLocation() renvoyait encore
+                // la position de MARDUM. Le point de foyer se retrouvait
+                // donc fixe la ou le joueur venait de partir, au lieu du
+                // Caveau des Gardiennes.
+                //
+                // Signale en jeu : « j'ai utilise ma pierre de foyer qui ne
+                // m'a pas teleporte, je devais atterrir en foret d'Elwynn ».
+                // La pierre fonctionnait : elle renvoyait a Mardum, ou le
+                // joueur se trouvait deja.
+                //
+                // On lie desormais explicitement a la DESTINATION.
+                WorldLocation const caveau(1468, 4325.46f, -620.53f, -281.40f, 1.517563f);
+                player->TeleportTo(caveau);
+                player->SetHomebind(caveau, 7873);
             });
 
             player->GetScheduler().Schedule(Seconds(2), [](TaskContext context)
