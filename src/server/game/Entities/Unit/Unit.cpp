@@ -8314,6 +8314,34 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
 {
     ASSERT(target);
 
+    // SONDE TEMPORAIRE - carte 1460 uniquement, et seulement quand un
+    // JOUEUR vise une CREATURE. Volume borne : quelques lignes par seconde
+    // au plus, et uniquement dans ce scenario.
+    if (GetTypeId() == TYPEID_PLAYER && target->GetTypeId() == TYPEID_UNIT && GetMapId() == 1460)
+    {
+        static uint32 sondeAtt = 0;
+        if ((++sondeAtt % 20) == 1)
+        {
+            TC_LOG_ERROR("misc",
+                "ATTDBG cible %s (entree %u) | vivante=%u etatInattaquable=%u | drapeaux=%u "
+                "(NON_ATTACKABLE=%u NOT_ATTACKABLE_1=%u UNK_16=%u IMMUNE_PC=%u NOT_SELECTABLE=%u) "
+                "| reaction=%d | jeLaVois=%u | mesPhases=%u sesPhases=%u",
+                target->GetName().c_str(), target->GetEntry(),
+                uint32(target->IsAlive() ? 1 : 0),
+                uint32(target->HasUnitState(UNIT_STATE_UNATTACKABLE) ? 1 : 0),
+                target->GetUInt32Value(UNIT_FIELD_FLAGS),
+                uint32(target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE) ? 1 : 0),
+                uint32(target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_ATTACKABLE_1) ? 1 : 0),
+                uint32(target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_UNK_16) ? 1 : 0),
+                uint32(target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC) ? 1 : 0),
+                uint32(target->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE) ? 1 : 0),
+                int32(GetReactionTo(target)),
+                uint32(CanSeeOrDetect(target, true) ? 1 : 0),
+                uint32(GetPhaseShift().GetPhases().size()),
+                uint32(target->GetPhaseShift().GetPhases().size()));
+        }
+    }
+
     // can't attack self
     if (this == target)
         return false;

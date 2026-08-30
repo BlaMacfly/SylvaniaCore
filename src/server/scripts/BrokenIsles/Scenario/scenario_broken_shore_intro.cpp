@@ -172,7 +172,30 @@ struct scenario_broken_shore_intro : public InstanceScript
         if (player->GetMapId() != 1460)
             return;
 
-        PhasingHandler::AddPhase(player, PHASE_NORMAL, true);
+        // ==========================================================
+        // SylvaniaCore : phasage retire.
+        //
+        // SIGNALE EN JEU : les creatures etaient visibles, hostiles, mais
+        // impossibles a cibler. Une sonde posee dans _IsValidAttackTarget
+        // a donne le verdict :
+        //     reaction=1 (hostile), aucun drapeau bloquant, vivante,
+        //     mesPhases=0  sesPhases=1
+        //
+        // Deux objets ne se voient que s'ils PARTAGENT une phase
+        // (PhaseShift::CanSee, intersection des phases), et
+        // UpdateUnphasedFlag retire le statut « non phase » des qu'un
+        // objet en possede une. Le joueur n'en avait aucune : aucune
+        // intersection possible.
+        //
+        // Le phasage etait de toute facon une invention locale : le dump
+        // de reference laisse les 757 placements de cette carte SANS
+        // phase (PhaseId vide). On revient donc a cette configuration --
+        // tout le monde non phase, tout le monde se voit.
+        //
+        // La phase 169 n'existe d'ailleurs pas dans Phase.db2 du build
+        // 7.3.5.26972, ce qui la rendait d'autant plus douteuse.
+        // ==========================================================
+
         // objectif « embarquement » (Alliance) : credite aussi ici au cas ou
         player->KilledMonsterCredit(NPC_CREDIT_SHIP);
 
@@ -207,10 +230,13 @@ struct scenario_broken_shore_intro : public InstanceScript
     // Toute invocation doit partager la phase des joueurs (OnPlayerEnter les met en 169),
     // sinon elle est invisible/intangible : cible de quete introuvable, vague intuable.
     // (defaut systemique detecte par le harnais bot le 26/07, deja corrige dans le runner d artefacts)
+    // SylvaniaCore : ne phase plus rien. Laisser la phase 169 ici alors
+    // que le joueur n'en a aucune rendrait les invocations invisibles --
+    // le probleme meme qu'on vient de corriger, en sens inverse.
+    // Conservee comme point de passage unique pour les invocations, au
+    // cas ou un traitement commun redevienne necessaire.
     TempSummon* FinalizeSummon(TempSummon* summon) const
     {
-        if (summon)
-            PhasingHandler::AddPhase(summon, PHASE_NORMAL, true);
         return summon;
     }
 
