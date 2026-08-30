@@ -8319,13 +8319,18 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
     // au plus, et uniquement dans ce scenario.
     if (GetTypeId() == TYPEID_PLAYER && target->GetTypeId() == TYPEID_UNIT && GetMapId() == 1460)
     {
+        // On ne veut QUE les demons statiques : factions 2780 et 1768.
+        // Les invoques (faction 16) fonctionnent deja et polluaient le
+        // releve.
+        uint32 const factionCible = target->getFaction();
         static uint32 sondeAtt = 0;
-        if ((++sondeAtt % 20) == 1)
+        if ((factionCible == 2780 || factionCible == 1768) && (++sondeAtt % 5) == 1)
         {
             TC_LOG_ERROR("misc",
                 "ATTDBG cible %s (entree %u) | vivante=%u etatInattaquable=%u | drapeaux=%u "
                 "(NON_ATTACKABLE=%u NOT_ATTACKABLE_1=%u UNK_16=%u IMMUNE_PC=%u NOT_SELECTABLE=%u) "
-                "| reaction=%d | jeLaVois=%u | mesPhases=%u sesPhases=%u",
+                "| reaction=%d | jeLaVois=%u | mesPhases=%u sesPhases=%u "
+                "| factionCible=%u maFaction=%u | elleMEstHostile=%u jeLuiSuisHostile=%u",
                 target->GetName().c_str(), target->GetEntry(),
                 uint32(target->IsAlive() ? 1 : 0),
                 uint32(target->HasUnitState(UNIT_STATE_UNATTACKABLE) ? 1 : 0),
@@ -8338,7 +8343,10 @@ bool Unit::_IsValidAttackTarget(Unit const* target, SpellInfo const* bySpell, Wo
                 int32(GetReactionTo(target)),
                 uint32(CanSeeOrDetect(target, true) ? 1 : 0),
                 uint32(GetPhaseShift().GetPhases().size()),
-                uint32(target->GetPhaseShift().GetPhases().size()));
+                uint32(target->GetPhaseShift().GetPhases().size()),
+                factionCible, getFaction(),
+                uint32(target->IsHostileTo(this) ? 1 : 0),
+                uint32(IsHostileTo(target) ? 1 : 0));
         }
     }
 
