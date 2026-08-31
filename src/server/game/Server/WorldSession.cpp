@@ -350,7 +350,20 @@ bool WorldSession::Update(uint32 diff, PacketFilter& updater)
 
     ///- Before we process anything:
     /// If necessary, kick the player from the character select screen
-    if (!IsBotSession() && IsConnectionIdle())
+    //
+    // SylvaniaCore : les comptes de niveau superieur a SEC_PLAYER --
+    // maitres de jeu, testeurs, administration -- ne sont plus coupes
+    // pour inactivite.
+    //
+    // Motif : ces comptes restent volontairement connectes de longues
+    // minutes sans emettre de paquet, le temps d'observer une zone, de
+    // suivre un evenement scripte ou d'attendre le resultat d'un test.
+    // Le delai de SocketTimeOutTime (900 s) les deconnectait en plein
+    // travail, parfois au milieu d'une instance.
+    //
+    // Les joueurs ordinaires restent soumis au delai : la protection
+    // contre les sessions fantomes conserve tout son interet pour eux.
+    if (!IsBotSession() && GetSecurity() <= SEC_PLAYER && IsConnectionIdle())
         m_Socket[CONNECTION_TYPE_REALM]->CloseSocket();
 
     ///- Retrieve packets from the receive queue and call the appropriate handlers
