@@ -805,8 +805,37 @@ public:
 
     static bool HandleNpcNearCommand(ChatHandler* handler, char const* args)
     {
+        // =============================================================
+        // SylvaniaCore : .npc near faisait tomber le serveur.
+        //
+        // SIGNALE EN JEU : « la commande .npc near fait planter le
+        // serveur ». La requete preparee WORLD_SEL_CREATURE_NEAREST n'a
+        // AUCUNE limite : elle calcule trois puissances sur les 384 000
+        // lignes de la table creature, sans index utilisable, puis la
+        // boucle ci-dessous envoie UN message de discussion par resultat.
+        // Avec un rayon large, cela represente des dizaines de milliers
+        // de paquets pour une seule commande.
+        //
+        // Deux garde-fous, la requete etant partagee avec d'autres
+        // commandes :
+        //   - le rayon est plafonne ;
+        //   - le nombre de lignes affichees l'est aussi, et l'on ANNONCE
+        //     combien ont ete omises plutot que de tronquer en silence.
+        // =============================================================
+        float const RAYON_MAX = 500.0f;
+        uint32 const LIGNES_MAX = 150;
+
         float distance = (!*args) ? 10.0f : float((atof(args)));
+        if (distance > RAYON_MAX)
+        {
+            handler->PSendSysMessage("Rayon ramene de %.0f a %.0f : au-dela la recherche parcourt toute la table et sature la session.", distance, RAYON_MAX);
+            distance = RAYON_MAX;
+        }
+        if (distance <= 0.0f)
+            distance = 10.0f;
+
         uint32 count = 0;
+        uint32 omises = 0;
 
         Player* player = handler->GetSession()->GetPlayer();
 
@@ -838,14 +867,21 @@ public:
                 if (!creatureTemplate)
                     continue;
 
-                handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), entry, std::to_string(guid).c_str(), creatureTemplate->Name.c_str(), x, y, z, o, mapId);
-
                 ++count;
+                if (count > LIGNES_MAX)
+                {
+                    ++omises;
+                    continue;
+                }
+
+                handler->PSendSysMessage(LANG_CREATURE_LIST_CHAT, std::to_string(guid).c_str(), entry, std::to_string(guid).c_str(), creatureTemplate->Name.c_str(), x, y, z, o, mapId);
             }
             while (result->NextRow());
         }
 
         handler->PSendSysMessage(LANG_COMMAND_NEAR_NPC_MESSAGE, distance, count);
+        if (omises)
+            handler->PSendSysMessage("%u resultats supplementaires non affiches, plafond %u. Reduisez le rayon pour les voir.", omises, LIGNES_MAX);
 
         return true;
     }
