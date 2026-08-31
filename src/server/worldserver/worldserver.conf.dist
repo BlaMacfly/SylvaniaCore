@@ -4910,3 +4910,100 @@ siege_horde_route_last = 2099
 
 #
 ###################################################################################################
+
+###################################################################################################
+# MODULE MERCENAIRES (SylvaniaCore)
+#
+#    Le Portail d Invocation de Mercenaire (creature 1000010) loue des playerbots
+#    au joueur, contre or et sans aucune garantie de duree : quitter le groupe,
+#    renvoyer le mercenaire ou se deconnecter rompt le contrat sur-le-champ.
+#
+#    pbotmerc
+#        Description: Active le module.
+#        Default:     0 - (Desactive)
+#                     1 - (Actif)
+
+pbotmerc = 0
+
+#
+#    pbotmerc_cost
+#        Description: Prix d une invocation, en pieces d or.
+#        Default:     100
+
+pbotmerc_cost = 100
+
+#
+#    pbotmerc_max
+#        Description: Nombre de mercenaires simultanes par joueur. Un groupe
+#                     compte cinq places, maitre inclus : au-dela de 4 il
+#                     faudrait convertir le groupe en raid, ce qui interdirait
+#                     les donjons. La valeur est donc plafonnee a 4.
+#        Default:     4
+
+pbotmerc_max = 4
+
+#
+#    pbotmerc_minlevel
+#        Description: Niveau minimum du joueur pour employer un mercenaire.
+#        Default:     10
+
+pbotmerc_minlevel = 10
+
+#
+###################################################################################################
+
+###################################################################################################
+# MODULE MERCENAIRES - VOLET CONVERSATION (SylvaniaCore)
+#
+#    Le mercenaire parle par l intermediaire du modele de langage de son
+#    employeur, avec la cle d API de celui-ci. La cle n est jamais enregistree :
+#    elle vit en memoire le temps du contrat et disparait a sa rupture.
+#    Le joueur la fournit en jeu par « !api <fournisseur> <modele> <cle> ».
+#
+#    pbotmerc_chat
+#        Description: Active le dialogue par modele de langage.
+#        Default:     0 - (Desactive)
+#                     1 - (Actif)
+
+pbotmerc_chat = 0
+
+#
+#    pbotmerc_chat_cooldown
+#        Description: Delai minimum, en secondes, entre deux repliques payees par
+#                     un meme joueur. Garde-fou contre les macros bavardes.
+#        Default:     5
+
+pbotmerc_chat_cooldown = 5
+
+#
+#    pbotmerc_chat_timeout
+#        Description: Delai d expiration d un appel d API, en secondes.
+#        Default:     30
+
+pbotmerc_chat_timeout = 30
+
+#
+#    pbotmerc_chat_maxtokens
+#        Description: Longueur maximale de la reponse, en jetons. Le chat du
+#                     client ne montre qu une ligne : inutile de voir grand.
+#        Default:     160
+
+pbotmerc_chat_maxtokens = 160
+
+#
+#    pbotmerc_chat_history
+#        Description: Nombre d echanges gardes en memoire par mercenaire. Chaque
+#                     echange conserve est renvoye au modele, donc refacture.
+#        Default:     6
+
+pbotmerc_chat_history = 6
+
+#
+#    pbotmerc_chat_queue
+#        Description: Profondeur maximale de la file d appels en attente.
+#        Default:     32
+
+pbotmerc_chat_queue = 32
+
+#
+###################################################################################################
