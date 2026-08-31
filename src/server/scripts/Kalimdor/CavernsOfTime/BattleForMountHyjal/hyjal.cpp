@@ -57,7 +57,20 @@ public:
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
     {
         ClearGossipMenuFor(player);
-        hyjalAI* ai = ENSURE_AI(hyjalAI, creature->AI());
+        // SylvaniaCore : ENSURE_AI faisait tomber TOUT le serveur.
+        //
+        // GetAI() ne fabrique une hyjalAI que si GetHyjalAI() la trouve,
+        // c est-a-dire dans l instance du Mont Hyjal. Ailleurs la creature
+        // recoit une IA quelconque -- et ENSURE_AI, qui ASSERTE, tuait le
+        // process. Constate en production : un exemplaire de Jaina (17772)
+        // se trouvait sur la carte 0, a Hurlevent ; lui parler suffisait a
+        // planter le serveur (SIGSEGV dans Trinity::Assert, appele depuis
+        // npc_jaina_proudmoore::OnGossipHello).
+        //
+        // On echoue desormais proprement : le PNJ ne repond simplement pas.
+        hyjalAI* ai = dynamic_cast<hyjalAI*>(creature->AI());
+        if (!ai)
+            return false;
         switch (action)
         {
             case GOSSIP_ACTION_INFO_DEF + 1:
@@ -81,7 +94,20 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
-        hyjalAI* ai = ENSURE_AI(hyjalAI, creature->AI());
+        // SylvaniaCore : ENSURE_AI faisait tomber TOUT le serveur.
+        //
+        // GetAI() ne fabrique une hyjalAI que si GetHyjalAI() la trouve,
+        // c est-a-dire dans l instance du Mont Hyjal. Ailleurs la creature
+        // recoit une IA quelconque -- et ENSURE_AI, qui ASSERTE, tuait le
+        // process. Constate en production : un exemplaire de Jaina (17772)
+        // se trouvait sur la carte 0, a Hurlevent ; lui parler suffisait a
+        // planter le serveur (SIGSEGV dans Trinity::Assert, appele depuis
+        // npc_jaina_proudmoore::OnGossipHello).
+        //
+        // On echoue desormais proprement : le PNJ ne repond simplement pas.
+        hyjalAI* ai = dynamic_cast<hyjalAI*>(creature->AI());
+        if (!ai)
+            return false;
         if (ai->EventBegun)
             return false;
 
@@ -136,7 +162,20 @@ public:
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
     {
         ClearGossipMenuFor(player);
-        hyjalAI* ai = ENSURE_AI(hyjalAI, creature->AI());
+        // SylvaniaCore : ENSURE_AI faisait tomber TOUT le serveur.
+        //
+        // GetAI() ne fabrique une hyjalAI que si GetHyjalAI() la trouve,
+        // c est-a-dire dans l instance du Mont Hyjal. Ailleurs la creature
+        // recoit une IA quelconque -- et ENSURE_AI, qui ASSERTE, tuait le
+        // process. Constate en production : un exemplaire de Jaina (17772)
+        // se trouvait sur la carte 0, a Hurlevent ; lui parler suffisait a
+        // planter le serveur (SIGSEGV dans Trinity::Assert, appele depuis
+        // npc_jaina_proudmoore::OnGossipHello).
+        //
+        // On echoue desormais proprement : le PNJ ne repond simplement pas.
+        hyjalAI* ai = dynamic_cast<hyjalAI*>(creature->AI());
+        if (!ai)
+            return false;
         ai->DeSpawnVeins();//despawn the alliance veins
         switch (action)
         {
@@ -161,7 +200,20 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
-        hyjalAI* ai = ENSURE_AI(hyjalAI, creature->AI());
+        // SylvaniaCore : ENSURE_AI faisait tomber TOUT le serveur.
+        //
+        // GetAI() ne fabrique une hyjalAI que si GetHyjalAI() la trouve,
+        // c est-a-dire dans l instance du Mont Hyjal. Ailleurs la creature
+        // recoit une IA quelconque -- et ENSURE_AI, qui ASSERTE, tuait le
+        // process. Constate en production : un exemplaire de Jaina (17772)
+        // se trouvait sur la carte 0, a Hurlevent ; lui parler suffisait a
+        // planter le serveur (SIGSEGV dans Trinity::Assert, appele depuis
+        // npc_jaina_proudmoore::OnGossipHello).
+        //
+        // On echoue desormais proprement : le PNJ ne repond simplement pas.
+        hyjalAI* ai = dynamic_cast<hyjalAI*>(creature->AI());
+        if (!ai)
+            return false;
         if (ai->EventBegun)
             return false;
 
@@ -244,7 +296,20 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
-        hyjalAI* ai = ENSURE_AI(hyjalAI, creature->AI());
+        // SylvaniaCore : ENSURE_AI faisait tomber TOUT le serveur.
+        //
+        // GetAI() ne fabrique une hyjalAI que si GetHyjalAI() la trouve,
+        // c est-a-dire dans l instance du Mont Hyjal. Ailleurs la creature
+        // recoit une IA quelconque -- et ENSURE_AI, qui ASSERTE, tuait le
+        // process. Constate en production : un exemplaire de Jaina (17772)
+        // se trouvait sur la carte 0, a Hurlevent ; lui parler suffisait a
+        // planter le serveur (SIGSEGV dans Trinity::Assert, appele depuis
+        // npc_jaina_proudmoore::OnGossipHello).
+        //
+        // On echoue desormais proprement : le PNJ ne repond simplement pas.
+        hyjalAI* ai = dynamic_cast<hyjalAI*>(creature->AI());
+        if (!ai)
+            return false;
         uint32 AzgalorEvent = ai->GetInstanceData(DATA_AZGALOREVENT);
 
         // Only let them get item if Azgalor is dead.

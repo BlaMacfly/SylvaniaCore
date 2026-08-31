@@ -363,6 +363,27 @@ struct scenario_broken_shore_intro : public InstanceScript
                 }
                 break;
             default:
+                // =====================================================
+                // SylvaniaCore : tout demon compte pour l objectif.
+                //
+                // SIGNALE EN JEU : « les molosses sont maintenant
+                // attaquables mais ne comptent pas dans l objectif du
+                // scenario ».
+                //
+                // Le script ne reconnaissait que les CINQ entrees qu il
+                // invoque lui-meme. Or la carte porte 101 entrees de
+                // demons placees, affrontees tout au long de l assaut :
+                // elles ne crediraient rien.
+                //
+                // Plutot que d enumerer 101 entrees -- liste qui
+                // vieillirait mal --, on s appuie sur la donnee : le type
+                // demon. Tous les demons de cette carte sont desormais
+                // hostiles (faction 16). Les Seigneurs gangrebois,
+                // Arganoth, Krosus et Gul dan sont traites avant et n
+                // arrivent jamais ici : ils ont leurs propres criteres.
+                // =====================================================
+                if (creature->GetCreatureTemplate()->type == CREATURE_TYPE_DEMON)
+                    OnDemonDied();
                 break;
         }
     }

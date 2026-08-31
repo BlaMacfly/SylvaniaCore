@@ -1574,6 +1574,29 @@ bool Creature::LoadCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool ad
 
     GetMap()->AddBattlePet(this);
 
+    // SONDE TEMPORAIRE - carte 1460. Etat REEL en memoire une fois la
+    // creature entierement chargee depuis la base, pour le comparer a ce
+    // que dit la table. Une sur dix : il y en a 757.
+    //
+    // La version precedente etait posee dans un bloc de rechargement que
+    // ce chemin n'emprunte jamais -- elle n'a produit aucune ligne.
+    if (GetMapId() == 1460)
+    {
+        static uint32 sondeSpawn = 0;
+        if ((++sondeSpawn % 10) == 1)
+        {
+            TC_LOG_ERROR("misc",
+                "SPAWNDBG %s (entree %u) | faction=%u niveau=%u | pv=" UI64FMTD "/" UI64FMTD
+                " | vivante=%u | drapeaux=%u drapeaux2=%u dynamiques=%u | phases=%u",
+                GetName().c_str(), GetEntry(), getFaction(), getLevel(),
+                GetHealth(), GetMaxHealth(),
+                uint32(IsAlive() ? 1 : 0),
+                GetUInt32Value(UNIT_FIELD_FLAGS), GetUInt32Value(UNIT_FIELD_FLAGS_2),
+                GetUInt32Value(OBJECT_DYNAMIC_FLAGS),
+                uint32(GetPhaseShift().GetPhases().size()));
+        }
+    }
+
     return true;
 }
 
@@ -3336,26 +3359,6 @@ void Creature::ReLoad(bool skipDB)
     if (IsAIEnabled)
         AI()->EnterEvadeMode();
 
-    // SONDE TEMPORAIRE - carte 1460 uniquement. Journalise l'etat REEL en
-    // memoire, pour le comparer a la base. Une creature sur dix suffit :
-    // il y en a 757, on veut un echantillon, pas un deluge.
-    if (GetMapId() == 1460)
-    {
-        static uint32 sondeSpawn = 0;
-        if ((++sondeSpawn % 10) == 1)
-        {
-            TC_LOG_ERROR("misc",
-                "SPAWNDBG %s (entree %u) | faction=%u niveau=%u | pv=" UI64FMTD "/" UI64FMTD
-                " | vivante=%u | drapeaux=%u drapeaux2=%u dynamiques=%u | phases=%u | reactState=%u",
-                GetName().c_str(), GetEntry(), getFaction(), getLevel(),
-                GetHealth(), GetMaxHealth(),
-                uint32(IsAlive() ? 1 : 0),
-                GetUInt32Value(UNIT_FIELD_FLAGS), GetUInt32Value(UNIT_FIELD_FLAGS_2),
-                GetUInt32Value(OBJECT_DYNAMIC_FLAGS),
-                uint32(GetPhaseShift().GetPhases().size()),
-                uint32(GetReactState()));
-        }
-    }
 
     TC_LOG_DEBUG("sql.sql", "Creature SpawnID (" SI64FMTD ") reloaded.", GetSpawnId());
 }
