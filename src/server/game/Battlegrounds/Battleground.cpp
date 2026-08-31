@@ -1560,6 +1560,15 @@ void Battleground::RelocateDeadPlayers(ObjectGuid guideGuid)
 
 bool Battleground::AddObject(uint32 type, uint32 entry, float x, float y, float z, float o, float rotation0, float rotation1, float rotation2, float rotation3, uint32 /*respawnTime*/, GOState goState)
 {
+    // Garde-fou : voir GetBGObject. Ici l'indice sert a une ECRITURE,
+    // BgObjects[type] = go->GetGUID() -- plus grave encore qu'une lecture.
+    if (type >= BgObjects.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::AddObject: type %u hors limites (%u objets) pour le BG (carte %u, instance %u), entree %u ignoree.",
+            type, uint32(BgObjects.size()), m_MapId, m_InstanceID, entry);
+        return false;
+    }
+
     // If the assert is called, means that BgObjects must be resized!
     ASSERT(type < BgObjects.size());
 
@@ -1629,6 +1638,14 @@ bool Battleground::AddObject(uint32 type, uint32 entry, Position const& pos, flo
 // It would be nice to correctly implement GO_ACTIVATED state and open/close doors in gameobject code
 void Battleground::DoorClose(uint32 type)
 {
+    // Garde-fou : voir GetBGObject.
+    if (type >= BgObjects.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::DoorClose: type %u hors limites (%u objets) pour le BG (carte %u, instance %u).",
+            type, uint32(BgObjects.size()), m_MapId, m_InstanceID);
+        return;
+    }
+
     if (GameObject* obj = GetBgMap()->GetGameObject(BgObjects[type]))
     {
         // If doors are open, close it
@@ -1645,6 +1662,14 @@ void Battleground::DoorClose(uint32 type)
 
 void Battleground::DoorOpen(uint32 type)
 {
+    // Garde-fou : voir GetBGObject.
+    if (type >= BgObjects.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::DoorOpen: type %u hors limites (%u objets) pour le BG (carte %u, instance %u).",
+            type, uint32(BgObjects.size()), m_MapId, m_InstanceID);
+        return;
+    }
+
     if (GameObject* obj = GetBgMap()->GetGameObject(BgObjects[type]))
     {
         obj->SetLootState(GO_ACTIVATED);
@@ -1657,6 +1682,33 @@ void Battleground::DoorOpen(uint32 type)
 
 GameObject* Battleground::GetBGObject(uint32 type, bool logError)
 {
+    // =================================================================
+    // SylvaniaCore : refuser les indices hors limites.
+    //
+    // SIGNALE PAR UN UTILISATEUR DE SYLVANIACORE : ses matchs de Bassin
+    // d'Arathi faisaient tomber le serveur, avec dans le journal
+    //   GetBGObject: gameobject (type: 24, ... Entry: 7735234) not found
+    //   GetBGObject: gameobject (type: 32, ... Entry: 0)       not found
+    // Des GUID manifestement arbitraires : BgObjects ne compte que 22
+    // cases pour ce champ de bataille.
+    //
+    // La cause etait une indexation node*8 heritee de l'ancien Bassin
+    // d'Arathi (corrigee dans BattlegroundAB.cpp), mais le defaut de
+    // fond est ici : ces accesseurs indexent un std::vector avec une
+    // valeur fournie par l'appelant, SANS jamais verifier la borne. Une
+    // simple faute de calcul devient alors une corruption memoire, et
+    // le plantage survient loin de son origine.
+    //
+    // On journalise et on renvoie l'echec plutot que de lire n'importe
+    // ou. Meme garde-fou sur les autres accesseurs indexes du fichier.
+    // =================================================================
+    if (type >= BgObjects.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::GetBGObject: type %u hors limites (%u objets) pour le BG (carte %u, instance %u).",
+            type, uint32(BgObjects.size()), m_MapId, m_InstanceID);
+        return nullptr;
+    }
+
     GameObject* obj = GetBgMap()->GetGameObject(BgObjects[type]);
     if (!obj)
     {
@@ -1672,6 +1724,14 @@ GameObject* Battleground::GetBGObject(uint32 type, bool logError)
 
 Creature* Battleground::GetBGCreature(uint32 type, bool logError)
 {
+    // Garde-fou : voir GetBGObject.
+    if (type >= BgCreatures.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::GetBGCreature: type %u hors limites (%u creatures) pour le BG (carte %u, instance %u).",
+            type, uint32(BgCreatures.size()), m_MapId, m_InstanceID);
+        return nullptr;
+    }
+
     Creature* creature = GetBgMap()->GetCreature(BgCreatures[type]);
     if (!creature)
     {
@@ -1687,6 +1747,14 @@ Creature* Battleground::GetBGCreature(uint32 type, bool logError)
 
 void Battleground::SpawnBGObject(uint32 type, uint32 respawntime)
 {
+    // Garde-fou : voir GetBGObject.
+    if (type >= BgObjects.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::SpawnBGObject: type %u hors limites (%u objets) pour le BG (carte %u, instance %u).",
+            type, uint32(BgObjects.size()), m_MapId, m_InstanceID);
+        return;
+    }
+
     if (Map* map = FindBgMap())
         if (GameObject* obj = map->GetGameObject(BgObjects[type]))
         {
@@ -1761,6 +1829,14 @@ Creature* Battleground::AddCreature(uint32 entry, uint32 type, Position const& p
 
 bool Battleground::DelCreature(uint32 type)
 {
+    // Garde-fou : voir GetBGObject.
+    if (type >= BgCreatures.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::DelCreature: type %u hors limites (%u creatures) pour le BG (carte %u, instance %u).",
+            type, uint32(BgCreatures.size()), m_MapId, m_InstanceID);
+        return false;
+    }
+
     if (!BgCreatures[type])
         return true;
 
@@ -1779,6 +1855,14 @@ bool Battleground::DelCreature(uint32 type)
 
 bool Battleground::DelObject(uint32 type)
 {
+    // Garde-fou : voir GetBGObject.
+    if (type >= BgObjects.size())
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground::DelObject: type %u hors limites (%u objets) pour le BG (carte %u, instance %u).",
+            type, uint32(BgObjects.size()), m_MapId, m_InstanceID);
+        return false;
+    }
+
     if (!BgObjects[type])
         return true;
 

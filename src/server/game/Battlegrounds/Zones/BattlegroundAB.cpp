@@ -731,9 +731,16 @@ GameObject const* BattlegroundAB::GetNearGameObjectFlag(const Player* player)
         // cliquable si neutre, ou tenu/conteste par l equipe adverse
         if (!(status == 0 || teamIndex == status % 2))
             continue;
-        // BgObjects[node*8 + status] = banniere affichee pour cet etat (0=neutre,
-        // 1/2=contestee A/H, 3/4=occupee A/H)
-        GameObject* flag = GetBgMap()->GetGameObject(BgObjects[node * 8 + status]);
+        // Ce coeur n'a QU'UNE banniere par noeud, aux indices 0 a 4
+        // (BG_AB_OBJECT_BANNER + node) : _ChangeBanner modifie son visuel
+        // selon l'etat au lieu d'echanger huit objets distincts.
+        //
+        // L'indexation node*8+status ecrite ici venait de l'ancien Bassin
+        // d'Arathi de TrinityCore, ou chaque noeud possedait bien huit
+        // objets. Elle donnait 24 pour le noeud 3 et 32 pour le noeud 4,
+        // dans un tableau qui n'en compte que 22 : lecture hors limites,
+        // GUID arbitraires, et plantage selon ce qui suit le tampon.
+        GameObject* flag = GetBGObject(BG_AB_OBJECT_BANNER + node, false);
         if (!flag || !flag->isSpawned())
             continue;
         float dist = player->GetDistance(flag);
