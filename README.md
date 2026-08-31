@@ -7,6 +7,7 @@
 **Le core C++ du royaume [La Légion de Sylvania](https://legendesylvania.com)**
 Émulateur de serveur *World of Warcraft®* — Legion 7.3.5
 
+[![Wiki](https://img.shields.io/badge/Wiki-documentation-0b7285?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/wiki)
 [![Discord contributeurs](https://img.shields.io/badge/Discord-Espace%20contributeurs-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/qmQBXbuXkx)
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](./LICENSE)
 [![Stars](https://img.shields.io/github/stars/BlaMacfly/SylvaniaCore.svg?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/stargazers)
@@ -49,6 +50,23 @@ Au-delà du core amont, le royaume apporte ses propres systèmes :
 
 ---
 
+## 📚 Documentation
+
+Ce README suffit pour **installer et lancer** un serveur. Tout le reste vit dans le
+**[wiki du projet](https://github.com/BlaMacfly/SylvaniaCore/wiki)** :
+
+| | |
+| --- | --- |
+| 🔧 **[Corriger le contenu](https://github.com/BlaMacfly/SylvaniaCore/wiki/Corriger-le-contenu)** | Les classes de bugs récurrentes de ce core — scripts C++ non rattachés, hooks morts, quêtes sans objectif, butin, phases résiduelles — et comment les trouver. **Le meilleur point d'entrée pour une première contribution.** |
+| ⚙️ **[Configuration](https://github.com/BlaMacfly/SylvaniaCore/wiki/Configuration)** | Référence de toutes les clés de configuration propres au royaume |
+| 🧩 **[Architecture du core](https://github.com/BlaMacfly/SylvaniaCore/wiki/Architecture-du-core)** | Arborescence, lignée amont, pièges d'architecture |
+| 🤖 **Modules** | [PlayerBots](https://github.com/BlaMacfly/SylvaniaCore/wiki/Module-PlayerBots) · [Mercenaires](https://github.com/BlaMacfly/SylvaniaCore/wiki/Module-Mercenaires) · [Siège des Capitales](https://github.com/BlaMacfly/SylvaniaCore/wiki/Module-Siege-des-Capitales) · [Autres customs](https://github.com/BlaMacfly/SylvaniaCore/wiki/Autres-customs) |
+| 💥 **[Diagnostic des crashs](https://github.com/BlaMacfly/SylvaniaCore/wiki/Diagnostic-des-crashs)** | Core dumps, redzone jemalloc, faux crashs d'arrêt |
+| 🩺 **[FAQ Dépannage](https://github.com/BlaMacfly/SylvaniaCore/wiki/FAQ-Depannage)** | Écran de chargement, PNJ disparus, personnage bloqué, boss infaisable… |
+| 🚧 **[Chantiers en cours](https://github.com/BlaMacfly/SylvaniaCore/wiki/Chantiers-en-cours)** | Ce qui est ouvert, ce qui est clos, et les **impasses connues** |
+
+---
+
 ## 🛠️ Prérequis
 
 - **CMake 3.31+**
@@ -58,6 +76,9 @@ Au-delà du core amont, le royaume apporte ses propres systèmes :
 - **GCC / Clang / MSVC** (Visual Studio 2022 recommandé)
 
 Plateformes supportées : **Linux, Windows, macOS**.
+
+> 📖 Paquets à installer, extraction des données client et compilation sur une machine modeste :
+> **[Installation](https://github.com/BlaMacfly/SylvaniaCore/wiki/Installation)** sur le wiki.
 
 ---
 
@@ -151,8 +172,8 @@ amont est livrée vide : c'est normal, tout l'historique est rejoué. Comptez pl
 `sql/sylvania/` est la trace versionnée des correctifs data appliqués à la base du royaume
 (artefacts, campagnes, donjons, modules Mercenaires et Siège des Capitales…). Ils sont indépendants
 du mécanisme de mise à jour automatique et s'importent à la main, dans l'ordre chronologique, une
-fois les étapes précédentes terminées. La base `world` de production du royaume n'est pas
-distribuée.
+fois les étapes précédentes terminées. **Chaque fichier annonce sa base cible dans son en-tête :
+le dossier n'en a pas une seule.** Détail et conventions : **[Bases de données](https://github.com/BlaMacfly/SylvaniaCore/wiki/Bases-de-donnees)**.
 
 ### 🩺 Bloqué sur l'écran de chargement ?
 
@@ -166,14 +187,12 @@ Received not handled opcode [CMSG_GET_ACCOUNT_CHARACTER_LIST ...]
 
 `ResourceService` est un service Battle.net resté à l'état d'ébauche en amont, et
 `CMSG_GET_ACCOUNT_CHARACTER_LIST` (liste des personnages inter-royaumes) est délibérément déclaré
-`STATUS_UNHANDLED` dans `src/server/game/Server/Protocol/Opcodes.cpp`. Si le client reste bloqué au
-chargement, cherchez plutôt du côté :
+`STATUS_UNHANDLED` dans `src/server/game/Server/Protocol/Opcodes.cpp`.
 
-- d'une base `world` ou `hotfixes` mal importée — voir l'avertissement sur `sql/base/dev/` ;
-- du cache du client : videz son dossier `Cache` ;
-- des données extraites — `dbc/`, `maps/`, `vmaps/`, `mmaps/`, `cameras/` et `gt/` doivent provenir
-  d'un client **7.3.5 build 26972**, et `DataDir` doit pointer sur le dossier qui les contient ;
-- de `DBErrors.log` et des lignes de démarrage du worldserver, qui nomment la table fautive.
+La cause est presque toujours une base `world` ou `hotfixes` mal importée — relisez l'avertissement
+sur `sql/base/dev/` ci-dessus. Les autres pistes (cache client, données extraites, lecture de
+`DBErrors.log`) sont détaillées dans la **[FAQ Dépannage](https://github.com/BlaMacfly/SylvaniaCore/wiki/FAQ-Depannage)**, avec les autres
+symptômes fréquents.
 
 ---
 
@@ -191,7 +210,10 @@ ou nouvelle fonctionnalité :
 
 1. Forkez le dépôt
 2. Créez une branche dédiée
-3. Ouvrez une pull request
+3. Ouvrez une pull request contre `sylvaniacore`
+
+> 📖 Conventions du dépôt, style de commit, règles pour le SQL et doctrine de correction :
+> **[Contribuer](https://github.com/BlaMacfly/SylvaniaCore/wiki/Contribuer)** sur le wiki.
 
 Un Discord est ouvert **aux contributeurs et aux personnes qui souhaitent participer au
 développement du core** : c'est l'endroit où discuter d'un correctif avant de se lancer, poser
