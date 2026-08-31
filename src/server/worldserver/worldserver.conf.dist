@@ -4664,9 +4664,52 @@ pbotasl = 88
 
 pbottitle = 600
 
+#
+#    pbotqa
+#        Description: Harnais d assurance qualite. Par defaut, un bot de terrain qui
+#                     se retrouve sur une carte d instance est renvoye chez lui.
+#                     A 1, il est autorise a y rester : cela permet d observer le
+#                     comportement des bots en donjon sans qu ils soient rapatries.
+#                     Ne pas activer en production.
+#        Default:     0 - (Desactive)
+#                     1 - (Actif)
+
+pbotqa = 0
+
 
 #
 ####################################################################################################
+
+###################################################################################################
+# CUSTOM SYLVANIA : BOND HEROIQUE
+#
+#    Multiplicateurs appliques au saut du Bond heroique (sorts 94954 et 6544). Le saut
+#    EFFECTIF est porte par SPELL_EFFECT_DASH du sort 6544 en phase HIT, qui ecrase le
+#    JUMP_DEST de 94954 en phase LAUNCH : les deux identifiants sont donc traites, pour
+#    un ressenti coherent.
+#
+#    Ces deux cles sont reglables A CHAUD via « .reload config », sans redemarrage.
+#
+#    /!\ Ce sont des reglages de ressenti, pas des correctifs : la valeur Blizzlike est
+#    1.0 pour les deux. Les defauts ci-dessous sont deja un boost assume, et le royaume
+#    va plus loin encore (2.8 / 4.0).
+#
+#    HeroicLeap.SpeedMult
+#        Description: Facteur de vitesse horizontale (1.0 = Blizzlike, ~21 yd/s).
+#        Default:     1.7
+
+HeroicLeap.SpeedMult = 1.7
+
+#
+#    HeroicLeap.HeightMult
+#        Description: Facteur de hauteur d arc (1.0 = Blizzlike, 2.5 -> 10 yd).
+#        Default:     2.5
+
+HeroicLeap.HeightMult = 2.5
+
+#
+###################################################################################################
+
 ###################################################################################################
 # MODULE SIEGE DES CAPITALES (SylvaniaCore)
 #
