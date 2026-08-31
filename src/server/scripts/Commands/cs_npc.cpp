@@ -316,6 +316,64 @@ public:
             return false;
 
         PhasingHandler::InheritPhaseShift(creature, chr);
+
+        // =============================================================
+        // SylvaniaCore : conserver la phase du maitre de jeu.
+        //
+        // SIGNALE EN JEU : « j'ai tente de me creer un point de pierre
+        // de foyer en invoquant un aubergiste .npc add mais celui-ci
+        // n'est visible qu'en mode gm, j'ai teste avec plein d'autres
+        // c'est pareil ».
+        //
+        // CE QUI SE PASSAIT
+        // InheritPhaseShift donne bien la phase du joueur a la creature,
+        // mais SaveToDB ne l'ecrit pas : Creature.cpp ne retient que
+        // GetDBPhase(), la phase DECLAREE EN BASE, nulle pour une
+        // creature creee a la volee. La commande detruit ensuite l'objet
+        // et le recree depuis la ligne enregistree -- donc sans phase.
+        // La creature finale est orpheline de phase des la seconde meme.
+        //
+        // Le joueur, lui, herite des phases de son aire : dans le port
+        // de Hurlevent, phase_area declare 6666 et 13306. PhaseShift::
+        // CanSee exige une intersection, un objet sans phase est donc
+        // invisible a qui en porte une. Le mode MJ masquait le defaut :
+        // SetAlwaysVisible court-circuite tout test de phase.
+        //
+        // POURQUOI CE CORRECTIF EST LEGITIME
+        // TrinityCore 3.3.5 fait exactement cela, explicitement :
+        //     creature->Create(..., chr->GetPhaseMaskForSpawn(), ...);
+        //     creature->SaveToDB(map->GetId(), ..., chr->GetPhaseMaskForSpawn());
+        // et GetPhaseMaskForSpawn ignore volontairement l'etat « MJ voit
+        // tout » pour retenir la phase ou se trouverait un joueur normal.
+        // La reecriture du systeme de phases a perdu ce principe en
+        // chemin : master herite du meme defaut que nous. On le restaure.
+        //
+        // Un decalage subsiste avec 3.3.5 : une phase moderne est un
+        // ENSEMBLE, alors qu'une ligne de `creature` n'a qu'un champ.
+        // On retient la premiere et on ANNONCE le choix ainsi que les
+        // autres phases presentes, plutot que de trancher en silence.
+        // =============================================================
+        if (creature->GetDBPhase() == 0)
+        {
+            auto const& phasesJoueur = chr->GetPhaseShift().GetPhases();
+            if (!phasesJoueur.empty())
+            {
+                uint32 phaseRetenue = phasesJoueur.begin()->Id;
+                creature->SetDBPhase(int32(phaseRetenue));
+
+                std::string listePhases;
+                for (auto const& phase : phasesJoueur)
+                {
+                    if (!listePhases.empty())
+                        listePhases += ", ";
+                    listePhases += std::to_string(uint32(phase.Id));
+                }
+
+                handler->PSendSysMessage("Phase %u enregistree sur ce spawn (vous etes dans les phases : %s). Sans elle la creature serait invisible a tout joueur de cette aire.",
+                    phaseRetenue, listePhases.c_str());
+            }
+        }
+
         creature->SaveToDB(map->GetId(), { map->GetDifficultyID() });
 
         ObjectGuid::LowType db_guid = creature->GetSpawnId();
