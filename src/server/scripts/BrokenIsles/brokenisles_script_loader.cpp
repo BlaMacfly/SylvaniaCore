@@ -220,6 +220,7 @@ void AddSC_scenario_the_violet_hold_dh();
 void AddSC_scenario_mage_art();
 void AddSC_scenario_monk_serenitys_end();
 void AddSC_scenario_broken_shore_intro();
+void AddSC_scenario_assaut_rivage_brise();
 void AddSC_scenario_artifact_runner();
 
 // The name of this function should match:
@@ -422,5 +423,6 @@ void AddBrokenIslesScripts()
     AddSC_scenario_mage_art();
     AddSC_scenario_monk_serenitys_end();
     AddSC_scenario_broken_shore_intro();
+    AddSC_scenario_assaut_rivage_brise();
     AddSC_scenario_artifact_runner();
 }
