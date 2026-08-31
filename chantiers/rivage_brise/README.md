@@ -1,6 +1,7 @@
 # Chantier — Assaut du Rivage brisé (carte 1666)
 
-État au 27/08/2026. **Rien n'est appliqué au serveur à ce stade.**
+État au 31/08/2026. **Tout est appliqué et déployé.** Rien n'est vérifié
+en jeu : c'est la seule chose qui manque.
 
 ## Le blocage d'origine
 
@@ -70,12 +71,52 @@ C'est un contrôle de cohérence — vérifier que le parseur trouvait bien des
 lignes sur des cartes connues — qui a révélé le bug. **Toujours valider un
 extracteur sur un cas positif connu avant de croire un résultat négatif.**
 
-## Reste à faire
+## Ce qui a été fait le 31/08
 
-1. Extraire et transposer les 593 + 59 placements.
-2. Extraire les chemins des 180 créatures mobiles.
-3. Transposer la déclaration du scénario.
-4. Porter les 808 lignes de C++ et les adapter à notre API, qui a divergé
-   (`MoveJump`, `SetFacingTo`, `GetEffect` diffèrent déjà — constaté ailleurs).
-5. Raccorder le nom de script.
-6. Refaire autrement le comportement des 12 créatures à `AiID`.
+1. **593 créatures, 59 objets, 1495 points** appliqués sur la carte 1666.
+   Le fichier était généré depuis le 27/08 et dormait sans être exécuté.
+2. **808 lignes de C++ portées** dans
+   `src/server/scripts/BrokenIsles/Scenario/scenario_assault_broken_shore.cpp`,
+   enregistré sous `scenario_7.2_broken_shore_intro` — le nom que
+   `instance_template` réclamait déjà, donc aucune modification de base.
+   Ce nom contient un point : la classe est écrite à la main, la macro
+   `RegisterInstanceScript` ne l'accepterait pas.
+3. **Les 5 scripts rattachés** à leurs 11 entrées, toutes vérifiées
+   exclusives à la carte 1666.
+4. **87 points des 5 chemins scriptés** extraits et posés.
+5. **Le donneur de la quête 45102** raccordé : Khadgar 116302.
+
+## Le piège de l'extraction, deuxième épisode
+
+Les cinq chemins scriptés (11322705 à 11322709) ne sont **pas** dans
+`waypoint_data` mais dans **`waypoint_data_script`**, une table que notre
+schéma n'a pas — notre `sWaypointMgr` ne lit que la première. L'extraction
+du 27/08 ne regardait que celle-là et les a donc silencieusement manqués.
+
+Conséquence si on ne l'avait pas vu : le corbeau arcanique n'aurait jamais
+décollé, et comme c'est l'atteinte du point 20 de son vol qui déclenche
+l'étape 0, **le scénario n'aurait jamais démarré** — sans la moindre
+erreur dans le journal.
+
+C'est la même leçon qu'en août, sous une autre forme : ce n'est pas
+l'extracteur qui a menti, c'est la table qu'on n'a pas pensé à ouvrir.
+
+## Ce qui reste
+
+1. **Tout vérifier en jeu.** Rien n'a été joué. Prendre 45102 auprès de
+   Khadgar 116302 en Îles brisées et dérouler le scénario.
+2. **Les crédits 116253 et 116279** sont câblés sur la fermeture des deux
+   premiers portails **par déduction** : la quête parle de « First » et
+   « Second Legion Spire destroyed », et les portails sont les seuls
+   objets destructibles de l'étape 3. À confirmer ou corriger.
+3. **Les 12 créatures à `AiID = 7424`** (119422 ×9, 119425 ×2, 119412 ×1)
+   gardent un comportement de mêlée ordinaire. Vérifié : le dump ne
+   contient **aucune** table définissant les `AiID` — ce comportement
+   n'est pas récupérable depuis cette source. Ne pas rouvrir ce point
+   sans une autre référence.
+4. **Khadgar 120215** n'est posé nulle part chez nous. La référence le
+   place deux fois sur la carte 1220, en phases 7312 et 7313. Le crédit
+   « Speak to Khadgar » est pour l'instant accordé par le script à la fin
+   du scénario ; c'est un raccourci assumé, à arbitrer.
+5. **Concordance rassurante** relevée au passage : 7 bombes arcaniques
+   posées sur la carte, pour un critère qui en exige exactement 7.
