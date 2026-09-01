@@ -545,7 +545,8 @@ bool PlayerBotSession::ProcessLeaveBG(BotGlobleSchedule& schedule)
 
 	PlayerBotMgr::SwitchPlayerBotAI(player, PlayerBotAIType::PBAIT_FIELD, true);
 
-	WorldPackets::Battleground::BattlefieldLeave leave(std::move(WorldPacket()));
+	WorldPacket opcode(CMSG_BATTLEFIELD_LEAVE);
+	WorldPackets::Battleground::BattlefieldLeave leave(std::move(opcode));
     HandleBattlefieldLeaveOpcode(leave);
 	//HandleWorldPortAck();
 	return false;
@@ -571,7 +572,7 @@ bool PlayerBotSession::ProcessInAAQueue(BotGlobleSchedule& schedule)
 		return false;
 	}
 
-	WorldPacket packet(CMSG_BATTLEMASTER_JOIN_SKIRMISH);
+	WorldPacket packet(CMSG_BATTLEMASTER_JOIN_ARENA);
 	WorldPackets::Battleground::BattlemasterJoinArena cmd(std::move(packet));
 	//cmd.RolesMask = schedule.parameter1;
 	//cmd.Bracket = schedule.parameter2;
@@ -688,7 +689,8 @@ bool PlayerBotSession::ProcessLeaveAA(BotGlobleSchedule& schedule)
 	//opcode << un16;
 	//HandleBattlefieldLeaveOpcode(opcode);
 	//HandleMoveWorldportAckOpcode();
-    WorldPackets::Battleground::BattlefieldLeave leave(std::move(WorldPacket()));
+    WorldPacket opcode(CMSG_BATTLEFIELD_LEAVE);
+    WorldPackets::Battleground::BattlefieldLeave leave(std::move(opcode));
     HandleBattlefieldLeaveOpcode(leave);
     //HandleWorldPortAck();
 	return false;
