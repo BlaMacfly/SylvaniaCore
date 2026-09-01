@@ -155,12 +155,25 @@ void BattlegroundMgr::Update(uint32 diff)
         {
             // forced update for rated arenas (scan all, but skipped non rated)
             TC_LOG_TRACE("bg.arena", "BattlegroundMgr: UPDATING ARENA QUEUES");
-            for (int qtype = BATTLEGROUND_QUEUE_2v2; qtype <= BATTLEGROUND_QUEUE_5v5; ++qtype)
+            // SylvaniaCore : l amont avait commente la boucle sur les brackets et fige
+            // le bracket a 14, qui n existe pas dans PVPDifficulty pour la carte du
+            // template BATTLEGROUND_AA. Resultat : aucune file cotee n etait reellement
+            // mise a jour, et BattlegroundQueueUpdate journalisait une erreur toutes les
+            // 5 secondes. On parcourt les brackets reellement declares pour cette carte.
+            if (Battleground* arenaTemplate = GetBattlegroundTemplate(BATTLEGROUND_AA))
             {
-                //for (int bracket = BG_BRACKET_ID_FIRST; bracket < MAX_BATTLEGROUND_BRACKETS; ++bracket)
-                    m_BattlegroundQueues[qtype].BattlegroundQueueUpdate(diff,
-                    BATTLEGROUND_AA, BattlegroundBracketId(14),//bracket
-                    BattlegroundMgr::BGArenaType(BattlegroundQueueTypeId(qtype)), true, 0);
+                for (int qtype = BATTLEGROUND_QUEUE_2v2; qtype <= BATTLEGROUND_QUEUE_5v5; ++qtype)
+                {
+                    for (uint8 bracket = BG_BRACKET_ID_FIRST; bracket < MAX_BATTLEGROUND_BRACKETS; ++bracket)
+                    {
+                        if (!DB2Manager::GetBattlegroundBracketById(arenaTemplate->GetMapId(), BattlegroundBracketId(bracket)))
+                            continue;
+
+                        m_BattlegroundQueues[qtype].BattlegroundQueueUpdate(diff,
+                            BATTLEGROUND_AA, BattlegroundBracketId(bracket),
+                            BattlegroundMgr::BGArenaType(BattlegroundQueueTypeId(qtype)), true, 0);
+                    }
+                }
             }
 
             m_NextRatedArenaUpdate = sWorld->getIntConfig(CONFIG_ARENA_RATED_UPDATE_TIMER);

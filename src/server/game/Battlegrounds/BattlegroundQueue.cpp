@@ -938,6 +938,15 @@ should be called from Battleground::RemovePlayer function in some cases
 */
 void BattlegroundQueue::BattlegroundQueueUpdate(uint32 /*diff*/, BattlegroundTypeId bgTypeId, BattlegroundBracketId bracket_id, uint8 arenaType, bool isRated, uint32 arenaRating)
 {
+    // SylvaniaCore : garde-fou. m_QueuedGroups n a que MAX_BATTLEGROUND_BRACKETS
+    // entrees ; un appelant qui fabrique un bracket hors plage lisait au-dela du
+    // tableau (comportement indefini) des la premiere ligne de la fonction.
+    if (bracket_id >= MAX_BATTLEGROUND_BRACKETS)
+    {
+        TC_LOG_ERROR("bg.battleground", "Battleground: Update: bracket id %u hors plage pour le bg %u", uint32(bracket_id), uint32(bgTypeId));
+        return;
+    }
+
     //if no players in queue - do nothing
     if (m_QueuedGroups[bracket_id][BG_QUEUE_PREMADE_ALLIANCE].empty() &&
         m_QueuedGroups[bracket_id][BG_QUEUE_PREMADE_HORDE].empty() &&
