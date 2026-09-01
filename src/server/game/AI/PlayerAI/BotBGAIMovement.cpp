@@ -674,19 +674,28 @@ void BotBGAIMovement::SyncPosition(Position& pos, bool immed)
 	if (m_Player->IsFlying())
 		return;
 
-	Position targetPos(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), m_Player->GetOrientation());
-	targetPos.m_positionZ = 0.01f + m_Player->GetMap()->GetHeight(m_Player->GetPhaseShift(), targetPos.GetPositionX(), targetPos.GetPositionY(), targetPos.m_positionZ);
-	WorldSession* pSession = m_Player->GetSession();
-	MovementInfo movementInfo;
-	movementInfo.pos = targetPos;
-	movementInfo.time = getMSTime();
-	movementInfo.guid = m_Player->GetGUID();
-    movementInfo.flags = 0;
-    movementInfo.flags2 = 0;
-
-	WorldPacket data(CMSG_MOVE_FALL_LAND);// MSG_MOVE_STOP);
-    data << movementInfo;
-	m_Player->SendMessageToSet(&data, m_Player);
+	// =================================================================
+	// SylvaniaCore : cette fonction etait entierement inerte.
+	//
+	// Elle calculait une position au sol puis diffusait un paquet
+	// portant l'opcode CLIENT CMSG_MOVE_FALL_LAND. WorldSession le
+	// REFUSE toujours -- « Prevented sending of opcode 14841 with non
+	// existing handler » -- et journalise une ERREUR a chaque fois.
+	// Signale par un utilisateur de SylvaniaCore : des milliers de
+	// lignes par match, avec des bots en champ de bataille.
+	//
+	// Elle ne deplacait meme pas le bot cote serveur : aucun appel a
+	// UpdatePosition. Son seul effet observable etait donc le journal.
+	//
+	// L'envoi est retire. La fonction ne fait desormais plus que sa
+	// temporisation, ce qui est exactement ce qu'elle accomplissait
+	// avant -- en silence cette fois.
+	//
+	// A REPRENDRE : si une desynchronisation des bots est constatee en
+	// jeu, c'est ICI qu'il faut la corriger, par un UpdatePosition en
+	// bonne et due forme. Rien n'a ete ajoute a l'aveugle : le defaut
+	// signale ne pouvait pas etre reproduit sur notre serveur.
+	// =================================================================
 }
 
 bool BotBGAIMovement::IsNearToPosition(float x, float y, float z, float range)

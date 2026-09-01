@@ -1031,16 +1031,21 @@ void BotAITeleport::Update(uint32 diff, BotBGAIMovement* pMovement)
 		}
 		else if (m_TeleportStep == 3)
 		{
-			WorldSession* pSession = me->GetSession();
-			MovementInfo movementInfo;
-			movementInfo.pos = m_TeleportPositon;
-			movementInfo.time = getMSTime();
-			movementInfo.guid = me->GetGUID();
-            movementInfo.flags = 0;
-            movementInfo.flags2 = 0;
-			WorldPacket data(CMSG_MOVE_FALL_LAND);// MSG_MOVE_STOP);
-			data << movementInfo;
-			me->SendMessageToSet(&data, me);
+			// =====================================================
+			// SylvaniaCore : envoi mort retire.
+			//
+			// Le bloc supprime ici diffusait un paquet portant
+			// l'opcode CLIENT CMSG_MOVE_FALL_LAND. WorldSession le
+			// REFUSE systematiquement -- « Prevented sending of
+			// opcode 14841 with non existing handler » -- et ecrit
+			// une ligne d'ERREUR a chaque tentative. Signale par un
+			// utilisateur de SylvaniaCore : des milliers de lignes
+			// par match de champ de bataille.
+			//
+			// Il n'accomplissait donc rien. La reconstruction de
+			// l'objet ci-dessous, ajoutee precedemment pour pallier
+			// son inefficacite, reste seule en charge du travail.
+			// =====================================================
 			me->CombatStop(true);
 			me->SetSelection(ObjectGuid::Empty);
 			// SylvaniaCore : le paquet diffuse ci-dessus porte un opcode CLIENT

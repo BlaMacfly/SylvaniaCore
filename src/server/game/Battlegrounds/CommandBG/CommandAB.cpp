@@ -181,7 +181,39 @@ void CommandAB::ProcessABNodeRequirement(uint32 abNode, AIWaypoint* waypoint, Pl
 {
 	if (!waypoint)
 		return;
-	GameObject* pBGNode = m_pBattleground->GetBGObject(abNode * 8);
+	// =================================================================
+	// SylvaniaCore : les bannieres d'Arathi sont aux indices 0 a 4.
+	//
+	// SIGNALE PAR UN UTILISATEUR DE SYLVANIACORE, journal a l'appui :
+	//   GetBGObject: type 24 hors limites (22 objets) carte 529
+	//   GetBGObject: type 32 hors limites (22 objets) carte 529
+	//
+	// abNode * 8 vient de l'ancien Bassin d'Arathi de TrinityCore, ou
+	// chaque noeud possedait huit objets. Le notre n'en a qu'UN par
+	// noeud : BG_AB_OBJECT_BANNER + node, soit 0 a 4. _ChangeBanner
+	// modifie le visuel de cette banniere unique selon l'etat.
+	//
+	// Le calcul etait donc faux pour TOUS les noeuds, pas seulement
+	// pour ceux qui debordaient :
+	//     noeud 0 -> 0   banniere        juste, par hasard
+	//     noeud 1 -> 8   REGENBUFF_STABLES
+	//     noeud 2 -> 16  SPEEDBUFF_LUMBER_MILL
+	//     noeud 3 -> 24  hors limites
+	//     noeud 4 -> 32  hors limites
+	//
+	// Les bots visaient des objets de bonus au lieu des bannieres, et
+	// ne voyaient tout simplement pas la scierie ni la mine d'or. Les
+	// deux appels etant proteges contre le pointeur nul, cela echouait
+	// en silence -- seul le garde-fou pose dans GetBGObject a fini par
+	// le rendre visible.
+	//
+	// Le controle de borne sur abNode manquait ici alors qu'il existe
+	// dans GetABFlagRangePlayerByTeam : ajoute.
+	// =================================================================
+	if (abNode >= BG_AB_BattlegroundNodes::BG_AB_DYNAMIC_NODES_COUNT)
+		return;
+
+	GameObject* pBGNode = m_pBattleground->GetBGObject(BG_AB_ObjectType::BG_AB_OBJECT_BANNER + abNode);
 	if (!pBGNode)
 		return;
 	PlayerGUIDs nodeNearPlayers = GetABFlagRangePlayerByTeam(abNode, m_TeamID);
@@ -264,7 +296,9 @@ PlayerGUIDs CommandAB::GetABFlagRangePlayerByTeam(uint32 abNode, TeamId team)
 	PlayerGUIDs existPlayers;
 	if (!m_pBattleground || abNode >= BG_AB_BattlegroundNodes::BG_AB_DYNAMIC_NODES_COUNT)
 		return existPlayers;
-	GameObject* pBGNode = m_pBattleground->GetBGObject(abNode * 8);
+	// Meme correction que dans ProcessABNodeRequirement : une banniere
+	// par noeud, aux indices 0 a 4.
+	GameObject* pBGNode = m_pBattleground->GetBGObject(BG_AB_ObjectType::BG_AB_OBJECT_BANNER + abNode);
 	if (!pBGNode)
 		return existPlayers;
 	NearPlayerList playersNearby;
