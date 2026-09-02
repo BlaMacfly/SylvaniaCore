@@ -105,6 +105,13 @@ void TargetedMovementGeneratorMedium<T, D>::_setTargetLocation(T* owner, bool up
     bool forceDest = (owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->IsPet()
         && owner->HasUnitState(UNIT_STATE_FOLLOW));
 
+    // Une creature volante n est pas tenue par le maillage de navigation. Sans
+    // ce raccourci elle ne trouve aucun chemin vers une cible posee sur un
+    // relief non navigable, se marque injoignable, puis evade au bout de
+    // CREATURE_NOPATH_EVADE_TIME en lachant son proprietaire de butin.
+    if (!forceDest && owner->GetTypeId() == TYPEID_UNIT && owner->ToCreature()->CanFly())
+        forceDest = true;
+
     if (!forceDest && owner->GetTypeId() == TYPEID_UNIT && !owner->IsPlayerBot() && !i_target->IsPlayerBot())
     {
         //TC_LOG_ERROR("misc", "SPMOVE1 ");
