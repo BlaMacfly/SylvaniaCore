@@ -592,10 +592,65 @@ public:
         QUEST_DOWN_TO_AZSUNA = 41220,
         SPELL_TAXI_DALARAN_AZSUNA_ALLIANCE = 205098,
         SPELL_TAXI_DALARAN_AZSUNA_HORDE = 205203,
+
+        // =============================================================
+        // SylvaniaCore : l'entree du scenario d'assaut du Rivage brise.
+        //
+        // La carte 1666 etait peuplee et scriptee, mais AUCUN chemin
+        // n'y menait : le joueur restait plante devant Khadgar.
+        //
+        // Le deroulement officiel, tel que le decrivent les joueurs :
+        // on prend la quete aupres de l'archimage a l'Anneau de Krasus,
+        // puis on choisit « I am ready to launch the assault », une
+        // cinematique se joue et l'on est EMPORTE PAR LA VOIE DES AIRS
+        // jusqu'au scenario. C'est notre corbeau arcanique.
+        //
+        // Cette option de dialogue n'existe ni dans notre base ni dans
+        // le dump de reference : c'est de la donnee de capture jamais
+        // importee. Elle est donc recreee ici, faute de source.
+        //
+        // Le sort 240603 porte la destination officielle dans
+        // spell_target_position : carte 1666, (-1111.6, 2969.71, 186).
+        // C'est celui-la qu'on lance, pas une teleportation inventee.
+        //
+        // 86563 est bien le Khadgar de l'Anneau de Krasus : il est pose
+        // en (-841, 4258, 746), l'altitude de Dalaran, et il donne deja
+        // « Assault on Broken Shore ».
+        // =============================================================
+        QUEST_ASSAUT_RIVAGE = 46734,
+        QUEST_LANCER_ASSAUT = 45102,
+        SPELL_ENTREE_ASSAUT = 240603,
+        ACTION_LANCER_ASSAUT = GOSSIP_ACTION_INFO_DEF + 90,
     };
 
-    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 /*action*/) override
+    bool OnGossipHello(Player* player, Creature* creature) override
     {
+        // On reconstruit d'abord le menu normal -- quetes comprises.
+        // Sans cela Khadgar perdrait les seize quetes qu'il propose :
+        // le coeur saute PrepareGossipMenu des qu'un script repond au
+        // dialogue.
+        player->PrepareGossipMenu(creature, creature->GetCreatureTemplate()->GossipMenuId, true);
+
+        bool const assautEnCours =
+            player->GetQuestStatus(QUEST_ASSAUT_RIVAGE) == QUEST_STATUS_INCOMPLETE ||
+            player->GetQuestStatus(QUEST_LANCER_ASSAUT) == QUEST_STATUS_INCOMPLETE;
+
+        if (assautEnCours)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je suis pret a lancer l'assaut.", GOSSIP_SENDER_MAIN, ACTION_LANCER_ASSAUT);
+
+        player->SendPreparedGossip(creature);
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
+    {
+        if (action == ACTION_LANCER_ASSAUT)
+        {
+            CloseGossipMenuFor(player);
+            player->CastSpell(player, SPELL_ENTREE_ASSAUT, true);
+            return true;
+        }
+
         if (player->HasQuest(QUEST_DOWN_TO_AZSUNA) || player->GetQuestStatus(QUEST_DOWN_TO_AZSUNA) == QUEST_STATUS_INCOMPLETE)
             player->CastSpell(player, player->IsInAlliance() ? SPELL_TAXI_DALARAN_AZSUNA_ALLIANCE : SPELL_TAXI_DALARAN_AZSUNA_HORDE, true); // KillCredit & SendTaxi
 
