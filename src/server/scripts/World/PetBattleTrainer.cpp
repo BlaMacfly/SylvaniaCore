@@ -38,23 +38,16 @@ class npc_TrainerBattlePet : public CreatureScript
 public:
     npc_TrainerBattlePet() : CreatureScript("npc_TrainerBattlePet") { }
 
-    uint32 ObjectId = 0;
-    bool isTrainer = false;
+    // SylvaniaCore : un CreatureScript est un singleton partage par tous les
+    // joueurs et tous les PNJ qui portent le script -- l etat du dernier
+    // interlocuteur ne doit pas conditionner ce que fait le suivant.
     bool OnGossipHello(Player* player, Creature* creature) override
     {
         if (sBattlePetDataStore->GetPetBattleTrainerTeam(creature->GetEntry()).empty())
             return false;
 
-        ObjectId = creature->GetEntry();
-
         if (creature->IsQuestGiver())
             player->PrepareQuestMenu(creature->GetGUID());
-
-        if (player->QuestObjectiveActiveInPlayerByObject(ObjectId))
-        {
-            isTrainer = true;
-
-        }
 
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Let`s Go", GOSSIP_SENDER_MAIN, 0);
         SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
@@ -66,7 +59,7 @@ public:
     {
         player->PlayerTalkClass->ClearMenus();
 
-        if (isTrainer)
+        if (player->QuestObjectiveActiveInPlayerByObject(creature->GetEntry()))
         {
             if (uiAction == 0)
             {

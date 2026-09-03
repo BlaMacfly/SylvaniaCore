@@ -20227,14 +20227,15 @@ bool Player::QuestObjectiveActiveInPlayerByObject(uint32 objectId)
             continue;
 
         for (QuestObjective const& obj : quest->GetObjectives())
-        {
             if ((uint32)obj.ObjectID == objectId)
-            {
                 return true;
-                break;
-            }
-        }
     }
+
+    // SylvaniaCore : sans ce return, sortir de la boucle etait un comportement
+    // indefini -- GCC en deduisait que la boucle ne pouvait pas se terminer et
+    // supprimait le test q < MAX_QUEST_LOG_SIZE. Le slot grimpait au-dela de 25
+    // jusqu a sortir du tableau de valeurs du joueur (ASSERT dans GetUInt32Value).
+    return false;
 }
 
 PlayerPetData* Player::GetPlayerPetDataById(uint32 petId)
