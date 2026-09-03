@@ -244,13 +244,34 @@ public:
 
         void OnPlayerEnter(Player* player) override
         {
+            // SONDE TEMPORAIRE RIVAGEDBG
+            TC_LOG_ERROR("misc", "RIVAGEDBG OnPlayerEnter : %s en (%.0f, %.0f, %.0f)",
+                player ? player->GetName().c_str() : "aucun",
+                player ? player->GetPositionX() : 0.f,
+                player ? player->GetPositionY() : 0.f,
+                player ? player->GetPositionZ() : 0.f);
+
             if (!player)
                 return;
 
             player->CastSpell(player, SPELL_ENTREE_AURA, true);
 
+            // FILET DE SECURITE, temporaire.
+            // L'etape 0 n'est creditee que par l'arrivee du corbeau. Si
+            // celui-ci ne vole pas, le scenario reste bloque des la
+            // premiere etape et le reste devient intestable. On credite
+            // donc l'arrivee au bout de 20 s si elle ne l'a pas ete.
+            // A RETIRER une fois le vol repare.
+            InstanceScript* moi = this;
+            player->AddDelayedEvent(20000, [moi]() -> void
+            {
+                moi->SetData(DATA_ARRIVEE_ACCOMPLIE, 1);
+            });
+
             player->AddDelayedEvent(5000, [player]() -> void
             {
+                // SONDE TEMPORAIRE RIVAGEDBG
+                TC_LOG_ERROR("misc", "RIVAGEDBG invocation du corbeau (sort %u)", uint32(SPELL_ENTREE_INVOCATION));
                 player->CastSpell(player, SPELL_ENTREE_INVOCATION, true);
 
                 std::list<Creature*> escorte;
@@ -637,13 +658,22 @@ public:
 
         void IsSummonedBy(Unit* summoner) override
         {
+            // SONDE TEMPORAIRE RIVAGEDBG
+            TC_LOG_ERROR("misc", "RIVAGEDBG corbeau invoque par %s en (%.0f, %.0f, %.0f)",
+                summoner ? summoner->GetName().c_str() : "personne",
+                me->GetPositionX(), me->GetPositionY(), me->GetPositionZ());
+
             SetFlyMode(true);
             if (summoner)
                 summoner->CastSpell(me, SPELL_MONTER_CORBEAU, true);
         }
 
-        void PassengerBoarded(Unit* /*passager*/, int8 /*seatId*/, bool /*apply*/) override
+        void PassengerBoarded(Unit* passager, int8 /*seatId*/, bool apply) override
         {
+            // SONDE TEMPORAIRE RIVAGEDBG
+            TC_LOG_ERROR("misc", "RIVAGEDBG passager %s %s le corbeau",
+                passager ? passager->GetName().c_str() : "inconnu", apply ? "monte sur" : "descend de");
+
             Creature* moi = me;
             me->AddDelayedEvent(4000, [moi]() -> void
             {

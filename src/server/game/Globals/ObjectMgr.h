@@ -999,7 +999,7 @@ class TC_GAME_API ObjectMgr
         ItemTemplateContainer const* GetItemTemplateStore() const { return &_itemTemplateStore; }
 
         void LoadGarrssionMissionReward();
-        std::vector<GarrssionMissionReward>* GetGarrssionMissionReward(uint32 id);
+        std::vector<GarrssionMissionReward> GetGarrssionMissionReward(uint32 id);
         std::vector<GarrssionMissionReward> GarrssionMissionRewardMap;
 
         ScriptParams const& GetScriptParam(ObjectGuid::LowType lowGuid) { return _scriptParamContainer[lowGuid]; }

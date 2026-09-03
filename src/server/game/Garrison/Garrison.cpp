@@ -642,11 +642,11 @@ void Garrison::AddMission(uint32 garrMissionId)
     reward.FollowerXP = 0;
     reward.BonusAbilityID = 0;
     reward.Unknown = 1118739;
-    std::vector<GarrssionMissionReward>* fRewards = sObjectMgr->GetGarrssionMissionReward(garrMissionId);
-    if (fRewards)
+    std::vector<GarrssionMissionReward> fRewards = sObjectMgr->GetGarrssionMissionReward(garrMissionId);
+    if (!fRewards.empty())
     {
-        Trinity::Containers::RandomShuffle(*fRewards);
-        for (auto _reward : *fRewards)
+        Trinity::Containers::RandomShuffle(fRewards);
+        for (auto _reward : fRewards)
         {
             //   if (_reward.RewardType == GarrisonMission::MissionRewardType::Item)
             {
@@ -1086,13 +1086,16 @@ void Garrison::CalculateMissonBonusRoll(uint32 garrMissionId)
 
 void Garrison::RewardMission(Mission* mission, bool withOvermaxReward)
 {
-    auto rewardLists = { mission->Rewards };
+    // SylvaniaCore : reaffecter une initializer_list ne prolonge pas la duree de
+    // vie du tableau sous-jacent -- la boucle parcourait un temporaire detruit.
+    std::vector<decltype(&mission->Rewards)> rewardLists;
+    rewardLists.push_back(&mission->Rewards);
     if (withOvermaxReward)
-        rewardLists = { mission->Rewards, mission->BonusRewards };
+        rewardLists.push_back(&mission->BonusRewards);
 
-    for (auto rewards : rewardLists)
+    for (auto const* rewards : rewardLists)
     {
-        for (WorldPackets::Garrison::GarrisonMissionReward reward : rewards)
+        for (WorldPackets::Garrison::GarrisonMissionReward reward : *rewards)
         {
             if (reward.ItemID)
                 GetOwner()->AddItem(reward.ItemID, reward.ItemQuantity);

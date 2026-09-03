@@ -292,11 +292,12 @@ public:
         return true;
     }
 
-    bool OnRemoveTarget(AreaTrigger* trigger, Unit* target)
+    // SylvaniaCore : le hook du core est OnUnitExit -- OnRemoveTarget n existe
+    // nulle part dans AreaTriggerAI, la methode n etait donc jamais appelee et
+    // l aura restait sur le joueur apres sa sortie de la zone.
+    void OnUnitExit(Unit* target) override
     {
         target->RemoveAura(144693);
-
-        return true;
     }
 };*/
 

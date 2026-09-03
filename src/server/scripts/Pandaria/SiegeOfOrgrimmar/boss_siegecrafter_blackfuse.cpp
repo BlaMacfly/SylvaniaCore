@@ -3348,8 +3348,12 @@ struct spell_area_siegecrafter_blackfuse_laser_ground_effect : AreaTriggerAI
         caster->AddAura(SPELL_SUPERHEATED_AURA, p_Target);
     }
 
-    bool OnRemoveTarget(Unit* target, bool /*byExpire*/)
+    // SylvaniaCore : le hook du core est OnUnitExit -- OnRemoveTarget n existe
+    // nulle part dans AreaTriggerAI, la methode n etait donc jamais appelee et
+    // l aura restait sur le joueur apres sa sortie de la zone.
+    void OnUnitExit(Unit* target) override
     {
+        target->RemoveAura(SPELL_SUPERHEATED_AURA);
     }
 };
 

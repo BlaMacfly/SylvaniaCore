@@ -570,7 +570,7 @@ class TC_GAME_API InstanceScript : public ZoneScript
         uint64 m_InstanceGuid;
         uint32 m_BeginningTime;
         uint32 m_ScenarioID;
-        uint8  m_ScenarioStep;
+        uint32 m_ScenarioStep;   // SylvaniaCore : ID de ScenarioStep, un uint8 tronquait la valeur
         uint32 m_LastResetTime;
         uint8  m_ChallengeLevel;
         uint8  m_DeathCount;

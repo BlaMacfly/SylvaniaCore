@@ -1054,10 +1054,12 @@ struct spell_area_pressure_plate : AreaTriggerAI
         unit->AddAura(eSpells::PressurePlateButton, unit);
     }
 
-    bool OnRemoveTarget(Unit* p_Target, bool /*p_ByExpire*/)
+    // SylvaniaCore : le hook du core est OnUnitExit -- OnRemoveTarget n existe
+    // nulle part dans AreaTriggerAI, la methode n etait donc jamais appelee et
+    // l aura restait sur le joueur apres sa sortie de la zone.
+    void OnUnitExit(Unit* p_Target) override
     {
         p_Target->RemoveAura(eSpells::PressurePlateButton);
-        return true;
     }
 };
 

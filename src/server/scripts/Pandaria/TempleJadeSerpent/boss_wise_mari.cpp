@@ -351,8 +351,6 @@ class boss_wase_mari : public CreatureScript
                                 break;
 
                             Talk(TEXT_PHASE_SWITCH);
-                            ThreatContainer::StorageType const& threatlist = me->getThreatManager().getThreatList();
-                            threatlist.empty();
                             me->GetMotionMaster()->MovePoint(1, me->GetHomePosition());
 
                             me->RemoveAurasDueToSpell(SPELL_WATER_BUBBLE);

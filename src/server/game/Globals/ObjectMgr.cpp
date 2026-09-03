@@ -3307,7 +3307,10 @@ void ObjectMgr::LoadGarrssionMissionReward()
     TC_LOG_INFO("server.loading", ">> Loaded garrssion_mission_reward in %u ms", GetMSTimeDiffToNow(oldMSTime));
 }
 
-std::vector<GarrssionMissionReward>* ObjectMgr::GetGarrssionMissionReward(uint32 id)
+// SylvaniaCore : cette fonction rendait l adresse d un vecteur local. L appelant
+// (Garrison::...) melangeait puis parcourait un objet deja detruit -- ecriture et
+// lecture dans une pile liberee. On rend desormais le vecteur par valeur.
+std::vector<GarrssionMissionReward> ObjectMgr::GetGarrssionMissionReward(uint32 id)
 {
     std::vector<GarrssionMissionReward> _reward;
     for (auto& __reward : GarrssionMissionRewardMap)
@@ -3315,10 +3318,7 @@ std::vector<GarrssionMissionReward>* ObjectMgr::GetGarrssionMissionReward(uint32
         if (__reward.MissionId == id)
             _reward.push_back(__reward);
     }
-    if (_reward.size() > 0)
-        return &_reward;
-    else
-        return nullptr;
+    return _reward;
 }
 
 void ObjectMgr::LoadVehicleTemplateAccessories()

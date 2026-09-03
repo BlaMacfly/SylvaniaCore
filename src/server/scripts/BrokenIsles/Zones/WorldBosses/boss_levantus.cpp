@@ -102,7 +102,9 @@ public:
                 {
                 case 1:
                 {
-                    for (uint32 i = 1; i < 7; i++) // +1
+                    // SylvaniaCore : Waypointspawn n a que 6 entrees (0 a 5) ; la boucle
+                    // d origine lisait l index 6, hors du tableau, a chaque declenchement.
+                    for (uint32 i = 0; i < 6; i++)
                     {
                         me->CastSpell(Waypointspawn[i].GetPositionX() + urand(0, 25), Waypointspawn[i].GetPositionY() + urand(0, 25), Waypointspawn[i].GetPositionZ(), 217212, true);
                     }

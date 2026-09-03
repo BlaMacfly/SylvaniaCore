@@ -2092,8 +2092,7 @@ void Player::ProcessDelayedOperations()
         {
             uint8 teamID = battle->Teams[PETBATTLE_TEAM_1]->OwnerGuid == GetGUID() ? PETBATTLE_TEAM_1 : PETBATTLE_TEAM_2;
 
-            PetBattleRequest request;
-            memcpy(&request, &battle->PvPMatchMakingRequest, sizeof(PetBattleRequest)); //@TODO check that
+            PetBattleRequest request = battle->PvPMatchMakingRequest;
 
             auto& matchMakingRequest = battle->PvPMatchMakingRequest;
 

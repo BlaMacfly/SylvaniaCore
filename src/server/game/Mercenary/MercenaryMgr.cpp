@@ -36,6 +36,24 @@
 #include "World.h"
 #include "WorldSession.h"
 
+namespace
+{
+    // Quelques pas devant la structure, angle tire au hasard pour que les
+    // recrues ne s empilent pas, face au portail, hauteur recalee au sol.
+    Position BuildPortalExit(Position const& portal, Player* bot)
+    {
+        float const angle = portal.GetOrientation() + frand(-1.0f, 1.0f);
+        float const distance = frand(1.5f, 3.0f);
+        float x = portal.GetPositionX() + distance * std::cos(angle);
+        float y = portal.GetPositionY() + distance * std::sin(angle);
+        float z = portal.GetPositionZ();
+        if (bot)
+            if (Map* map = bot->GetMap())
+                map->GetHeight(bot->GetPhaseShift(), x, y, z);
+        return Position(x, y, z, angle + float(M_PI));
+    }
+}
+
 MercenaryMgr::MercenaryMgr() :
     m_enabled(false), m_cost(100 * MERCENARY_COPPER_PER_GOLD), m_maxPerPlayer(MERCENARY_HARD_CAP),
     m_minLevel(10), m_updateTimer(0), m_releasing(false)
@@ -640,23 +658,10 @@ void MercenaryMgr::Update(uint32 diff)
             {
                 if (BotGroupAI* groupAI = dynamic_cast<BotGroupAI*>(bot->GetAI()))
                 {
+                    // Repli : sans portail connu, ou si l armement immediat a
+                    // echoue, le mercenaire rejoint simplement son employeur.
                     if (it->hasPortal)
-                    {
-                        // Il franchit le seuil : quelques pas devant la structure,
-                        // l angle varie pour que quatre mercenaires ne se marchent
-                        // pas dessus, et la hauteur est recalee sur le terrain.
-                        float const angle = it->portalPos.GetOrientation() + frand(-1.0f, 1.0f);
-                        float const distance = frand(1.5f, 3.0f);
-                        float x = it->portalPos.GetPositionX() + distance * std::cos(angle);
-                        float y = it->portalPos.GetPositionY() + distance * std::sin(angle);
-                        float z = it->portalPos.GetPositionZ();
-                        if (Map* map = bot->GetMap())
-                            map->GetHeight(bot->GetPhaseShift(), x, y, z);
-
-                        // Il fait face au portail dont il sort.
-                        Position spot(x, y, z, angle + float(M_PI));
-                        groupAI->TeleportToPoint(it->portalMap, spot);
-                    }
+                        groupAI->TeleportToPoint(it->portalMap, BuildPortalExit(it->portalPos, bot));
                     else
                         groupAI->ProcessBotCommand(owner, "!summon");
                     it->summonPending = false;
@@ -732,6 +737,19 @@ void MercenaryMgr::Update(uint32 diff)
         it->summonPending = true;
 
         PlayerBotMgr::SwitchPlayerBotAI(bot, PlayerBotAIType::PBAIT_GROUP, true);
+
+        // Des maintenant, pas au tick suivant : l IA de groupe, en decouvrant
+        // un maitre lointain, armerait le sien vers l employeur, et SetTeleport
+        // refuse d ecraser un teleport en cours. Notre ordre serait perdu et le
+        // mercenaire apparaitrait sur le joueur plutot que sur le portail.
+        if (it->hasPortal)
+        {
+            if (BotGroupAI* groupAI = dynamic_cast<BotGroupAI*>(bot->GetAI()))
+            {
+                groupAI->TeleportToPoint(it->portalMap, BuildPortalExit(it->portalPos, bot));
+                it->summonPending = false;
+            }
+        }
 
         ChatHandler(owner->GetSession()).PSendSysMessage(
             "|cff00ff00[Portail]|r %s, %s mercenaire, répond à votre appel.",

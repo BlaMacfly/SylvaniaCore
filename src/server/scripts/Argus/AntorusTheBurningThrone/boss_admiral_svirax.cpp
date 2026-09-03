@@ -89,7 +89,7 @@ struct boss_admiral_svirax : public BossAI
 
     void Initialize()
     {
-        SetDungeonEncounterID,(2070);
+        SetDungeonEncounterID(2070);
     }
 
     void DamageTaken(Unit* done_by, uint32 &damage) override
@@ -244,7 +244,6 @@ struct boss_admiral_svirax : public BossAI
     uint8 PHASE_01;
     uint8 PHASE_02;
     uint8 PHASE_03;
-    bool SetDungeonEncounterID;
     bool IsLock;
 };
 

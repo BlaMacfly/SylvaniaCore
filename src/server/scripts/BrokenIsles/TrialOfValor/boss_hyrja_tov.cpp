@@ -126,8 +126,11 @@ public:
                         if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
                             me->CastSpell(target, SPELL_EXPEL_LIGHT_MARKER, false);
 
-                        events.ScheduleEvent(EVENT_EXPEL_LIGHT, (expelLightSwitch <= 1) ? 20 : 75 * IN_MILLISECONDS);
-                        expelLightSwitch = (expelLightSwitch <= 1) ? ++expelLightSwitch : 0;
+                        // SylvaniaCore : le 20 n etait pas multiplie par IN_MILLISECONDS
+                        // (relance toutes les 20 ms), et l ancienne affectation modifiait
+                        // expelLightSwitch deux fois sans point de sequence.
+                        events.ScheduleEvent(EVENT_EXPEL_LIGHT, (expelLightSwitch <= 1) ? 20 * IN_MILLISECONDS : 75 * IN_MILLISECONDS);
+                        expelLightSwitch = (expelLightSwitch <= 1) ? expelLightSwitch + 1 : 0;
                             
                         break;
                     case EVENT_SHIELD_OF_LIGHT:

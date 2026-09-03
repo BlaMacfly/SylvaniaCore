@@ -1038,7 +1038,7 @@ class TC_GAME_API WorldSession
 
         WorldSession(uint32 id, std::string&& name, uint32 battlenetAccountId, std::shared_ptr<WorldSocket> sock, AccountTypes sec, uint8 expansion, time_t mute_time,
             std::string os, LocaleConstant locale, uint32 recruiter, bool isARecruiter, std::string&& battlenetAccountName);
-        ~WorldSession();
+        virtual ~WorldSession();   // SylvaniaCore : PlayerBotSession en derive, un delete sur WorldSession* ne detruisait que la moitie de l objet
 
         void SetAddress(std::string mybot)
         {
@@ -1597,7 +1597,15 @@ class TC_GAME_API WorldSession
         void HandleMissileTrajectoryCollision(WorldPackets::Spells::MissileTrajectoryCollision& packet);
         void HandleUpdateMissileTrajectory(WorldPackets::Spells::UpdateMissileTrajectory& packet);
 
-        bool HasSocket() { return m_Socket != NULL; }
+        // SylvaniaCore : m_Socket est un tableau -- le comparer a NULL testait son
+        // adresse, donc renvoyait toujours true (y compris pour un playerbot).
+        bool HasSocket() const
+        {
+            for (std::shared_ptr<WorldSocket> const& socket : m_Socket)
+                if (socket)
+                    return true;
+            return false;
+        }
         virtual bool IsBotSession() { return false; }
         virtual bool HasSchedules() { return false; }
         virtual bool HasBGSchedule() { return false; }

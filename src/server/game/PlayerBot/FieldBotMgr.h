@@ -58,7 +58,7 @@ class TC_GAME_API FieldActing
 {
 public:
 	FieldActing(ACTING_TYPE aType) : m_ActingType(aType) {}
-	~FieldActing() {}
+	virtual ~FieldActing() {}   // SylvaniaCore : classe polymorphe detruite par pointeur de base
 
 	bool MatchActingType(ACTING_TYPE aType) { return m_ActingType == aType; }
 	virtual void Update() {}

@@ -1540,7 +1540,7 @@ public:
     };
     bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
     {
-        if (quest->GetQuestId() == QUEST_STOP_GULDAN_H || QUEST_STOP_GULDAN_A)
+        if (quest->GetQuestId() == QUEST_STOP_GULDAN_H || quest->GetQuestId() == QUEST_STOP_GULDAN_A)
             player->GetSceneMgr().PlayScene(SCENE_GULDAN_STEAL_ILLIDAN_ID);
         return true;
     }

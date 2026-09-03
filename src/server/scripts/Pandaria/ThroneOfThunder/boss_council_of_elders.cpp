@@ -928,7 +928,7 @@ public:
                     break;
                 case EVENT_RECKLESS_CAHRGE_INITIALIZE:
                 {
-                    if (me->HasAura(SPELL_DISCHARGE || me->HasAura(SPELL_OVERLOAD)))
+                    if (me->HasAura(SPELL_DISCHARGE) || me->HasAura(SPELL_OVERLOAD))
                     {
                         events.CancelEvent(EVENT_RECKLESS_CAHRGE_INITIALIZE);
                         events.ScheduleEvent(EVENT_RECKLESS_CAHRGE_INITIALIZE, 10 * IN_MILLISECONDS);

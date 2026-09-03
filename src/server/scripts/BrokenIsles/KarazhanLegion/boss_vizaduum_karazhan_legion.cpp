@@ -253,7 +253,7 @@ class boss_new_vizaduum : public CreatureScript
                 if (!_isFlying)
                     return;
 
-                if (type == POINT_MOTION_TYPE || WAYPOINT_MOTION_TYPE)
+                if (type == POINT_MOTION_TYPE || type == WAYPOINT_MOTION_TYPE)
                 {
                     switch (id)
                     {
