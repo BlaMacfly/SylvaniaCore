@@ -665,7 +665,9 @@ public:
 
         void ExitVehicle()
         {
-            GetCaster()->ExitVehicle();
+            // Meme prudence : rien ne garantit la presence du lanceur.
+            if (Unit* caster = GetCaster())
+                caster->ExitVehicle();
         }
 
         void Register() override
@@ -692,12 +694,41 @@ public:
 
         void HandleScript(SpellEffIndex /*effIndex*/)
         {
-            Creature* target = GetHitUnit()->ToCreature();
+            // =============================================================
+            // SylvaniaCore : objet de visee jamais verifie -> SIGSEGV.
+            //
+            // SIGNALE EN JEU : « si on attend la phase deux sans le
+            // frapper, le serveur plante ». Reproduction fidele, et deux
+            // vidages memoire l'ont confirmee, pile en main :
+            //     #0 spell_seismic_shard::HandleScript
+            //     #1 Spell::HandleEffects
+            //     ...
+            //     #13 InstanceMap::Update
+            //
+            // GetDynObject renvoie un pointeur NUL quand l'objet de visee
+            // n'existe pas -- pas encore cree, ou deja expire. La ligne
+            // suivante le dereferencait sans le moindre test, ce qui
+            // emporte le processus entier : le plantage a lieu dans le
+            // fil de mise a jour de la carte, pas dans une session.
+            //
+            // GetCaster() et GetHitUnit() sont verifies au passage : rien
+            // ne garantit leur presence au moment ou l'effet est traite,
+            // et un lanceur mort entre le lancement et l'impact suffit.
+            // =============================================================
+            Unit* caster = GetCaster();
+            Unit* hit = GetHitUnit();
+            if (!caster || !hit)
+                return;
+
+            Creature* target = hit->ToCreature();
             if (!target)
                 return;
 
+            DynamicObject* dynamicObject = caster->GetDynObject(SPELL_SEISMIC_SHARD_TARGETING);
+            if (!dynamicObject)
+                return;
+
             target->ExitVehicle();
-            DynamicObject* dynamicObject = GetCaster()->GetDynObject(SPELL_SEISMIC_SHARD_TARGETING);
             target->CastSpell(dynamicObject->GetPositionX(), dynamicObject->GetPositionY(), dynamicObject->GetPositionZ(), SPELL_SEISMIC_SHARD_MISSLE, true);
         }
 
