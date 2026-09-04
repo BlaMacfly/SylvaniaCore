@@ -562,8 +562,13 @@ struct scenario_broken_shore_intro : public InstanceScript
                 // Des vagues continuent d'affluer tant que la cite tient :
                 // sans cela la barre ne pourrait pas se remplir, la zone ne
                 // comptant pas assez de defenseurs pour ses 300 points.
+                //
+                // SIGNALE EN JEU : « en phase 6 j'ai des invocations de
+                // demon sur ma tronche ». Elles naissaient au point de
+                // ralliement, c'est-a-dire au milieu du combat. Elles
+                // arrivent desormais de la peripherie et chargent.
                 if ((cityKills % 6) == 0)
-                    SummonWave(Anchors().city, 5);
+                    SummonWaveLoin();
 
                 // FILET DE SECURITE, pas un mecanisme. Si la barre restait
                 // bloquee pour une raison qui nous echappe, le joueur ne
@@ -582,6 +587,34 @@ struct scenario_broken_shore_intro : public InstanceScript
                 break;
             default:
                 break;
+        }
+    }
+
+    // Renforts de la cite : ils surgissent en peripherie, a une
+    // cinquantaine de metres, sur un cercle dont l'orientation change a
+    // chaque vague -- puis ils chargent. Aucun demon ne se materialise
+    // dans le dos du joueur.
+    void SummonWaveLoin()
+    {
+        static uint32 const demons[5] =
+            { NPC_CHAOS_MINION, NPC_FELBLOOD_PACKHOUND, NPC_FELBLADE_DESTROYER,
+              NPC_EREDAR_SUMMONER, NPC_INFERNAL_DESTROYER };
+
+        FactionAnchors const& a = Anchors();
+        float const depart = frand(0.0f, float(M_PI) * 2.0f);
+
+        for (uint8 i = 0; i < 5; ++i)
+        {
+            float const angle = depart + float(i) * (float(M_PI) * 2.0f / 5.0f);
+            float const rayon = frand(45.0f, 60.0f);
+
+            if (TempSummon* demon = SummonAt(demons[i], a.city,
+                                             std::cos(angle) * rayon,
+                                             std::sin(angle) * rayon))
+            {
+                demon->SetReactState(REACT_AGGRESSIVE);
+                demon->SetInCombatWithZone();
+            }
         }
     }
 
@@ -687,22 +720,137 @@ struct scenario_broken_shore_intro : public InstanceScript
 
             DoSendEventScenario(EVENT_TIRION_REACHED);
             stage = STAGE_KROSUS;
-            tirion->DespawnOrUnsummon(20000);
+            SceneMortTirion();
+        });
+    }
 
+    // =================================================================
+    // SylvaniaCore : la mort de Tirion, mise en scene.
+    //
+    // SIGNALE EN JEU : « p7 c'est Krosus qui plonge Tirion dans le fiel
+    // normalement, et la pas de script de scenario ». Le script se
+    // contentait d'invoquer Krosus douze secondes plus tard.
+    //
+    // Sequence officielle, relevee sur Warcraft Wiki :
+    //   Tirion  « Stay back... it's a trap... »
+    //   Gul'dan « Ha, you fool! You stand before the temple of a GOD... »
+    //   Krosus surgit de la lave.
+    //   Gul'dan « Destroy him. »
+    //   Krosus souffle sur Tirion, qui sombre sous la lave.
+    //   Thrall  « Fordring! »
+    //   Gul'dan « All you have worked for... » puis « Destroy them! »
+    //
+    // Les huit repliques portent leur BroadcastTextId et leur Sound
+    // d'origine : le client joue la voix et affiche sa propre langue.
+    //
+    // Gul'dan est invoque des maintenant, au sommet du tombeau. Il y
+    // domine toute la fin du scenario -- c'est de la qu'il parle, et la
+    // finale le reutilise au lieu d'en invoquer un second.
+    // =================================================================
+    void SceneMortTirion()
+    {
+        FactionAnchors const& a = Anchors();
+
+        if (Creature* guldan = Summon(NPC_GULDAN, a.tomb))
+        {
+            guldanGUID = guldan->GetGUID();
+            guldan->SetReactState(REACT_PASSIVE);
+            guldan->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PC);
+        }
+
+        auto dire = [this](ObjectGuid const& guid, uint8 groupe)
+        {
+            if (Creature* qui = instance->GetCreature(guid))
+                qui->AI()->Talk(groupe);
+        };
+
+        // 0 s -- Tirion comprend le piege
+        dire(tirionGUID, 20);
+
+        scheduler.Schedule(Seconds(5), [this, dire](TaskContext /*c*/)
+        {
+            dire(guldanGUID, 20);                       // « Ha, you fool!... »
+        });
+
+        scheduler.Schedule(Seconds(11), [this](TaskContext /*c*/)
+        {
+            // Krosus surgit de la lave, encore passif
             if (Creature* krosus = Summon(NPC_KROSUS, Anchors().crevasse))
+            {
+                krosusGUID = krosus->GetGUID();
+                krosus->SetReactState(REACT_PASSIVE);
+                krosus->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PC);
+            }
+        });
+
+        scheduler.Schedule(Seconds(14), [this, dire](TaskContext /*c*/)
+        {
+            dire(guldanGUID, 21);                       // « Destroy him. »
+        });
+
+        scheduler.Schedule(Seconds(17), [this, dire](TaskContext /*c*/)
+        {
+            // Le souffle de Krosus emporte Tirion
+            Creature* krosus = instance->GetCreature(krosusGUID);
+            Creature* tirion = instance->GetCreature(tirionGUID);
+            if (krosus && tirion)
+                krosus->SetFacingToObject(tirion);
+
+            dire(tirionGUID, 21);                       // « The Light... ahh! »
+        });
+
+        scheduler.Schedule(Seconds(20), [this](TaskContext /*c*/)
+        {
+            // Il sombre sous la lave
+            if (Creature* tirion = instance->GetCreature(tirionGUID))
+            {
+                tirion->SetStandState(UNIT_STAND_STATE_DEAD);
+                tirion->DespawnOrUnsummon(4000);
+            }
+        });
+
+        scheduler.Schedule(Seconds(23), [this, dire](TaskContext /*c*/)
+        {
+            dire(leaderGUID, 20);                       // riposte du chef
+            DoOnPlayers([](Player* /*player*/) { });
+        });
+
+        scheduler.Schedule(Seconds(27), [this, dire](TaskContext /*c*/)
+        {
+            dire(guldanGUID, 22);                       // « All you have worked for... »
+        });
+
+        scheduler.Schedule(Seconds(33), [this, dire](TaskContext /*c*/)
+        {
+            dire(guldanGUID, 23);                       // « Destroy them! »
+
+            if (Creature* krosus = instance->GetCreature(krosusGUID))
+            {
+                krosus->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PC);
+                krosus->SetReactState(REACT_AGGRESSIVE);
                 krosus->SetInCombatWithZone();
+            }
         });
     }
 
     void StartFinale()
     {
         FactionAnchors const& a = Anchors();
-        if (Creature* guldan = Summon(NPC_GULDAN, a.tomb))
+
+        // Gul'dan est deja au sommet du tombeau depuis la mort de
+        // Tirion : on ne l'invoque une seconde fois que s'il a disparu.
+        Creature* guldan = instance->GetCreature(guldanGUID);
+        if (!guldan)
         {
-            guldanGUID = guldan->GetGUID();
-            guldan->SetReactState(REACT_PASSIVE);
-            guldan->AI()->Talk(0);
+            guldan = Summon(NPC_GULDAN, a.tomb);
+            if (guldan)
+            {
+                guldanGUID = guldan->GetGUID();
+                guldan->SetReactState(REACT_PASSIVE);
+            }
         }
+        if (guldan)
+            guldan->AI()->Talk(0);
         SummonWave(a.tomb, 4);
         scheduler.Schedule(Seconds(20), [this](TaskContext /*context*/)
         {
@@ -761,6 +909,7 @@ private:
     ObjectGuid placedVarianGUID;
     ObjectGuid placedVoljinGUID;
     ObjectGuid tirionGUID;
+    ObjectGuid krosusGUID;
     ObjectGuid guldanGUID;
     TaskScheduler scheduler;
 };
