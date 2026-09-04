@@ -167,6 +167,23 @@ enum BrokenShoreMisc
     GO_LEGION_CAGE_2        = 248819,
     DATA_CAGE_OPENED        = 9002,
 
+    // ==============================================================
+    // SylvaniaCore : les protagonistes de la crevasse SONT POSES sur la
+    // carte, sous d'autres entrees que celles du script :
+    //     91951  Highlord Tirion Fordring  (1495, 1751)
+    //     94276  Gul'dan                   (1530, 1742)
+    //     90544  Krosus                    (1481, 1716)
+    //     90705  Dread Commander Arganoth  ( 613, 2085)
+    //
+    // SIGNALE EN JEU : « tu ne les as pas implementes au Tirion et
+    // Krosus qu'il y avait de base sur la map, tu en as ajoute ».
+    // Meme faute que pour Varian : le script invoquait des sosies aux
+    // entrees 90367 et 90413, qui ne figurent nulle part sur la carte.
+    // On emploie desormais ceux de la base, retenus a leur creation.
+    // ==============================================================
+    NPC_TIRION_POSE         = 91951,
+    NPC_GULDAN_POSE         = 94276,
+
     EVENT_TIRION_REACHED    = 50027,
     EVENT_KROSUS_SLAIN      = 44669,
     EVENT_GULDAN_STOPPED    = 44826,
@@ -302,10 +319,16 @@ struct scenario_broken_shore_intro : public InstanceScript
         if (!creature || !creature->GetSpawnId())
             return;
 
-        if (creature->GetEntry() == NPC_KING_VARIAN)
-            placedVarianGUID = creature->GetGUID();
-        else if (creature->GetEntry() == NPC_VOLJIN)
-            placedVoljinGUID = creature->GetGUID();
+        switch (creature->GetEntry())
+        {
+            case NPC_KING_VARIAN:   placedVarianGUID  = creature->GetGUID(); break;
+            case NPC_VOLJIN:        placedVoljinGUID  = creature->GetGUID(); break;
+            case NPC_TIRION_POSE:   tirionGUID        = creature->GetGUID(); break;
+            case NPC_GULDAN_POSE:   guldanGUID        = creature->GetGUID(); break;
+            case NPC_KROSUS:        krosusGUID        = creature->GetGUID(); break;
+            case NPC_ARGANOTH:      arganothGUID      = creature->GetGUID(); break;
+            default: break;
+        }
     }
 
     // Le chef a rejoindre : celui de la carte s'il existe, sinon la
@@ -567,8 +590,14 @@ struct scenario_broken_shore_intro : public InstanceScript
                 // demon sur ma tronche ». Elles naissaient au point de
                 // ralliement, c'est-a-dire au milieu du combat. Elles
                 // arrivent desormais de la peripherie et chargent.
-                if ((cityKills % 6) == 0)
-                    SummonWaveLoin();
+                // VAGUES SUPPRIMEES. SIGNALE EN JEU : « ces invocations de
+                // demon, il faut arreter ca, a chaque fois que je me bats
+                // ils reviennent en vague, c'est affreux ». Elles etaient
+                // une addition de ma part pour permettre a la barre
+                // d'atteindre 300 points -- un pansement sur une deduction
+                // incertaine, qui rendait le combat interminable. Si la
+                // barre plafonne, c'est la correspondance des poids qu'il
+                // faudra revoir, pas le nombre d'ennemis.
 
                 // FILET DE SECURITE, pas un mecanisme. Si la barre restait
                 // bloquee pour une raison qui nous echappe, le joueur ne
@@ -688,13 +717,9 @@ struct scenario_broken_shore_intro : public InstanceScript
         // le critere officiel 50027. Tirion reste en place : il agonise
         // dans la crevasse, il n'a aucune raison de s'evaporer.
         // =============================================================
-        FactionAnchors const& a = Anchors();
-        if (Creature* tirion = Summon(NPC_TIRION, a.crevasse))
-        {
-            tirionGUID = tirion->GetGUID();
-            tirion->AI()->Talk(0);
+        // Tirion est deja sur la carte, agonisant dans la crevasse.
+        if (Creature* tirion = instance->GetCreature(tirionGUID))
             tirion->SetStandState(UNIT_STAND_STATE_KNEEL);
-        }
 
         scheduler.Schedule(Seconds(2), [this](TaskContext context)
         {
@@ -751,9 +776,9 @@ struct scenario_broken_shore_intro : public InstanceScript
     {
         FactionAnchors const& a = Anchors();
 
-        if (Creature* guldan = Summon(NPC_GULDAN, a.tomb))
+        // Gul'dan surplombe deja la scene : rien a invoquer.
+        if (Creature* guldan = instance->GetCreature(guldanGUID))
         {
-            guldanGUID = guldan->GetGUID();
             guldan->SetReactState(REACT_PASSIVE);
             guldan->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PC);
         }
@@ -774,10 +799,10 @@ struct scenario_broken_shore_intro : public InstanceScript
 
         scheduler.Schedule(Seconds(11), [this](TaskContext /*c*/)
         {
-            // Krosus surgit de la lave, encore passif
-            if (Creature* krosus = Summon(NPC_KROSUS, Anchors().crevasse))
+            // Krosus est deja dans la lave : on le rend seulement inerte
+            // le temps de la scene.
+            if (Creature* krosus = instance->GetCreature(krosusGUID))
             {
-                krosusGUID = krosus->GetGUID();
                 krosus->SetReactState(REACT_PASSIVE);
                 krosus->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC | UNIT_FLAG_IMMUNE_TO_PC);
             }
@@ -910,6 +935,7 @@ private:
     ObjectGuid placedVoljinGUID;
     ObjectGuid tirionGUID;
     ObjectGuid krosusGUID;
+    ObjectGuid arganothGUID;
     ObjectGuid guldanGUID;
     TaskScheduler scheduler;
 };
