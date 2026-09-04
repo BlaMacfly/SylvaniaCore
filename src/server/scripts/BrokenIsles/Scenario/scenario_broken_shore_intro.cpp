@@ -125,6 +125,52 @@ enum BrokenShoreMisc
     EVENT_LEADER_FOUND      = 45228,
     EVENT_ANCHOR_DESTROYED  = 45288,
 
+    // ==============================================================
+    // Etape 6, « Raser la cite noire ». Son arbre 42770 porte
+    // l'operateur 9, CRITERIA_TREE_OPERATOR_SUM_CHILDREN_WEIGHT : la
+    // barre vaut 300 points et chaque enfant y contribue selon SON
+    // poids, releve dans les DB2 du build 7.3.5.26972 :
+    //
+    //     asset 44384  poids  1   ->  0,33 % par activation
+    //     asset 53062  poids  2   ->  0,67 %
+    //     asset 53063  poids  5   ->  1,67 %
+    //     asset 53064  poids 10   ->  3,33 %
+    //
+    // SIGNALE EN JEU : « la phase 6 ne progresse pas en tuant, la
+    // progression reste a 0 % ». Le script n'envoyait aucun de ces
+    // quatre evenements : il comptait dix morts dans son coin et
+    // forcait le passage, laissant la barre morte.
+    //
+    // DEDUCTION ASSUMEE, ET NON DONNEE : rien n'indique quel ennemi
+    // porte quel poids. La cite ne contient que DEUX categories --
+    // 94 demons ordinaires et 17 elites -- la ou les poids en
+    // supposent quatre. On attribue donc le poids 2 aux ordinaires et
+    // le poids 5 aux elites, ce qui fait progresser la barre a
+    // proportion de la difficulte. Les poids 1 et 10 restent
+    // inemployes faute de savoir ce qu'ils designent.
+    // ==============================================================
+    EVENT_CITY_TRASH        = 53062,  // poids 2
+    EVENT_CITY_ELITE        = 53063,  // poids 5
+
+    // Etapes 7 a 9, criteres releves dans les memes DB2 :
+    //     etape 7  arbre 42772  critere 29715  asset 50027  x1
+    //     etape 8  arbre 43765  critere 28055  asset 44669  x1
+    //     etape 9  arbre 47225  critere 29714  asset 44826  x1
+    // Le quatrieme poids de la barre de l'etape 6, longtemps inemploye.
+    // SIGNALE EN JEU : « les gameobject Legion Cage ne comptent pas »,
+    // puis « oui la barre bouge de 1 % » -- les cages alimentent donc
+    // bien la barre. Le poids 1 est le seul des quatre qui restait
+    // libre, et il correspond a une action mineure : 1 point sur 300,
+    // soit 0,33 %, ce qui s'affiche comme 1 % des la deuxieme cage.
+    EVENT_CITY_CAGE         = 44384,
+    GO_LEGION_CAGE          = 240535,
+    GO_LEGION_CAGE_2        = 248819,
+    DATA_CAGE_OPENED        = 9002,
+
+    EVENT_TIRION_REACHED    = 50027,
+    EVENT_KROSUS_SLAIN      = 44669,
+    EVENT_GULDAN_STOPPED    = 44826,
+
     KILLS_CITY              = 10,
     KILLS_FINALE            = 8,
     ANCHORS_PORTAL          = 4,    // etait 2, valeur inventee
@@ -379,7 +425,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             case NPC_FELBLADE_DESTROYER:
             case NPC_EREDAR_SUMMONER:
             case NPC_INFERNAL_DESTROYER:
-                OnDemonDied();
+                OnDemonDied(creature);
                 break;
             // Les treize Seigneurs gangrebois places sur la carte. L'etape
             // en exige trois ; on les enumere explicitement plutot que de
@@ -421,8 +467,8 @@ struct scenario_broken_shore_intro : public InstanceScript
             case NPC_KROSUS:
                 if (stage == STAGE_KROSUS)
                 {
+                    DoSendEventScenario(EVENT_KROSUS_SLAIN);
                     stage = STAGE_STOP_GULDAN;
-                    CompleteStep();
                     StartFinale();
                 }
                 break;
@@ -447,7 +493,7 @@ struct scenario_broken_shore_intro : public InstanceScript
                 // arrivent jamais ici : ils ont leurs propres criteres.
                 // =====================================================
                 if (creature->GetCreatureTemplate()->type == CREATURE_TYPE_DEMON)
-                    OnDemonDied();
+                    OnDemonDied(creature);
                 break;
         }
     }
@@ -457,6 +503,14 @@ struct scenario_broken_shore_intro : public InstanceScript
     // d'instance ne rapporte cette utilisation.
     void SetData(uint32 type, uint32 /*data*/) override
     {
+        if (type == DATA_CAGE_OPENED)
+        {
+            // Une cage ne vaut que pendant l'assaut de la cite.
+            if (stage == STAGE_RAZE_CITY)
+                DoSendEventScenario(EVENT_CITY_CAGE);
+            return;
+        }
+
         if (type != DATA_SPIRE_USED || stage != STAGE_STORM_BEACH)
             return;
 
@@ -489,7 +543,7 @@ struct scenario_broken_shore_intro : public InstanceScript
         }
     }
 
-    void OnDemonDied()
+    void OnDemonDied(Creature* mort)
     {
         switch (stage)
         {
@@ -499,13 +553,29 @@ struct scenario_broken_shore_intro : public InstanceScript
                 TryFinishBeach();
                 break;
             case STAGE_RAZE_CITY:
-                if (++cityKills >= KILLS_CITY)
+            {
+                // La barre officielle avance selon la valeur de l'ennemi.
+                bool const elite = mort && mort->GetCreatureTemplate()->rank > 0;
+                DoSendEventScenario(elite ? EVENT_CITY_ELITE : EVENT_CITY_TRASH);
+                ++cityKills;
+
+                // Des vagues continuent d'affluer tant que la cite tient :
+                // sans cela la barre ne pourrait pas se remplir, la zone ne
+                // comptant pas assez de defenseurs pour ses 300 points.
+                if ((cityKills % 6) == 0)
+                    SummonWave(Anchors().city, 5);
+
+                // FILET DE SECURITE, pas un mecanisme. Si la barre restait
+                // bloquee pour une raison qui nous echappe, le joueur ne
+                // doit pas rester prisonnier de l'etape.
+                if (cityKills >= 90)
                 {
                     stage = STAGE_HIGHLORD;
                     CompleteStep();
                     StartHighlord();
                 }
                 break;
+            }
             case STAGE_STOP_GULDAN:
                 if (++finaleKills >= KILLS_FINALE)
                     FinishScenario();
@@ -570,17 +640,55 @@ struct scenario_broken_shore_intro : public InstanceScript
 
     void StartHighlord()
     {
+        // =============================================================
+        // SylvaniaCore : l'etape s'intitule « Atteindre Tirion ».
+        //
+        // SIGNALE EN JEU : « la 7 c'est Tirion, il est passe
+        // automatiquement et ca me passe en 8 ».
+        //
+        // La minuterie de douze secondes validait l'etape SANS LE
+        // JOUEUR, et Tirion disparaissait au bout de vingt secondes --
+        // impossible de l'atteindre meme en courant. Meme defaut que
+        // « Trouver Varian » : le script decidait a la place du joueur.
+        //
+        // On attend desormais qu'un joueur le rejoigne, et on alimente
+        // le critere officiel 50027. Tirion reste en place : il agonise
+        // dans la crevasse, il n'a aucune raison de s'evaporer.
+        // =============================================================
         FactionAnchors const& a = Anchors();
         if (Creature* tirion = Summon(NPC_TIRION, a.crevasse))
         {
+            tirionGUID = tirion->GetGUID();
             tirion->AI()->Talk(0);
             tirion->SetStandState(UNIT_STAND_STATE_KNEEL);
-            tirion->DespawnOrUnsummon(20000);
         }
-        scheduler.Schedule(Seconds(12), [this](TaskContext /*context*/)
+
+        scheduler.Schedule(Seconds(2), [this](TaskContext context)
         {
+            if (stage != STAGE_HIGHLORD)
+                return;
+
+            Creature* tirion = instance->GetCreature(tirionGUID);
+            if (!tirion)
+                return;
+
+            bool atteint = false;
+            DoOnPlayers([&atteint, tirion](Player* player)
+            {
+                if (player->IsWithinDist(tirion, 25.0f, false))
+                    atteint = true;
+            });
+
+            if (!atteint)
+            {
+                context.Repeat(Seconds(2));
+                return;
+            }
+
+            DoSendEventScenario(EVENT_TIRION_REACHED);
             stage = STAGE_KROSUS;
-            CompleteStep();
+            tirion->DespawnOrUnsummon(20000);
+
             if (Creature* krosus = Summon(NPC_KROSUS, Anchors().crevasse))
                 krosus->SetInCombatWithZone();
         });
@@ -608,7 +716,7 @@ struct scenario_broken_shore_intro : public InstanceScript
     void FinishScenario()
     {
         stage = STAGE_DONE;
-        CompleteStep();
+        DoSendEventScenario(EVENT_GULDAN_STOPPED);
         if (Scenario* scenario = instance->GetInstanceScenario())
             scenario->CompleteScenario();
 
@@ -652,6 +760,7 @@ private:
     ObjectGuid sylvanasGUID;
     ObjectGuid placedVarianGUID;
     ObjectGuid placedVoljinGUID;
+    ObjectGuid tirionGUID;
     ObjectGuid guldanGUID;
     TaskScheduler scheduler;
 };
@@ -660,6 +769,22 @@ private:
 // appelle sScriptMgr->OnGossipHello avant tout traitement specifique, ce
 // qui nous donne le seul point d'accroche disponible. On renvoie false
 // pour laisser le comportement normal se poursuivre.
+// Les cages de la Legion, disseminees dans la cite. Les liberer fait
+// avancer la barre de l'etape 6.
+class go_legion_cage : public GameObjectScript
+{
+public:
+    go_legion_cage() : GameObjectScript("go_legion_cage") { }
+
+    bool OnGossipHello(Player* /*player*/, GameObject* go) override
+    {
+        if (InstanceScript* instance = go->GetInstanceScript())
+            instance->SetData(DATA_CAGE_OPENED, 1);
+
+        return false;   // on laisse le comportement normal se poursuivre
+    }
+};
+
 class go_spire_of_woe : public GameObjectScript
 {
 public:
@@ -678,4 +803,5 @@ void AddSC_scenario_broken_shore_intro()
 {
     RegisterInstanceScript(scenario_broken_shore_intro, 1460);
     new go_spire_of_woe();
+    new go_legion_cage();
 }
