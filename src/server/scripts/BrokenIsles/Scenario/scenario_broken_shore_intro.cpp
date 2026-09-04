@@ -105,9 +105,29 @@ enum BrokenShoreMisc
     GO_SPIRE_OF_WOE         = 240194,
     DATA_SPIRE_USED         = 9001,   // signal envoye par le script d'objet
 
+    // ==============================================================
+    // Criteres officiels des etapes 2 a 4, releves dans ScenarioStep,
+    // CriteriaTree et Criteria du build 7.3.5.26972 :
+    //     etape 2  arbre 43554  critere 30883  type 92  asset 45131  x1
+    //     etape 3  arbre 43589  critere 28017  type 92  asset 45228  x1
+    //     etape 4  arbre 43415  critere 27940  type 92  asset 45288  x4
+    //
+    // L'ancre du portail a ete identifiee sur la VIDEO de la bataille
+    // fournie par l'exploitant, et non deduite : l'objectif y affiche
+    // « 0/4 Ancres blindees detruites », puis 2/4, puis 3/4. Il s'agit
+    // donc de 101667 « Shielded Anchor », dont la carte porte QUINZE
+    // exemplaires deja poses autour de (1107, 2061) -- et non des deux
+    // ancres dimensionnelles 90637 que le script invoquait lui-meme.
+    // ==============================================================
+    NPC_SHIELDED_ANCHOR     = 101667,
+
+    EVENT_COMMANDER_SLAIN   = 45131,
+    EVENT_LEADER_FOUND      = 45228,
+    EVENT_ANCHOR_DESTROYED  = 45288,
+
     KILLS_CITY              = 10,
     KILLS_FINALE            = 8,
-    ANCHORS_PORTAL          = 2,
+    ANCHORS_PORTAL          = 4,    // etait 2, valeur inventee
 };
 
 struct FactionAnchors
@@ -211,6 +231,45 @@ struct scenario_broken_shore_intro : public InstanceScript
     {
         InstanceScript::Update(diff);
         scheduler.Update(diff);
+    }
+
+    // =================================================================
+    // SylvaniaCore : retenir le chef POSE SUR LA CARTE.
+    //
+    // SIGNALE EN JEU : « je suis en phase 4, je suis juste a cote de
+    // Varian et rien ne se valide ».
+    //
+    // La carte 1460 porte deja les vrais protagonistes -- Varian en
+    // (1120, 2484), Vol'jin en (568, 1887), Sylvanas et Jaina -- parmi
+    // les 757 creatures transposees. Or le script en invoquait une
+    // SECONDE copie sur la plage et ne surveillait que celle-la. Le
+    // joueur se tenait donc devant le vrai Varian pendant que l'etape
+    // guettait un sosie ailleurs, ou deja disparu.
+    //
+    // Le spawnId distingue les deux sans ambiguite : une creature issue
+    // de la base en porte un, une invocation non.
+    // =================================================================
+    void OnCreatureCreate(Creature* creature) override
+    {
+        InstanceScript::OnCreatureCreate(creature);
+
+        if (!creature || !creature->GetSpawnId())
+            return;
+
+        if (creature->GetEntry() == NPC_KING_VARIAN)
+            placedVarianGUID = creature->GetGUID();
+        else if (creature->GetEntry() == NPC_VOLJIN)
+            placedVoljinGUID = creature->GetGUID();
+    }
+
+    // Le chef a rejoindre : celui de la carte s'il existe, sinon la
+    // copie invoquee par le script.
+    Creature* FindLeader() const
+    {
+        ObjectGuid const pose = (team == TEAM_HORDE) ? placedVoljinGUID : placedVarianGUID;
+        if (Creature* leader = instance->GetCreature(pose))
+            return leader;
+        return instance->GetCreature(leaderGUID);
     }
 
     void CompleteStep()
@@ -340,16 +399,21 @@ struct scenario_broken_shore_intro : public InstanceScript
                 if (stage == STAGE_COMMANDER)
                 {
                     creature->AI()->Talk(1);
+                    DoSendEventScenario(EVENT_COMMANDER_SLAIN);
                     stage = STAGE_FIND_LEADER;
-                    CompleteStep();
                     StartFindLeader();
                 }
                 break;
-            case NPC_DIMENSIONAL_ANCHOR:
-                if (stage == STAGE_PORTAL && ++anchorsDown >= ANCHORS_PORTAL)
+            case NPC_SHIELDED_ANCHOR:
+                if (stage != STAGE_PORTAL)
+                    break;
+
+                // Une activation par ancre : le critere en exige quatre.
+                DoSendEventScenario(EVENT_ANCHOR_DESTROYED);
+
+                if (++anchorsDown >= ANCHORS_PORTAL)
                 {
                     stage = STAGE_RAZE_CITY;
-                    CompleteStep();
                     SummonWave(Anchors().city, 5);
                     SummonWave(Anchors().city, 5);
                 }
@@ -411,8 +475,12 @@ struct scenario_broken_shore_intro : public InstanceScript
         if (beachKills < KILLS_BEACH || felLordKills < FEL_LORDS_BEACH || spiresDown < SPIRES_BEACH)
             return;
 
+        // Les trois criteres officiels ont ete alimentes a chaque mort :
+        // le moteur acheve l'etape de lui-meme. Un CompleteStep() ici
+        // ferait avancer une SECONDE fois -- c'est la cause du saut
+        // d'etapes signale en jeu (« j'ai passe ma phase 2 et ca m'a
+        // switche jusqu'a la 5 sans rien faire »).
         stage = STAGE_COMMANDER;
-        CompleteStep();
 
         if (Creature* arganoth = Summon(NPC_ARGANOTH, Anchors().commander))
         {
@@ -451,9 +519,11 @@ struct scenario_broken_shore_intro : public InstanceScript
     {
         FactionAnchors const& a = Anchors();
 
-        // le chef et son etat-major se replacent au point de ralliement (la Cite noire)
-        if (Creature* leader = instance->GetCreature(leaderGUID))
-            leader->NearTeleportTo(a.city.GetPositionX(), a.city.GetPositionY(), a.city.GetPositionZ(), a.city.GetOrientation());
+        // On ne DEPLACE plus le chef. L'etape s'intitule « Trouver
+        // Varian » : le joueur doit aller a lui, la ou la carte le pose.
+        // Le teleporter au point de ralliement revenait a le mettre
+        // sous les pieds du joueur, et la detection de proximite se
+        // declenchait alors dans la seconde.
         SummonAt(NPC_KHADGAR, a.city, 4.0f, 3.0f);
         for (uint8 i = 0; i < 3; ++i)
             SummonAt(TroopEntry(), a.city, -6.0f + i * 6.0f, -5.0f);
@@ -464,7 +534,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             if (stage != STAGE_FIND_LEADER)
                 return;
             bool found = false;
-            Creature* leader = instance->GetCreature(leaderGUID);
+            Creature* leader = FindLeader();
             if (leader)
             {
                 DoOnPlayers([&found, leader](Player* player)
@@ -475,8 +545,8 @@ struct scenario_broken_shore_intro : public InstanceScript
             }
             if (found)
             {
+                DoSendEventScenario(EVENT_LEADER_FOUND);
                 stage = STAGE_PORTAL;
-                CompleteStep();
                 if (Creature* second = instance->GetCreature(team == TEAM_HORDE ? sylvanasGUID : jainaGUID))
                     second->AI()->Talk(0);
                 StartPortal();
@@ -489,8 +559,10 @@ struct scenario_broken_shore_intro : public InstanceScript
     void StartPortal()
     {
         FactionAnchors const& a = Anchors();
-        SummonAt(NPC_DIMENSIONAL_ANCHOR, a.portal, -8.0f, 0.0f);
-        SummonAt(NPC_DIMENSIONAL_ANCHOR, a.portal, 8.0f, 0.0f);
+        // Les ancres blindees (101667) sont DEJA posees sur la carte,
+        // quinze exemplaires autour de (1107, 2061). Rien a invoquer :
+        // le script en fabriquait deux fausses, d'une autre entree, que
+        // le critere officiel ne reconnaissait pas.
         SummonAt(NPC_EREDAR_SUMMONER, a.portal, 0.0f, 6.0f);
         SummonAt(NPC_CHAOS_MINION, a.portal, -5.0f, 8.0f);
         SummonAt(NPC_CHAOS_MINION, a.portal, 5.0f, 8.0f);
@@ -578,6 +650,8 @@ private:
     ObjectGuid leaderGUID;
     ObjectGuid jainaGUID;
     ObjectGuid sylvanasGUID;
+    ObjectGuid placedVarianGUID;
+    ObjectGuid placedVoljinGUID;
     ObjectGuid guldanGUID;
     TaskScheduler scheduler;
 };
