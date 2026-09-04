@@ -292,7 +292,21 @@ struct scenario_broken_shore_intro : public InstanceScript
         {
             introDone = true;
             team = player->GetTeamId();
-            StartIntro();
+
+            // =====================================================
+            // SIGNALE EN JEU : « Varian a un dialogue audio au
+            // lancement de la campagne, il ne se declenche pas ».
+            //
+            // StartIntro etait appele DANS OnPlayerEnter, c'est-a-dire
+            // pendant l'ajout du joueur a la carte. Le cri partait
+            // alors que le client chargeait encore la zone : il ne le
+            // recevait jamais. On laisse quatre secondes au client pour
+            // se poser avant d'ouvrir la scene.
+            // =====================================================
+            scheduler.Schedule(Seconds(4), [this](TaskContext /*c*/)
+            {
+                StartIntro();
+            });
         }
     }
 
@@ -738,9 +752,18 @@ struct scenario_broken_shore_intro : public InstanceScript
             if (stage != STAGE_HIGHLORD)
                 return;
 
+            // SIGNALE EN JEU : « p7 Tirion reste muet, le script ne se
+            // lance plus ». La tache sortait SANS SE REPLANIFIER quand
+            // Tirion n'etait pas encore charge -- sa zone se trouve a
+            // l'autre bout de la carte, la grille n'est peuplee qu'a
+            // l'approche du joueur. Elle mourait donc au premier
+            // passage, et la scene n'avait plus aucune chance de partir.
             Creature* tirion = instance->GetCreature(tirionGUID);
             if (!tirion)
+            {
+                context.Repeat(Seconds(2));
                 return;
+            }
 
             bool atteint = false;
             DoOnPlayers([&atteint, tirion](Player* player)
