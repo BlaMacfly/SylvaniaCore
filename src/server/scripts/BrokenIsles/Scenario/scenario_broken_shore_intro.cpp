@@ -149,8 +149,14 @@ enum BrokenShoreMisc
     // proportion de la difficulte. Les poids 1 et 10 restent
     // inemployes faute de savoir ce qu'ils designent.
     // ==============================================================
-    EVENT_CITY_TRASH        = 53062,  // poids 2
-    EVENT_CITY_ELITE        = 53063,  // poids 5
+    // AJUSTE SUR OBSERVATION EN JEU : « la progression de p6 est trop
+    // lente ». Avec les poids 2 et 5, les 94 demons ordinaires et 17
+    // elites de la cite plafonnaient a 273 points sur 300 -- d'ou la
+    // lenteur, et d'ou les vagues de renfort que j'avais ajoutees pour
+    // compenser, puis retirees. On monte d'un cran : une soixantaine
+    // d'ennemis suffit desormais, sans renfort artificiel.
+    EVENT_CITY_TRASH        = 53063,  // poids 5
+    EVENT_CITY_ELITE        = 53064,  // poids 10
 
     // Etapes 7 a 9, criteres releves dans les memes DB2 :
     //     etape 7  arbre 42772  critere 29715  asset 50027  x1
@@ -428,10 +434,16 @@ struct scenario_broken_shore_intro : public InstanceScript
         // etape 0 « The Broken Shore » : courte mise en scene puis assaut
         scheduler.Schedule(Seconds(12), [this](TaskContext /*context*/)
         {
+            // PLUS AUCUNE VAGUE. Le script a ete ecrit quand la carte
+            // etait VIDE : il fabriquait ses propres ennemis partout.
+            // Elle porte desormais 748 creatures posees, et ces
+            // invocations faisaient double emploi.
+            //
+            // SIGNALE EN JEU : « il y a toujours ces vagues de demons
+            // qui m'attaquent, RETIRE-LES ». Elles rendaient le combat
+            // interminable et repoussaient sans fin.
             stage = STAGE_STORM_BEACH;
             CompleteStep();
-            SummonWave(Anchors().beach, 6);
-            SummonWave(Anchors().commander, 6);
         });
     }
 
@@ -482,9 +494,8 @@ struct scenario_broken_shore_intro : public InstanceScript
 
                 if (++anchorsDown >= ANCHORS_PORTAL)
                 {
+                    // La cite est deja peuplee : rien a invoquer.
                     stage = STAGE_RAZE_CITY;
-                    SummonWave(Anchors().city, 5);
-                    SummonWave(Anchors().city, 5);
                 }
                 break;
             case NPC_KROSUS:
@@ -611,8 +622,9 @@ struct scenario_broken_shore_intro : public InstanceScript
                 break;
             }
             case STAGE_STOP_GULDAN:
-                if (++finaleKills >= KILLS_FINALE)
-                    FinishScenario();
+                // On compte encore, pour memoire, mais la fin est
+                // desormais reglee par la sequence de Gul'dan.
+                ++finaleKills;
                 break;
             default:
                 break;
@@ -733,7 +745,12 @@ struct scenario_broken_shore_intro : public InstanceScript
             bool atteint = false;
             DoOnPlayers([&atteint, tirion](Player* player)
             {
-                if (player->IsWithinDist(tirion, 25.0f, false))
+                // SIGNALE EN JEU : « le scenario ne se declenche que si
+                // on saute dans la lave, le perimetre de detection est
+                // trop serre ». Tirion agonise au bord du bassin, a
+                // z=40, Krosus etant a z=35 : a 25 metres, le seul point
+                // qui satisfaisait la condition etait la lave elle-meme.
+                if (player->IsWithinDist(tirion, 50.0f, false))
                     atteint = true;
             });
 
@@ -876,13 +893,28 @@ struct scenario_broken_shore_intro : public InstanceScript
         }
         if (guldan)
             guldan->AI()->Talk(0);
-        SummonWave(a.tomb, 4);
+
+        // =============================================================
+        // SIGNALE EN JEU : « la p9 vaincre Gul'dan se valide toute
+        // seule ». Elle s'achevait apres huit morts de demons -- or le
+        // script en invoquait lui-meme quatre au tombeau, puis quatre
+        // autres vingt secondes plus tard. Il declenchait donc sa
+        // propre condition de fin sans que le joueur y soit pour rien.
+        //
+        // L'etape se conclut desormais au terme de la sequence de
+        // Gul'dan, une fois ses trois repliques prononcees. Le compte
+        // de morts ne la declenche plus.
+        // =============================================================
         scheduler.Schedule(Seconds(20), [this](TaskContext /*context*/)
         {
-            if (stage == STAGE_STOP_GULDAN && finaleKills < KILLS_FINALE)
-                SummonWave(Anchors().tomb, 4);
             if (Creature* guldan = instance->GetCreature(guldanGUID))
                 guldan->AI()->Talk(1);
+        });
+
+        scheduler.Schedule(Seconds(38), [this](TaskContext /*context*/)
+        {
+            if (stage == STAGE_STOP_GULDAN)
+                FinishScenario();
         });
     }
 
