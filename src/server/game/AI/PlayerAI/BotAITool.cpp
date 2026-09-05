@@ -502,9 +502,30 @@ Position BotUtility::GetPositionFromGroup(Player* pCenterPlayer, ObjectGuid self
 	float distZ = centerPos.GetPositionZ();
 	if (!pCenterPlayer->IsFlying())
 		distZ = pCenterPlayer->GetMap()->GetHeight(pCenterPlayer->GetPhaseShift(), distX, distY, distZ);
+	// =================================================================
+	// SylvaniaCore : la position calculee etait JETEE.
+	//
+	// SIGNALE EN JEU : « les bots restent les uns sur les autres ».
+	//
+	// Tout le calcul ci-dessus est juste -- un angle propre a chaque
+	// membre, reparti sur le cercle, a quatre metres du meneur. Mais le
+	// resultat n'etait jamais renvoye :
+	//
+	//     Position resultPos(distX, distY, distZ, ...);   // calculee
+	//     Position pos;                                    // vide
+	//     pCenterPlayer->GetFirstCollisionPosition(...);   // jete
+	//     return pos;                                      // (0,0,0)
+	//
+	// GetFirstCollisionPosition REND une Position ; son resultat etait
+	// ignore, et l'on renvoyait une variable jamais renseignee. La
+	// fonction rendait donc l'origine du monde a tous les appelants, et
+	// la formation n'a jamais fonctionne -- nulle part, pas seulement
+	// dans ce scenario.
+	// =================================================================
 	Position resultPos(distX, distY, distZ, pCenterPlayer->GetOrientation());
-	Position pos;
-	pCenterPlayer->GetFirstCollisionPosition(pCenterPlayer->GetDistance(resultPos), pCenterPlayer->GetRelativeAngle(&resultPos));
+	Position pos = pCenterPlayer->GetFirstCollisionPosition(
+		pCenterPlayer->GetDistance(resultPos), pCenterPlayer->GetRelativeAngle(&resultPos));
+	pos.SetOrientation(pCenterPlayer->GetOrientation());
 	return pos;
 }
 

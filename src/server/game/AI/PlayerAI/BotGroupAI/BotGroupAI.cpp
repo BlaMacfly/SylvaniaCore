@@ -1528,18 +1528,44 @@ void BotGroupAI::ProcessFollowToMaster()
 	}
 	Position targetPos = BotUtility::GetPositionFromGroup(m_MasterPlayer, me->GetGUID(), me->GetGroup());
 	m_Movement->MovementTo(targetPos.GetPositionX(), targetPos.GetPositionY(), targetPos.GetPositionZ(), 0);
+	// =================================================================
+	// ANGLE PROPRE A CHAQUE MEMBRE.
+	//
+	// Les deux MoveFollow ci-dessous employaient la MEME distance et le
+	// MEME angle pour tout le monde -- un metre devant le meneur, a son
+	// orientation. Tous les bots convergeaient donc vers un point unique
+	// et se superposaient, quand bien meme GetPositionFromGroup leur
+	// avait calcule une place distincte deux lignes plus haut.
+	//
+	// On reprend l'angle de cette formation : chacun garde son secteur.
+	float suiviAngle = 0.0f;
+	float suiviDistance = 3.0f;
+	{
+		uint32 index = 0;
+		uint32 count = 0;
+		ObjectGuid monGuid = me->GetGUID();
+		if (me->GetGroup() && me->GetGroup()->GiveAtGroupPos(monGuid, index, count))
+		{
+			if (count > 1)
+				--count;
+			if (count)
+				suiviAngle = (float(M_PI) * 2.0f / float(count)) * float(index);
+			suiviDistance = (count > 3) ? 4.0f : 3.0f;
+		}
+	}
+
 	float distance = me->GetDistance(m_MasterPlayer->GetPosition());
 	if (distance <= NEEDFLEE_CHECKRANGE && distance > 0.1f)
 	{
 		me->GetMotionMaster()->Clear();
-		me->GetMotionMaster()->MoveFollow(m_MasterPlayer, 1.0f, m_MasterPlayer->GetOrientation());
+		me->GetMotionMaster()->MoveFollow(m_MasterPlayer, suiviDistance, suiviAngle);
 		return;
 	}
 
 	if (me->IsWithinLOSInMap(m_MasterPlayer))
 	{
 		me->GetMotionMaster()->Clear();
-		me->GetMotionMaster()->MoveFollow(m_MasterPlayer, 1.0f, m_MasterPlayer->GetOrientation());
+		me->GetMotionMaster()->MoveFollow(m_MasterPlayer, suiviDistance, suiviAngle);
 	}
 	else
 		m_Movement->MovementTo(m_MasterPlayer->GetPositionX(), m_MasterPlayer->GetPositionY(), m_MasterPlayer->GetPositionZ(), 1);
