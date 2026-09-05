@@ -108,10 +108,22 @@ public:
         {
             player->GetSceneMgr().CancelSceneByPackageId(TanaanSceneObjects::SceneFinaleIronBastion);
 
+            /// Les scenes du bateau (986 / 953) font planter le client : elles sont ecrites pour
+            /// se jouer sur un transport en mouvement, alors que PlaySceneByPackageId les envoie
+            /// ancrees sur la position du joueur, avec un TransportGUID vide et un SceneID nul.
+            /// On fait donc directement ce que leur declencheur "Teleport" faisait, cf.
+            /// playerScript_tanaan_scene_boat plus bas (ses hooks restent en place au cas ou la
+            /// scene serait rejouee a la main).
             if (player->GetTeamId() == TEAM_ALLIANCE)
-                player->GetSceneMgr().PlaySceneByPackageId(TanaanSceneObjects::SceneAllianceBoat);
+            {
+                player->TeleportTo(TanaanZones::MapDraenor, 2308.9621f, 454.9409f, 6.0f, player->GetOrientation());
+                player->CompletedAchievement(TanaanAchievements::AchievementWelcomeToDreanorA);
+            }
             else
-                player->GetSceneMgr().PlaySceneByPackageId(TanaanSceneObjects::SceneHordeBoat);
+            {
+                player->TeleportTo(TanaanZones::MapDraenor, 5538.213379f, 5015.2690f, 13.0f, player->GetOrientation());
+                player->CompletedAchievement(TanaanAchievements::AchievementWelcomeToDreanorH);
+            }
         }
     }
 

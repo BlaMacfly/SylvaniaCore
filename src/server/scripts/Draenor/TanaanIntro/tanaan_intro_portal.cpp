@@ -317,7 +317,9 @@ public:
                     return true;
 
                 player->KilledMonsterCredit(TanaanKillCredits::CreditNorthernSpireDisabled);
-                player->GetSceneMgr().PlaySceneByPackageId(TanaanSceneObjects::SceneChoGallsFreedom);
+                /// Scenes 961 / 962 desactivees : jouees par PlaySceneByPackageId (SceneID nul,
+                /// ancrees sur la position du joueur), elles envoient le joueur sous la map.
+                /// Purement decoratif : le credit de quete est deja donne juste au-dessus.
             }
             /// Bleeding Hollow Gob (Teron'Gor)
             else if (gameObject->GetEntry() == TanaanGameObjects::GobMarkOfBleedingHollow)
@@ -328,7 +330,7 @@ public:
                     return true;
 
                 player->KilledMonsterCredit(TanaanKillCredits::CreditSouthernSpireDisabled);
-                player->GetSceneMgr().PlaySceneByPackageId(TanaanSceneObjects::SceneTeronGorsFreedom);
+                /// Scene 962 desactivee, cf. le commentaire sur la marque des Ombrelune.
             }
         }
         return true;
