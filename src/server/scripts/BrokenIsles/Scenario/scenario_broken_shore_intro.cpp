@@ -17,6 +17,9 @@
 #include "GameObject.h"
 #include "ObjectMgr.h"
 #include "TaskScheduler.h"
+#include "MercenaryMgr.h"
+#include "Chat.h"
+#include "Group.h"
 
 enum BrokenShoreData
 {
@@ -288,6 +291,54 @@ struct scenario_broken_shore_intro : public InstanceScript
         // objectif « embarquement » (Alliance) : credite aussi ici au cas ou
         player->KilledMonsterCredit(NPC_CREDIT_SHIP);
 
+        // =============================================================
+        // ESCORTE_MERCENAIRE
+        //
+        // DEMANDE : « cree le systeme de groupe avec playerbot pour le
+        // scenario, avec un groupe complet heal tank dps », en reprenant
+        // le principe des mercenaires mais declenche a l entree.
+        //
+        // Le scenario officiel se joue en groupe, constitue par la file
+        // d attente. Faute de ce systeme, on offre une escorte : un
+        // protecteur, un guerisseur et deux combattants, gratuitement.
+        //
+        // Le contrat reste celui des mercenaires -- rupture au premier
+        // depart du groupe -- mais sans prelevement : le jeu la fournit,
+        // le joueur ne l a pas louee.
+        //
+        // On ne complete que ce qui manque : un joueur deja accompagne
+        // garde ses compagnons.
+        // =============================================================
+        if (sMercenaryMgr->IsEnabled())
+        {
+            uint32 place = MERCENARY_GROUP_SIZE - 1;
+            if (Group* groupe = player->GetGroup())
+                place = (groupe->GetMembersCount() < MERCENARY_GROUP_SIZE)
+                      ? MERCENARY_GROUP_SIZE - groupe->GetMembersCount() : 0;
+
+            static uint8 const composition[] = { ROLE_TANK, ROLE_HEALER, ROLE_DAMAGE, ROLE_DAMAGE };
+
+            // SIGNALE EN JEU : « une se superpose a la meme position ».
+            // On espace les arrivees d'une seconde et demie : le module
+            // pose chaque mercenaire aupres de son employeur, et deux
+            // invocations simultanees se retrouvent au meme point.
+            uint8 recrutes = 0;
+            for (uint8 i = 0; i < 4 && recrutes < place; ++i)
+            {
+                uint8 const role = composition[i];
+                Player* employeur = player;
+                scheduler.Schedule(Milliseconds(1500 * (i + 1)), [employeur, role](TaskContext)
+                {
+                    sMercenaryMgr->Summon(employeur, role, nullptr, true);
+                });
+                ++recrutes;
+            }
+
+            if (recrutes)
+                ChatHandler(player->GetSession()).PSendSysMessage(
+                    "Une escorte de %u combattants se joint a vous pour l'assaut.", recrutes);
+        }
+
         if (!introDone)
         {
             introDone = true;
@@ -343,6 +394,10 @@ struct scenario_broken_shore_intro : public InstanceScript
         {
             case NPC_KING_VARIAN:   placedVarianGUID  = creature->GetGUID(); break;
             case NPC_VOLJIN:        placedVoljinGUID  = creature->GetGUID(); break;
+            case NPC_JAINA:         jainaGUID         = creature->GetGUID(); break;
+            case NPC_SYLVANAS:      sylvanasGUID      = creature->GetGUID(); break;
+            case NPC_GENN:          gennGUID          = creature->GetGUID(); break;
+            case NPC_THRALL:        thrallGUID        = creature->GetGUID(); break;
             case NPC_TIRION_POSE:   tirionGUID        = creature->GetGUID(); break;
             case NPC_GULDAN_POSE:   guldanGUID        = creature->GetGUID(); break;
             case NPC_KROSUS:        krosusGUID        = creature->GetGUID(); break;
@@ -420,34 +475,71 @@ struct scenario_broken_shore_intro : public InstanceScript
 
     void StartIntro()
     {
-        FactionAnchors const& a = Anchors();
+        // =============================================================
+        // CAST DEJA POSE SUR LA CARTE : plus aucune invocation.
+        //
+        // SIGNALE EN JEU : « je n'avais pas remarque mais a cette
+        // position il y a un 2e Genn Grisetete et une 2e Jaina ».
+        //
+        // Troisieme fois que ce defaut se manifeste -- apres Varian,
+        // puis Tirion et Krosus. La carte porte TOUTE la distribution,
+        // a l'endroit qui lui revient :
+        //     Genn Grisetete   (487, 2052)   a 49 m du debarquement
+        //     Jaina            (491, 2047)   a 56 m
+        //     Vol'jin, Thrall  (568-572, 1882-1887)   plage Horde
+        //     Baine, Sylvanas  (992-1000, 1874-1881)
+        //     Mekkatorque, Varian  (1117-1120, 2471-2484)
+        //
+        // Le script en fabriquait des copies au point d'ancrage, d'ou
+        // les doublons. On retient les vraies dans OnCreatureCreate et
+        // on ne convoque plus personne.
+        //
+        // Le chef de faction n'ouvre plus la scene : sur la plage, ce
+        // sont Genn et Jaina cote Alliance, Vol'jin cote Horde. Varian
+        // est ailleurs -- c'est tout l'objet de l'etape « Trouver
+        // Varian » d'aller le chercher.
+        // =============================================================
+        leaderGUID = (team == TEAM_HORDE) ? placedVoljinGUID : placedVarianGUID;
 
-        // debarquement : chef de faction + escorte
-        if (Creature* leader = Summon(LeaderEntry(), a.beach))
-        {
-            leaderGUID = leader->GetGUID();
-            leader->AI()->Talk(0);
-        }
-        if (team == TEAM_HORDE)
-        {
-            if (Creature* sylvanas = SummonAt(NPC_SYLVANAS, a.beach, 4.0f, 4.0f))
-                sylvanasGUID = sylvanas->GetGUID();
-            SummonAt(NPC_BAINE, a.beach, -4.0f, 4.0f);
-            SummonAt(NPC_THRALL, a.beach, 4.0f, -4.0f);
-        }
-        else
-        {
-            if (Creature* jaina = SummonAt(NPC_JAINA, a.beach, 4.0f, 4.0f))
-                jainaGUID = jaina->GetGUID();
-            SummonAt(NPC_GENN, a.beach, -4.0f, 4.0f);
-            SummonAt(NPC_MEKKATORQUE, a.beach, 4.0f, -4.0f);
-        }
-        for (uint8 i = 0; i < 4; ++i)
-            SummonAt(TroopEntry(), a.beach, -8.0f + i * 5.0f, -8.0f);
+        if (Creature* orateur = instance->GetCreature(team == TEAM_HORDE ? placedVoljinGUID : gennGUID))
+            orateur->AI()->Talk(0);
 
-        // etape 0 « The Broken Shore » : courte mise en scene puis assaut
-        scheduler.Schedule(Seconds(12), [this](TaskContext /*context*/)
+        // =============================================================
+        // ATTEINDRE_LA_PLAGE
+        //
+        // L'etape 1 s'intitule « Rendez-vous au rivage Brise » : elle se
+        // joue depuis le pont du navire, et ne s'acheve qu'une fois le
+        // joueur debarque. Une minuterie de douze secondes la validait
+        // sans lui -- et comme le client mettait ce temps a charger la
+        // zone, il se retrouvait deja en phase 2 a son arrivee.
+        //
+        // On attend desormais qu'il pose le pied sur le sable, a moins
+        // de 40 metres du point de debarquement.
+        // =============================================================
+        scheduler.Schedule(Seconds(3), [this](TaskContext context)
         {
+            if (stage != STAGE_INTRO)
+                return;
+
+            // SIGNALE EN JEU : « je reste bloque en p1 ». Le pont du
+            // navire est a 52 metres du point de debarquement, donc hors
+            // du cercle de 40 que j'exigeais : selon l'endroit ou le
+            // joueur descendait, il n'y entrait jamais. Porte a 90, ce
+            // qui couvre toute la greve devant le navire.
+            bool debarque = false;
+            Position const& plage = Anchors().beach;
+            DoOnPlayers([&debarque, &plage](Player* player)
+            {
+                if (player->GetExactDist2d(plage.GetPositionX(), plage.GetPositionY()) < 90.0f)
+                    debarque = true;
+            });
+
+            if (!debarque)
+            {
+                context.Repeat(Seconds(3));
+                return;
+            }
+
             // PLUS AUCUNE VAGUE. Le script a ete ecrit quand la carte
             // etait VIDE : il fabriquait ses propres ennemis partout.
             // Elle porte desormais 748 creatures posees, et ces
@@ -584,7 +676,10 @@ struct scenario_broken_shore_intro : public InstanceScript
         // switche jusqu'a la 5 sans rien faire »).
         stage = STAGE_COMMANDER;
 
-        if (Creature* arganoth = Summon(NPC_ARGANOTH, Anchors().commander))
+        // Arganoth est POSE sur la carte en (613, 2085) : quatrieme
+        // occurrence du meme defaut, apres Varian, Tirion, Krosus et la
+        // distribution de la plage. On emploie celui de la base.
+        if (Creature* arganoth = instance->GetCreature(arganothGUID))
         {
             arganoth->AI()->Talk(0);
             arganoth->SetInCombatWithZone();
@@ -991,6 +1086,8 @@ private:
     ObjectGuid tirionGUID;
     ObjectGuid krosusGUID;
     ObjectGuid arganothGUID;
+    ObjectGuid gennGUID;
+    ObjectGuid thrallGUID;
     ObjectGuid guldanGUID;
     TaskScheduler scheduler;
 };

@@ -361,7 +361,7 @@ bool MercenaryMgr::FindCandidate(Player* owner, uint8 role, uint32& accountId, u
     return false;
 }
 
-MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal)
+MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal, bool freeOfCharge)
 {
     if (!m_enabled)
         return MERC_ERR_DISABLED;
@@ -396,7 +396,7 @@ MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal
             return MERC_ERR_GROUP_FULL;
     }
 
-    if (!owner->HasEnoughMoney(uint64(m_cost)))
+    if (!freeOfCharge && !owner->HasEnoughMoney(uint64(m_cost)))
         return MERC_ERR_NO_MONEY;
 
     uint32 accountId = 0;
@@ -410,8 +410,9 @@ MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal
     if (!session)
         return MERC_ERR_NO_BOT;
 
-    // Le mercenaire existe : on encaisse.
-    owner->ModifyMoney(-int64(m_cost));
+    // Le mercenaire existe : on encaisse, sauf recrutement offert.
+    if (!freeOfCharge)
+        owner->ModifyMoney(-int64(m_cost));
 
     uint32 const level = PlayerBotSetting::CheckMaxLevel(owner->getLevel());
 

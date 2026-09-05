@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "Chat.h"
 #include "LFGMgr.h"
 #include "LFGQueue.h"
 #include "LFGPackets.h"
@@ -340,12 +341,56 @@ public:
         player->PlayerTalkClass->ClearMenus();
 
         player->PlayerTalkClass->SendCloseGossip();
-        // Embarquement pour la Rive Brisee : credit du bateau puis entree dans le scenario 786 (map 1460)
-        if (player->GetQuestStatus(42740) == QUEST_STATUS_INCOMPLETE)
+
+        // =============================================================
+        // SylvaniaCore : on embarque, on n'atterrit pas sur le sable.
+        //
+        // SIGNALE EN JEU : « quand on rejoint le Rivage brise on spawn
+        // sur un bateau en mouvement qui se dirige vers la plage, on
+        // n'est pas teleporte directement sur la plage ». Confirme par
+        // la video : la premiere phase s'intitule « Rendez-vous au
+        // rivage Brise » et se joue depuis le pont d'un navire.
+        //
+        // Ce script deposait le joueur en (443.8, 2076.1, 1.2), le
+        // point d'ancrage de la plage -- une coordonnee inventee.
+        //
+        // Le sort 199358 porte la destination OFFICIELLE dans
+        // spell_target_position : (441.2, 2023.75, 4.44), c'est-a-dire
+        // le pont de l'Alliance Battleship, pose en (440, 2025). La
+        // ligne est marquee VerifiedBuild 27843 : c'est de la donnee
+        // Blizzard, pas une deduction.
+        // =============================================================
+        // SIGNALE EN JEU : « le gossip d'Angelica ne declenche plus
+        // rien ». Deux causes, corrigees ensemble.
+        //
+        // Le lancement du sort 199358 n'aboutissait pas -- rien dans le
+        // journal, donc il n'etait meme pas tente. On teleporte
+        // directement aux coordonnees que ce sort porte dans
+        // spell_target_position, ce qui revient au meme sans dependre
+        // de la presence du sort cote serveur.
+        //
+        // Et la condition exigeait que la quete 42740 soit EN COURS :
+        // deja rendue ou pas encore prise, l'option restait muette.
+        // On accepte desormais aussi la quete achevee mais non rendue,
+        // et on laisse repasser ceux qui l'ont terminee -- refaire le
+        // scenario ne doit pas etre interdit.
+        float const PONT_DU_NAVIRE_X = 441.2f;
+        float const PONT_DU_NAVIRE_Y = 2023.75f;
+        float const PONT_DU_NAVIRE_Z = 4.44f;
+
+        QuestStatus const etat = player->GetQuestStatus(42740);
+        if (etat == QUEST_STATUS_INCOMPLETE || etat == QUEST_STATUS_COMPLETE ||
+            etat == QUEST_STATUS_REWARDED)
         {
-            player->KilledMonsterCredit(creature->GetEntry());
-            player->TeleportTo(1460, 443.8f, 2076.1f, 1.2f, 0.4f);
+            if (etat == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(creature->GetEntry());
+
+            player->TeleportTo(1460, PONT_DU_NAVIRE_X, PONT_DU_NAVIRE_Y,
+                                     PONT_DU_NAVIRE_Z, 0.4f);
         }
+        else
+            ChatHandler(player->GetSession()).PSendSysMessage(
+                "Prenez d'abord la quete La bataille du rivage Brise.");
 
         return true;
     };

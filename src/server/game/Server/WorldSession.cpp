@@ -180,7 +180,30 @@ WorldSession::~WorldSession()
     while (_recvQueue.next(packet))
         delete packet;
 
-    LoginDatabase.PExecute("UPDATE account SET online = 0 WHERE id = %u;", GetAccountId());     // One-time query
+    // =================================================================
+    // SylvaniaCore : ne plus ecrire en base une fois l'arret engage.
+    //
+    // Chaque arret du serveur produisait un vidage memoire de 120 Mo :
+    //     #4 World::~World()
+    //     #3 PlayerBotSession::~PlayerBotSession()
+    //     #2 WorldSession::~WorldSession()
+    //     #1 DatabaseWorkerPool<LoginDatabaseConnection>::Execute()
+    //     #5 __run_exit_handlers
+    // Le monde est detruit par les gestionnaires de sortie, donc APRES
+    // le demontage du reservoir de connexions : la requete ci-dessous
+    // ecrivait dans un objet deja liberé.
+    //
+    // Ces faux plantages noient les vrais -- on a passe du temps cette
+    // semaine a trier des vidages qui n'etaient que des arrets propres.
+    //
+    // Sauter la requete est sans consequence : Main.cpp remet DEJA tous
+    // les comptes et personnages du royaume hors ligne au demarrage.
+    //
+    // IsStopped() est statique et lit un booleen statique : il reste
+    // consultable pendant la destruction, contrairement a sWorld.
+    // =================================================================
+    if (!World::IsStopped())
+        LoginDatabase.PExecute("UPDATE account SET online = 0 WHERE id = %u;", GetAccountId());
 }
 
 bool WorldSession::PlayerDisconnected() const

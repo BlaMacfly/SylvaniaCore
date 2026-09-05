@@ -110,7 +110,12 @@ class TC_GAME_API MercenaryMgr
         // Verifie, encaisse et lance l invocation. Le prelevement n a lieu que
         // si un mercenaire du role demande a effectivement ete reserve.
         // "portal" est la structure invoquante : le mercenaire en sortira.
-        MercenaryResult Summon(Player* owner, uint8 role, Creature* portal = nullptr);
+        // « freeOfCharge » saute la verification et le prelevement : il sert
+        // aux recrutements que le jeu offre, comme l escorte fournie a
+        // l entree d un scenario. Le contrat reste identique par ailleurs,
+        // rupture au premier depart du groupe comprise.
+        MercenaryResult Summon(Player* owner, uint8 role, Creature* portal = nullptr,
+                               bool freeOfCharge = false);
 
         void Update(uint32 diff);
 
