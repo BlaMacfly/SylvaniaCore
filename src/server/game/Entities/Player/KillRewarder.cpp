@@ -243,7 +243,30 @@ void KillRewarder::_RewardGroup()
                     if (member->IsAtGroupRewardDistance(_victim))
                     {
                         _RewardPlayer(member, isDungeon);
-                        member->UpdateCriteria(CRITERIA_TYPE_SPECIAL_PVP_KILL, 1, 0, 0, _victim);
+
+                        // =============================================
+                        // SylvaniaCore : ce credit est JcJ.
+                        //
+                        // SIGNALE EN JEU : « j ai attaque un petit groupe
+                        // de demons et j ai recu le haut fait Courroux
+                        // de l Alliance, totalement hors sujet ». Ce
+                        // haut fait demande de tuer cinq joueurs de la
+                        // Horde dans chaque grande ville.
+                        //
+                        // La ligne suivante creditait un meurtre JcJ a
+                        // chaque membre du groupe pour N IMPORTE QUELLE
+                        // mort, creatures comprises. Elle ne se voyait
+                        // pas tant qu on jouait seul : ce bloc n est
+                        // parcouru qu en groupe. L escorte de
+                        // mercenaires l a mise au jour.
+                        //
+                        // TrinityCore ne fait pas cette mise a jour du
+                        // tout, ni en 3.3.5 ni en master : c est un
+                        // ajout local, pose sans le garde-fou _isPvP
+                        // que ce fichier emploie partout ailleurs.
+                        // =============================================
+                        if (_isPvP)
+                            member->UpdateCriteria(CRITERIA_TYPE_SPECIAL_PVP_KILL, 1, 0, 0, _victim);
                     }
                 }
             }

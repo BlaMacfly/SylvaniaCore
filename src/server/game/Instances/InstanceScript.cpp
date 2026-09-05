@@ -714,7 +714,40 @@ void InstanceScript::DoUpdateCriteria(CriteriaTypes type, uint32 miscValue1 /*= 
 
 void InstanceScript::DoSendEventScenario(uint32 eventId /*= 0*/)
 {
-    DoUpdateCriteria(CRITERIA_TYPE_SEND_EVENT_SCENARIO, eventId, 0, nullptr);
+    // =================================================================
+    // SylvaniaCore : un evenement de scenario ne compte QU UNE FOIS.
+    //
+    // SIGNALE EN JEU : « un petit groupe de demons m a valide les 33/33
+    // et les 3/3 gangreseigneurs d un coup ».
+    //
+    // DoUpdateCriteria diffuse a CHAQUE joueur de l instance, et
+    // Player::UpdateCriteria transmet ensuite au scenario :
+    //     if (Scenario* scenario = GetScenario())
+    //         scenario->UpdateCriteria(...);
+    // Or ce compteur est PARTAGE par toute l instance. Chaque mort etait
+    // donc comptee autant de fois qu il y avait de joueurs presents --
+    // cinq, avec une escorte de mercenaires. Sept demons suffisaient a
+    // remplir un objectif qui en demande trente-trois.
+    //
+    // Le defaut restait invisible tant qu on jouait seul : un joueur,
+    // un credit. L escorte l a mis au jour.
+    //
+    // On credite desormais le scenario une seule fois, en lui passant
+    // un joueur de reference pour les conditions qui en dependent.
+    // =================================================================
+    Scenario* scenario = instance->GetInstanceScenario();
+    if (!scenario)
+        return;
+
+    Map::PlayerList const& liste = instance->GetPlayers();
+    for (Map::PlayerList::const_iterator i = liste.begin(); i != liste.end(); ++i)
+    {
+        if (Player* reference = i->GetSource())
+        {
+            scenario->UpdateCriteria(CRITERIA_TYPE_SEND_EVENT_SCENARIO, eventId, 0, 0, nullptr, reference);
+            return;
+        }
+    }
 }
 
 // Start timed achievement for all players in instance
