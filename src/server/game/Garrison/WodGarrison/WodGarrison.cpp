@@ -192,12 +192,13 @@ void WodGarrison::TeleportOwnerAndPlayMovie() const
         }
     };
 
-    _owner->AddMovieDelayedAction(_siteLevel->UpgradeMovieID, [this, WodGarrisonEntrancePositions]
-    {
-        _owner->TeleportTo(_siteLevel->MapID, WodGarrisonEntrancePositions[GetFaction()][_siteLevel->GarrLevel - 1]);
-    });
-
-    _owner->SendMovieStart(_siteLevel->UpgradeMovieID);
+    /// Le film d'etablissement du fief (189 Horde / 192 Alliance, et 190/191/193/194
+    /// aux niveaux suivants) fige le client : le joueur doit se reconnecter. Comme il
+    /// n'envoie alors jamais CMSG_COMPLETE_MOVIE, l'action differee ne partait pas et
+    /// il n'etait jamais teleporte dans son fief. On teleporte donc directement.
+    /// Remettre AddMovieDelayedAction + SendMovieStart(_siteLevel->UpgradeMovieID) le
+    /// jour ou la cause du gel cote client sera connue.
+    _owner->TeleportTo(_siteLevel->MapID, WodGarrisonEntrancePositions[GetFaction()][_siteLevel->GarrLevel - 1]);
 }
 
 void WodGarrison::Delete()
