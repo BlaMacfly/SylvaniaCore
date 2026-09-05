@@ -460,7 +460,7 @@ MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal
     }
     m_contracts.push_back(contract);
 
-    TC_LOG_INFO("server.worldserver", "Mercenaires: %s a paye %u po pour un %s (compte bot %u).",
+    TC_LOG_INFO("server.worldserver", freeOfCharge ? "Mercenaires: %s recoit gratuitement un %3 (compte bot %4), cout %2 po non preleve." : "Mercenaires: %s a paye %u po pour un %s (compte bot %u).",
         owner->GetName().c_str(), GetCostGold(), GetRoleName(role), accountId);
 
     return MERC_OK;

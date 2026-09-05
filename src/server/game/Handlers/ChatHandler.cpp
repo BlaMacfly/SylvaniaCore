@@ -199,7 +199,36 @@ void WorldSession::HandleChatMessage(ChatMsg type, uint32 lang, std::string msg,
     if (msg.empty())
         return;
 
-    if (ChatHandler(this).ParseCommands(msg.c_str()))
+    // =================================================================
+    // ORDRE_AUX_COMPAGNONS
+    //
+    // SIGNALE EN JEU : « !summon repond "You can't teleport yourself to
+    // yourself", et !follow repond "There is no such command" ».
+    //
+    // ChatHandler::ParseCommands traite le point d'exclamation comme un
+    // prefixe de commande au meme titre que le point :
+    //     if (text[0] != '!' && text[0] != '.') return false;
+    // Il intercepte donc tout ordre avant qu'il n'atteigne le canal de
+    // groupe, ou Group::ProcessGroupBotCommand l'attend. Le systeme
+    // d'ordres aux playerbots etait inaccessible depuis toujours --
+    // « !summon » partait vers la commande de maitre de jeu du meme nom.
+    //
+    // On laisse passer les messages en « ! » lorsque le joueur commande
+    // effectivement des bots. Un maitre de jeu sans compagnon garde ses
+    // commandes en « ! » ; celui qui en a passe par le point, qui reste
+    // le prefixe principal.
+    bool ordreAuxCompagnons = false;
+    if (!msg.empty() && msg[0] == '!')
+        if (Group* groupe = GetPlayer()->GetGroup())
+            for (GroupReference* itr = groupe->GetFirstMember(); itr != nullptr; itr = itr->next())
+                if (Player* membre = itr->GetSource())
+                    if (membre->IsPlayerBot())
+                    {
+                        ordreAuxCompagnons = true;
+                        break;
+                    }
+
+    if (!ordreAuxCompagnons && ChatHandler(this).ParseCommands(msg.c_str()))
         return;
 
     // Strip invisible characters for non-addon messages
