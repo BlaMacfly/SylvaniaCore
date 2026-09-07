@@ -317,9 +317,13 @@ public:
                     return true;
 
                 player->KilledMonsterCredit(TanaanKillCredits::CreditNorthernSpireDisabled);
-                /// Scenes 961 / 962 desactivees : jouees par PlaySceneByPackageId (SceneID nul,
-                /// ancrees sur la position du joueur), elles envoient le joueur sous la map.
-                /// Purement decoratif : le credit de quete est deja donne juste au-dessus.
+                /// Ces scenes ne sont PAS la cause du joueur qui passe sous la map, contrairement
+                /// a ce qui avait ete suppose le 07/09/2026. Verifie en jeu : jouer 961 seule ne
+                /// produit que la replique de Cho'gall, texte et audio, sans deplacement ni
+                /// cinematique. Elles avaient ete retirees a tort et sont ici retablies.
+                /// A ne pas confondre avec les scenes du bateau 953 / 986, elles bel et bien
+                /// relocalisantes, retirees dans tanaan_intro_finale.cpp pour cette raison.
+                player->GetSceneMgr().PlaySceneByPackageId(TanaanSceneObjects::SceneChoGallsFreedom);
             }
             /// Bleeding Hollow Gob (Teron'Gor)
             else if (gameObject->GetEntry() == TanaanGameObjects::GobMarkOfBleedingHollow)
@@ -330,7 +334,7 @@ public:
                     return true;
 
                 player->KilledMonsterCredit(TanaanKillCredits::CreditSouthernSpireDisabled);
-                /// Scene 962 desactivee, cf. le commentaire sur la marque des Ombrelune.
+                player->GetSceneMgr().PlaySceneByPackageId(TanaanSceneObjects::SceneTeronGorsFreedom);
             }
         }
         return true;
