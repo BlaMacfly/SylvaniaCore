@@ -460,8 +460,9 @@ MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal
     }
     m_contracts.push_back(contract);
 
-    TC_LOG_INFO("server.worldserver", freeOfCharge ? "Mercenaires: %s recoit gratuitement un %3 (compte bot %4), cout %2 po non preleve." : "Mercenaires: %s a paye %u po pour un %s (compte bot %u).",
-        owner->GetName().c_str(), GetCostGold(), GetRoleName(role), accountId);
+    TC_LOG_INFO("server.worldserver", "Mercenaires: %s engage un %s (compte bot %u) -- %s.",
+        owner->GetName().c_str(), GetRoleName(role), accountId,
+        freeOfCharge ? "recrutement offert" : "100 po preleves");
 
     return MERC_OK;
 }
@@ -657,7 +658,34 @@ void MercenaryMgr::Update(uint32 diff)
             // le mercenaire a son ancienne place aux yeux de tout le monde.
             if (it->summonPending)
             {
-                if (BotGroupAI* groupAI = dynamic_cast<BotGroupAI*>(bot->GetAI()))
+                // Est-il arrive ? Le point de rendez-vous est le portail quand
+                // il y en a un, l employeur sinon.
+                bool arrive = false;
+                if (it->hasPortal)
+                    arrive = bot->GetMapId() == it->portalMap
+                          && bot->GetExactDist2d(it->portalPos.GetPositionX(),
+                                                 it->portalPos.GetPositionY()) < MERCENARY_ARRIVAL_RANGE;
+                else
+                    arrive = bot->GetMapId() == owner->GetMapId()
+                          && bot->GetExactDist2d(owner) < MERCENARY_ARRIVAL_RANGE;
+
+                if (arrive)
+                    it->summonPending = false;
+                else if (it->summonCheckTimer > 0)
+                    --it->summonCheckTimer;
+                else if (it->summonAttempts >= MERCENARY_SUMMON_RETRIES)
+                {
+                    // On cesse d insister : mieux vaut un mercenaire annonce
+                    // perdu qu un mercenaire qu on croit present.
+                    it->summonPending = false;
+                    ChatHandler(owner->GetSession()).PSendSysMessage(
+                        "|cffff4444[Portail]|r %s n'a pas pu vous rejoindre.", bot->GetName().c_str());
+                    TC_LOG_ERROR("server.worldserver",
+                        "Mercenaires: %s n'a pas rejoint %s apres %u rappels (carte %u).",
+                        bot->GetName().c_str(), owner->GetName().c_str(),
+                        uint32(it->summonAttempts), bot->GetMapId());
+                }
+                else if (BotGroupAI* groupAI = dynamic_cast<BotGroupAI*>(bot->GetAI()))
                 {
                     // Repli : sans portail connu, ou si l armement immediat a
                     // echoue, le mercenaire rejoint simplement son employeur.
@@ -665,7 +693,9 @@ void MercenaryMgr::Update(uint32 diff)
                         groupAI->TeleportToPoint(it->portalMap, BuildPortalExit(it->portalPos, bot));
                     else
                         groupAI->ProcessBotCommand(owner, "!summon");
-                    it->summonPending = false;
+
+                    ++it->summonAttempts;
+                    it->summonCheckTimer = MERCENARY_SUMMON_RECHECK;
                 }
             }
 
@@ -748,7 +778,11 @@ void MercenaryMgr::Update(uint32 diff)
             if (BotGroupAI* groupAI = dynamic_cast<BotGroupAI*>(bot->GetAI()))
             {
                 groupAI->TeleportToPoint(it->portalMap, BuildPortalExit(it->portalPos, bot));
-                it->summonPending = false;
+                // L ordre est parti, mais rien ne dit encore qu il aboutira :
+                // on le compte comme une premiere tentative et la verification
+                // d arrivee prend le relais au tick suivant.
+                it->summonAttempts = 1;
+                it->summonCheckTimer = MERCENARY_SUMMON_RECHECK;
             }
         }
 

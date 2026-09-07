@@ -40,6 +40,18 @@ class Player;
 #define MERCENARY_GROUP_SIZE          5
 #define MERCENARY_HARD_CAP            (MERCENARY_GROUP_SIZE - 1)
 #define MERCENARY_SUMMON_TIMEOUT      60      // secondes avant abandon + remboursement
+
+// SIGNALE EN JEU : « Semid n est meme pas vers moi, elle est a l autre bout de
+// la map ». L ordre de rappel partait une seule fois et le contrat le tenait
+// aussitot pour honore. Quand il se perdait -- IA pas encore prete, teleport
+// deja en cours, changement de carte -- le mercenaire restait a sa derniere
+// position enregistree pour toute la duree du contrat.
+//
+// On verifie desormais l arrivee, et on renouvelle l ordre tant qu elle ne
+// vient pas.
+#define MERCENARY_ARRIVAL_RANGE       80.0f   // distance au-dela de laquelle il n est pas arrive
+#define MERCENARY_SUMMON_RETRIES      4       // ordres de rappel au maximum
+#define MERCENARY_SUMMON_RECHECK      3       // secondes entre deux verifications
 #define MERCENARY_COPPER_PER_GOLD     10000
 
 enum MercenaryStage
@@ -66,7 +78,8 @@ enum MercenaryResult
 struct MercenaryContract
 {
     MercenaryContract() : accountId(0), role(0), stage(MERC_STAGE_SUMMONING), waitSeconds(0),
-        pendingRelease(false), summonPending(false), hasPortal(false), portalMap(0) { }
+        pendingRelease(false), summonPending(false), summonAttempts(0),
+        summonCheckTimer(0), hasPortal(false), portalMap(0) { }
 
     uint32     accountId;       // compte bot reserve
     ObjectGuid ownerGuid;       // joueur qui a paye
@@ -83,6 +96,12 @@ struct MercenaryContract
     // aupres de son employeur : l ordre part au tick suivant, quand l IA de
     // groupe aura reconnu son maitre.
     bool       summonPending;
+
+    // Ordres de rappel deja emis, et delai avant de reverifier l arrivee. Un
+    // teleport de bot se joue en trois echanges : reverifier au tick suivant
+    // conclurait a un echec alors qu il est simplement en cours de route.
+    uint8      summonAttempts;
+    uint32     summonCheckTimer;
 
     // Le portail d ou part l invocation : le mercenaire doit en sortir, pas
     // se materialiser aux pieds de son employeur reste en retrait.
