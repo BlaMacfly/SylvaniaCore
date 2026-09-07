@@ -1,0 +1,15 @@
+-- Archmage Khadgar (78288) : faction hostile a l'Alliance, a tort.
+--
+-- Signalement : un personnage Alliance debarque a Crete-de-Gel et se fait attaquer par
+-- trois PNJ. Deux sont conformes : Thrall (70859) et Farseer Drek'Thar (76411) sont des
+-- chefs de la Horde, hostiles a l'Alliance sur les royaumes officiels comme chez nous.
+--
+-- Le troisieme non. Khadgar est neutre dans tout Draenor : il sert les deux factions.
+-- Wowhead le confirme pour cette entree precise (react Alliance = amical, Horde = amical),
+-- et notre propre base aussi : sur les 150 entrees "Archmage Khadgar", 100 sont en
+-- faction 35, et 78288 est la SEULE en faction 83 (Orgrimmar).
+--
+-- Il est spawne deux fois, toutes deux en zone 6720 : au point de debarquement (7257)
+-- et pres du fief (7004). Un joueur Alliance qui passe par la se fait donc agresser par
+-- un PNJ cense etre neutre.
+UPDATE `creature_template` SET `faction` = 35 WHERE `entry` = 78288;
