@@ -252,7 +252,7 @@ public:
 
                     if (Garrison* garr = player->GetGarrison(GARRISON_TYPE_GARRISON))
                     {
-                        garr->ToWodGarrison()->TeleportOwnerAndPlayMovie();
+                        garr->ToWodGarrison()->TeleportOwnerToGarrison();
                         player->KilledMonsterCredit(NPC_ESTABLISH_YOUR_GARRISON_KILL_CREDIT);
                     }
                 }
@@ -366,6 +366,45 @@ class spell_groog_rampage : public SpellScriptLoader
         }
 };
 
+/// 78466 - Gazlowe : retour dans un fief deja fonde.
+/// Les deux points d'entree existants (l'objet Master Surveyor cote Horde,
+/// Baros Alexston cote Alliance) ne se declenchent que si le joueur n'a PAS
+/// encore de fief. Une fois celui-ci fonde, plus rien ne permettait d'y entrer.
+class npc_gazlowe_garrison : public CreatureScript
+{
+public:
+    npc_gazlowe_garrison() : CreatureScript("npc_gazlowe_garrison") { }
+
+    enum
+    {
+        GOSSIP_ACTION_ENTER_GARRISON = 1000
+    };
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        /// Gazlowe est aussi spawne a l'interieur des fiefs : on n'y propose rien.
+        if (player->GetGarrison(GARRISON_TYPE_GARRISON) && !player->GetMap()->IsGarrison())
+            AddGossipItemFor(player, 0, "Emmenez-moi à mon fief.", 0, GOSSIP_ACTION_ENTER_GARRISON);
+
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
+    {
+        CloseGossipMenuFor(player);
+
+        if (action == GOSSIP_ACTION_ENTER_GARRISON)
+            if (Garrison* garrison = player->GetGarrison(GARRISON_TYPE_GARRISON))
+                garrison->ToWodGarrison()->TeleportOwnerToGarrison();
+
+        return true;
+    }
+};
+
 void AddSC_frostfire_ridge()
 {
     /* BEGIN */
@@ -376,6 +415,7 @@ void AddSC_frostfire_ridge()
     new npc_durotan_frostridge_begin();
 
     new go_frostridge_master_surveyor();
+    new npc_gazlowe_garrison();
 
     new spell_frostridge_claiming();
 

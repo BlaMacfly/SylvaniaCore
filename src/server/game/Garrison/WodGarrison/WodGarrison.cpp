@@ -169,12 +169,12 @@ bool WodGarrison::Upgrade()
     _owner->SendGarrisonRemoteInfo();
     PhasingHandler::OnConditionChange(_owner);
 
-    TeleportOwnerAndPlayMovie();
+    TeleportOwnerToGarrison();
 
     return true;
 }
 
-void WodGarrison::TeleportOwnerAndPlayMovie() const
+void WodGarrison::TeleportOwnerToGarrison() const
 {
     Position WodGarrisonEntrancePositions[2][3] =
     {

@@ -84,7 +84,7 @@ public:
     bool Create(uint32 garrSiteId) override;
     bool CanUpgrade(bool checkCost = true);
     bool Upgrade();
-    void TeleportOwnerAndPlayMovie() const;
+    void TeleportOwnerToGarrison() const;
     void Delete() override;
 
     void Enter() override;

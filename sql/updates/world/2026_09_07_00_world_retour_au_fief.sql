@@ -1,0 +1,13 @@
+-- Retour dans un fief deja fonde.
+--
+-- Les deux points d'entree du fief WoD ne se declenchent que si le joueur n'a
+-- PAS encore de fief : l'objet Master Surveyor (233664, Horde) et Baros
+-- Alexston (79243, Alliance). Une fois le fief fonde, plus rien ne permettait
+-- d'y entrer. Les trois joueurs du royaume qui possedent un fief ne sont
+-- jamais alles dessus (aucun personnage n'a jamais ete sur les cartes 1152,
+-- 1153, 1158, 1159, 1330 ni 1331).
+--
+-- Gazlowe (78466) recoit donc un script qui propose "Emmenez-moi a mon fief"
+-- aux proprietaires. Il est aussi spawne DANS les fiefs (cartes 1152, 1153,
+-- 1330) : le script n'y propose rien, il teste Map::IsGarrison().
+UPDATE `creature_template` SET `ScriptName` = 'npc_gazlowe_garrison' WHERE `entry` = 78466;

@@ -180,19 +180,28 @@ public:
         if (player->GetQuestStatus(QUEST_ESTABLISH_YOUR_GARRISON) == QUEST_STATUS_INCOMPLETE)
             AddGossipItemFor(player, 60002, 1, 0, 0);
 
+        /// Retour dans un fief deja fonde : sans cela plus rien n'y ramene.
+        if (player->GetGarrison(GARRISON_TYPE_GARRISON) && !player->GetMap()->IsGarrison())
+            AddGossipItemFor(player, 0, "Emmenez-moi à mon fief.", 0, 1000);
+
         SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
         return true;
     }
 
-    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 /*action*/) override
+    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
     {
         Garrison* garrison = player->GetGarrison(GARRISON_TYPE_GARRISON);
         if (!garrison)
         {
             CloseGossipMenuFor(player);
             player->CreateGarrison(player->IsInAlliance() ? GARRISON_SITE_WOD_ALLIANCE : GARRISON_SITE_WOD_HORDE);
-            player->GetGarrison(GARRISON_TYPE_GARRISON)->ToWodGarrison()->TeleportOwnerAndPlayMovie();
+            player->GetGarrison(GARRISON_TYPE_GARRISON)->ToWodGarrison()->TeleportOwnerToGarrison();
             player->KilledMonsterCredit(NPC_ESTABLISH_YOUR_GARRISON_KILL_CREDIT);
+        }
+        else if (action == 1000)
+        {
+            CloseGossipMenuFor(player);
+            garrison->ToWodGarrison()->TeleportOwnerToGarrison();
         }
 
         return true;
