@@ -769,6 +769,40 @@ void MercenaryMgr::Update(uint32 diff)
 
         PlayerBotMgr::SwitchPlayerBotAI(bot, PlayerBotAIType::PBAIT_GROUP, true);
 
+        // =============================================================
+        // RERESOLUTION_DES_SORTS
+        //
+        // MESURE (sonde SORTDBG, 09/09/2026) : sur quatre mercenaires tous
+        // montes au niveau 110, l IA avait resolu ses sorts au niveau 1 pour
+        // l un, au niveau 100 pour deux autres. Seul le quatrieme, re-resolu
+        // par hasard a 110, n avait plus que quatre capacites indisponibles
+        // -- et les quatre appartenaient a une autre specialisation, donc
+        // parfaitement normales.
+        //
+        // Les tables de sorts ne sont donc pas en cause. Le defaut est un
+        // probleme d ordre : chaque IA de classe resout ses poignees UNE
+        // fois, a sa construction, via FindMaxRankSpellByExist ; ce qui n
+        // est pas connu a cet instant reste eteint a vie, chaque usage etant
+        // garde par un « if (poignee) ».
+        //
+        // Le core prevoit pourtant la reparation : quand la mise en place s
+        // acheve, PlayerBotSetting pousse un BGSType_DelayLevelup qui
+        // reapprend les sorts et rappelle InitializeSpells. Mais
+        // OnLevelupToBotAI() commence par un dynamic_cast<BotGroupAI*> et ne
+        // fait rien si l IA de groupe n existe pas encore -- or nous venons
+        // seulement de la creer, la ligne au-dessus. La tache partait avant
+        // sa cible et tombait dans le vide.
+        //
+        // On en repousse donc une maintenant que l IA existe. Elle attend
+        // que le bot soit hors combat avant d agir, le rehabillage complet
+        // faisant partie du meme passage.
+        // =============================================================
+        if (PlayerBotSession* botSession = dynamic_cast<PlayerBotSession*>(bot->GetSession()))
+        {
+            BotGlobleSchedule reresolution(BotGlobleScheduleType::BGSType_DelayLevelup, bot->GetGUID());
+            botSession->PushScheduleToQueue(reresolution);
+        }
+
         // Des maintenant, pas au tick suivant : l IA de groupe, en decouvrant
         // un maitre lointain, armerait le sien vers l employeur, et SetTeleport
         // refuse d ecraser un teleport en cours. Notre ordre serait perdu et le
