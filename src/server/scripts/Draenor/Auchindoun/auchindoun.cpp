@@ -1228,9 +1228,12 @@ struct auchindoun_mob_blazing_trickster : public ScriptedAI
                 if (l_Azzakel->IsInCombat() && l_Azzakel->IsAlive() && l_Azzakel->IsAIEnabled)
                     l_Azzakel->GetAI()->DoAction(eAuchindounActions::ActionDemonSoulsAchievement);
         }
-        if (me->GetEntry() == 79510)
-            if (Creature* Azzakel_control = me->FindNearestCreature(87218, 50.0f, true))
-                Azzakel_control->AI()->DoAction(2);
+        /// 87218 n'est qu'un marqueur de position sans IA : le compteur doit
+        /// aller au vrai controleur (76216), retrouve par les donnees d'instance.
+        if (me->GetEntry() == 79510 && m_Instance != nullptr)
+            if (Creature* l_Trigger = m_Instance->instance->GetCreature(m_Instance->GetGuidData(eAuchindounDatas::DataTriggerAzzakelController)))
+                if (l_Trigger->IsWithinDistInMap(me, 50.0f) && l_Trigger->IsAIEnabled)
+                    l_Trigger->AI()->DoAction(eAuchindounActions::ActionCountPre3StBossKill);
     }
 
     void UpdateAI(uint32 p_Diff) override

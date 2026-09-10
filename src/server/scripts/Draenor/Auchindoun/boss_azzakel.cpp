@@ -485,15 +485,17 @@ struct auchindoun_azzakel_mob_controller : public ScriptedAI
         }
         case eAzzakelEvents::EventSummonAzzakel02:
         {
-            if (!m_Azzakel)
+            /// la condition etait inversee : on entrait ici uniquement quand
+            /// le GUID etait vide, donc Azzakel n'etait jamais rendu hostile.
+            if (!m_Azzakel.IsEmpty())
             {
                 if (Creature* l_Azzakael = ObjectAccessor::GetCreature(*me, m_Azzakel))
                 {
                     l_Azzakael->setFaction(HostileFaction);
                     l_Azzakael->GetMotionMaster()->MoveCharge(1911.93f, 2754.40f, 30.973f, 42.0f);
                 }
-                break;
             }
+            break;
         }
         default:
             break;
