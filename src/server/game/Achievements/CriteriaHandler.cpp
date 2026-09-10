@@ -498,6 +498,9 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_ON_LOGIN:
         case CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
         case CRITERIA_TYPE_COLLECT_BATTLEPET:
+        case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:
+        case CRITERIA_TYPE_BATTLEPET_WIN:
+        case CRITERIA_TYPE_BATTLEPET_LEVEL_UP:
         case CRITERIA_TYPE_HONOR_LEVEL_REACHED:
         case CRITERIA_TYPE_BUY_GUILD_TABARD:
         case CRITERIA_TYPE_PRESTIGE_REACHED:
@@ -759,9 +762,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_BE_KICKED_FROM_LFR:
         case CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
         case CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:
-        case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:
-        case CRITERIA_TYPE_BATTLEPET_WIN:
-        case CRITERIA_TYPE_BATTLEPET_LEVEL_UP:
         case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
         case CRITERIA_TYPE_ENTER_AREA:
         case CRITERIA_TYPE_LEAVE_AREA:
@@ -1207,6 +1207,9 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_SEND_EVENT_SCENARIO:
     case CRITERIA_TYPE_COMPLETE_SCENARIO:
     case CRITERIA_TYPE_COLLECT_BATTLEPET:
+    case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:
+    case CRITERIA_TYPE_BATTLEPET_WIN:
+    case CRITERIA_TYPE_BATTLEPET_LEVEL_UP:
         return progress->Counter >= requiredAmount;
     case CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET:
     case CRITERIA_TYPE_COMPLETE_ACHIEVEMENT:
@@ -1620,6 +1623,12 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
         break;
     case CRITERIA_TYPE_APPEARANCE_UNLOCKED_BY_SLOT:
         if (!miscValue2 /*login case*/ || miscValue1 != uint32(criteria->Entry->Asset.EquipmentSlot))
+            return false;
+        break;
+    case CRITERIA_TYPE_BATTLEPET_LEVEL_UP:
+        // miscValue1 = espece de la mascotte, miscValue2 = niveau atteint,
+        // Asset.ID = niveau exige par le critere
+        if (!miscValue1 || !miscValue2 || miscValue2 != uint64(criteria->Entry->Asset.ID))
             return false;
         break;
     default:

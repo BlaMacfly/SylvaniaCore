@@ -4545,7 +4545,7 @@ void Spell::EffectGrantBattlePetLevel(SpellEffIndex effIndex)
     BattlePetSpeciesEntry const* speciesInfo = sBattlePetSpeciesStore.LookupEntry(battlePet->Species);
     if (speciesInfo)
     {
-        player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_LEVEL_UP, battlePet->Level, speciesInfo->PetTypeEnum, battlePet->Species);
+        player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_LEVEL_UP, battlePet->Species, battlePet->Level, speciesInfo->PetTypeEnum);
         player->UpdateCriteria(CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT, speciesInfo->ID, battlePet->Level, battlePet->Species);
     }
 

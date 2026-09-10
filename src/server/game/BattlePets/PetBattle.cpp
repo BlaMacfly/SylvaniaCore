@@ -1288,7 +1288,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
 
                         if (auto speciesInfo = sBattlePetSpeciesStore.LookupEntry(currentPet->Species))
                         {
-                            player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_LEVEL_UP, currentPet->Level, speciesInfo->PetTypeEnum, currentPet->Species);
+                            player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_LEVEL_UP, currentPet->Species, currentPet->Level, speciesInfo->PetTypeEnum);
                             player->UpdateCriteria(CRITERIA_TYPE_LEVEL_BATTLE_PET_CREDIT, speciesInfo->ID, currentPet->Level, currentPet->Species);
                         }
 
@@ -1317,7 +1317,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
             if (winnerTeamID == currentTeamID)
             {
                 auto speciesInfo = sDB2Manager.GetSpeciesByCreatureID(InitialWildPetGUID.GetEntry());
-                player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_WIN, BattleType != PETBATTLE_TYPE_PVE, 0, speciesInfo ? speciesInfo->ID : 0);
+                player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_WIN, speciesInfo ? speciesInfo->ID : 0, BattleType != PETBATTLE_TYPE_PVE, 0);
                 if (speciesInfo)
                     player->QuestObjectiveSatisfy(speciesInfo->ID, 1, QUEST_OBJECTIVE_DEFEATBATTLEPET, InitialWildPetGUID);
             }
