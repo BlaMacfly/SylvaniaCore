@@ -793,15 +793,21 @@ void MercenaryMgr::Update(uint32 diff)
         // seulement de la creer, la ligne au-dessus. La tache partait avant
         // sa cible et tombait dans le vide.
         //
-        // On en repousse donc une maintenant que l IA existe. Elle attend
-        // que le bot soit hors combat avant d agir, le rehabillage complet
-        // faisant partie du meme passage.
+        // CORRECTION DU CORRECTIF (audit du 09/09) : la premiere version
+        // poussait un BGSType_DelayLevelup dans la file du bot. Mesure faite
+        // sur quatre mercenaires : deux repares, deux non. En cause,
+        // PushScheduleToQueue, qui jette SILENCIEUSEMENT une tache dans deux
+        // cas -- si une du meme type est deja en file, et, pour ce type
+        // precisement, si IsSettingFinish() est faux. La reparation ne
+        // partait donc qu au petit bonheur.
+        //
+        // On appelle directement. L IA de groupe vient d etre creee a la
+        // ligne precedente : le dynamic_cast<BotGroupAI*> qui ouvre
+        // OnLevelupToBotAI() aboutit forcement, et InitializeSpells re-resout
+        // les poignees contre le niveau, la specialisation et le grimoire
+        // definitifs. Rien ne peut plus l escamoter.
         // =============================================================
-        if (PlayerBotSession* botSession = dynamic_cast<PlayerBotSession*>(bot->GetSession()))
-        {
-            BotGlobleSchedule reresolution(BotGlobleScheduleType::BGSType_DelayLevelup, bot->GetGUID());
-            botSession->PushScheduleToQueue(reresolution);
-        }
+        bot->OnLevelupToBotAI();
 
         // Des maintenant, pas au tick suivant : l IA de groupe, en decouvrant
         // un maitre lointain, armerait le sien vers l employeur, et SetTeleport

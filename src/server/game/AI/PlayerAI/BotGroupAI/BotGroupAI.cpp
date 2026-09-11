@@ -264,9 +264,22 @@ void BotGroupAI::ProcessAttackCommand()
 {
 	Unit* pMasterTarget = m_MasterPlayer->GetSelectedUnit();
 	if (!pMasterTarget || !pMasterTarget->IsAlive())
+	{
+		TC_LOG_ERROR("botai", "ATTACKDBG %s: ordre recu mais le maitre n a pas de cible vivante.",
+			me->GetName().c_str());
 		return;
+	}
 	if (!me->IsValidAttackTarget(pMasterTarget))
+	{
+		TC_LOG_ERROR("botai", "ATTACKDBG %s: cible %u (entree %u) refusee par IsValidAttackTarget.",
+			me->GetName().c_str(), pMasterTarget->GetGUID().GetCounter(),
+			pMasterTarget->ToCreature() ? pMasterTarget->ToCreature()->GetEntry() : 0);
 		return;
+	}
+	TC_LOG_ERROR("botai", "ATTACKDBG %s: cible %u (entree %u) retenue, distance %.1f.",
+		me->GetName().c_str(), pMasterTarget->GetGUID().GetCounter(),
+		pMasterTarget->ToCreature() ? pMasterTarget->ToCreature()->GetEntry() : 0,
+		me->GetDistance(pMasterTarget));
 	me->SetSelection(pMasterTarget->GetGUID());
 	m_ForceFlee = false;
 	m_StopFollow = false;
@@ -1448,7 +1461,26 @@ bool BotGroupAI::TryTeleportToMaster()
 		m_Flee.Clear();
 		return true;
 	}
-	else if (me->GetDistance(m_MasterPlayer->GetPosition()) > BOTAI_SEARCH_RANGE * 5)
+	// DISTANCE_DE_RAPPEL
+	//
+	// MESURE (audit du 09/09) : au moment d un « !attack », deux des quatre
+	// mercenaires se trouvaient a 100 et 106 metres de leur employeur, les
+	// deux autres a 21 et 28. Les lointains n etaient pas perdus au sens du
+	// code -- simplement sous le seuil de rappel, qui valait
+	// BOTAI_SEARCH_RANGE * 5, soit 160 metres.
+	//
+	// Ils recevaient donc l ordre, l acceptaient, et partaient A PIED. Cent
+	// metres de marche, c est une quinzaine de secondes : le combat est
+	// termine avant leur arrivee, et de l exterieur le mercenaire a
+	// simplement « refuse d attaquer ».
+	//
+	// Ce seuil de 160 convient a un bot de terrain qui vagabonde ; pas a un
+	// membre de groupe, qui n a aucune raison de s eloigner autant de son
+	// employeur. On le ramene a deux fois la portee de recherche, soit 64
+	// metres -- largement au-dela des 32 metres ou l IA engage le combat et
+	// des 28 de portee des sorts, donc sans risque de teleporter un lanceur
+	// de sorts en pleine rotation.
+	else if (me->GetDistance(m_MasterPlayer->GetPosition()) > BOTAI_SEARCH_RANGE * 2)
 	{
 		m_Teleporting.SetTeleport(m_MasterPlayer, 0);
 		me->SetSelection(ObjectGuid::Empty);
@@ -3006,6 +3038,20 @@ Unit* BotGroupAI::GetBotAIValidSelectedUnit()
 		isValid = false;
 	if (!isValid)
 	{
+		// SONDE ATTACKDBG : nommer le filtre qui rejette, une fois par
+		// seconde au plus pour ne pas noyer le journal.
+		if (pTarget && m_AttackDbgTick + 1000 < getMSTime())
+		{
+			m_AttackDbgTick = getMSTime();
+			char const* motif = "inconnu";
+			if (!pTarget->IsVisible())                             motif = "IsVisible";
+			else if (!me->InSamePhase(pTarget->GetPhaseShift()))   motif = "phase";
+			else if (IsNotSelect(pTarget))                         motif = "IsNotSelect";
+			else if (TargetIsControl(pTarget))                     motif = "controle/evade";
+			else if (m_FliterCreatures.IsFliterCreature(pTarget->ToCreature())) motif = "filtre";
+			TC_LOG_ERROR("botai", "ATTACKDBG %s: cible %u rejetee -- %s.",
+				me->GetName().c_str(), pTarget->GetGUID().GetCounter(), motif);
+		}
 		me->AttackStop();
 		me->SetSelection(ObjectGuid::Empty);
 		return NULL;

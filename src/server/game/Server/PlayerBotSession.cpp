@@ -405,7 +405,30 @@ bool PlayerBotSession::ProcessSetting(BotGlobleSchedule& schedule)
 			// heritage de l epoque ou LearnTalents() etait un corps vide.
 			PlayerTalentMap const* talents = player->GetTalentMap(player->GetActiveTalentGroup());
 			bool const hasTalents = talents && talents->size() >= player->CalculateTalentsTiers();
-			if (hasTalents && (schedule.parameter3 >= 4 || (player->FindTalentType() + 1 == schedule.parameter3)))
+
+			// SIGNALE EN JEU : « Kaerbrus n a meme pas d equipement ».
+			// Constate en base : niveau 110, 76 sorts, ZERO piece portee.
+			//
+			// Ce raccourci evite un re-level complet a un bot deja au bon
+			// niveau, avec ses talents et la bonne specialisation. Mais il
+			// saute du meme coup les etapes 6 a 10 de UpdateReset(), qui sont
+			// justement l habillage. Un mercenaire ayant perdu son equipement
+			// -- contrat precedent interrompu, re-level avorte -- ne le
+			// retrouvait donc JAMAIS : a chaque embauche, le raccourci
+			// concluait que tout allait bien et le renvoyait nu.
+			//
+			// On verifie donc qu il est reellement habille avant de couper.
+			// Dix pieces sur les dix-neuf emplacements : de quoi distinguer un
+			// bot equipe d un bot depouille, sans exiger un sans-faute (la
+			// seconde babiole et l arme de jet manquent souvent, legitimement).
+			uint32 piecesPortees = 0;
+			for (uint8 emplacement = EQUIPMENT_SLOT_START; emplacement < EQUIPMENT_SLOT_END; ++emplacement)
+				if (player->GetItemByPos(INVENTORY_SLOT_BAG_0, emplacement))
+					++piecesPortees;
+			bool const correctementEquipe = (piecesPortees >= 10);
+
+			if (hasTalents && correctementEquipe &&
+				(schedule.parameter3 >= 4 || (player->FindTalentType() + 1 == schedule.parameter3)))
 				return true;
 		}
 	}
