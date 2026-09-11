@@ -1172,7 +1172,20 @@ void Group::GroupLoot(Loot* loot, WorldObject* lootedObject)
         if (i->freeforall)
             continue;
 
-        item = ASSERT_NOTNULL(sObjectMgr->GetItemTemplate(i->itemid));
+        // Les devises (Item negatif dans les tables de butin) occupent le meme tableau
+        // que les objets mais n'ont pas de modele d'objet. Les laisser arriver jusqu'a
+        // l'ASSERT tuait le worldserver des qu'un groupe ouvrait le butin d'un boss qui
+        // en lache -- ceux de la Prison violette, entre autres.
+        if (i->type != LOOT_ITEM_TYPE_ITEM)
+            continue;
+
+        item = sObjectMgr->GetItemTemplate(i->itemid);
+        if (!item)
+        {
+            TC_LOG_ERROR("sql.sql", "Group::GroupLoot: objet %u introuvable dans les donnees, ignore dans le butin de %s",
+                i->itemid, lootedObject->GetGUID().ToString().c_str());
+            continue;
+        }
 
         //roll for over-threshold item if it's one-player loot
         if (item->GetQuality() >= uint32(m_lootThreshold))
@@ -1247,7 +1260,13 @@ void Group::GroupLoot(Loot* loot, WorldObject* lootedObject)
         if (!i->follow_loot_rules)
             continue;
 
+        if (i->type != LOOT_ITEM_TYPE_ITEM)
+            continue;
+
         item = sObjectMgr->GetItemTemplate(i->itemid);
+        if (!item)
+            continue;
+
         Roll* r = new Roll(*i);
 
         for (GroupReference* itr = GetFirstMember(); itr != NULL; itr = itr->next())
