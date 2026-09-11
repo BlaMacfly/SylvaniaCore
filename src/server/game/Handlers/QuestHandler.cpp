@@ -96,6 +96,10 @@ void WorldSession::HandleQuestgiverHelloOpcode(WorldPackets::Quest::QuestGiverHe
     if (sScriptMgr->OnGossipHello(_player, creature))
         return;
 
+    // Un PNJ purement donneur de quete (sans drapeau papotage) recoit CMSG_QUESTGIVER_HELLO
+    // au lieu de CMSG_GOSSIP_HELLO : sans cet appel, les objectifs \"Parler a\" ne sont jamais valides.
+    _player->TalkedToCreature(creature->GetEntry(), creature->GetGUID());
+
     _player->PrepareGossipMenu(creature, creature->GetCreatureTemplate()->GossipMenuId, true);
     _player->SendPreparedGossip(creature);
 
