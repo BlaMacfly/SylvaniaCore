@@ -250,8 +250,73 @@ class spell_banging_the_gong : public SpellScriptLoader
         }
 };
 
+// Tanzar, Harkor, Ashli et Kraz : les captifs liberes par la course contre la
+// montre. Ils sont invoques par l'instance a la mort de leur boss ; leur seule
+// raison d'etre est de remettre le coffre de recompense quand on leur parle.
+// Rien ne les scriptait, donc meme invoques ils n'auraient rien donne.
+class npc_zulaman_hostage : public CreatureScript
+{
+public:
+    npc_zulaman_hostage() : CreatureScript("npc_zulaman_hostage") { }
+
+    enum Hostages
+    {
+        NPC_TANZAR      = 23790,
+        NPC_HARKOR      = 23999,
+        NPC_ASHLI       = 24001,
+        NPC_KRAZ        = 24024,
+
+        GO_HAZLEKS_TRUNK        = 186648,   // Tanzar
+        GO_BAKKALZUS_SATCHEL    = 187021,   // Harkor
+        GO_KASHAS_BAG           = 186672,   // Ashli
+        GO_NORKANIS_PACKAGE     = 186667,   // Kraz
+
+        ACTION_FREE_HOSTAGE     = GOSSIP_ACTION_INFO_DEF + 1
+    };
+
+    static uint32 ChestForHostage(uint32 entry)
+    {
+        switch (entry)
+        {
+            case NPC_TANZAR: return GO_HAZLEKS_TRUNK;
+            case NPC_HARKOR: return GO_BAKKALZUS_SATCHEL;
+            case NPC_ASHLI:  return GO_KASHAS_BAG;
+            case NPC_KRAZ:   return GO_NORKANIS_PACKAGE;
+            default:         return 0;
+        }
+    }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Vous etes libre ! Partez d'ici !", GOSSIP_SENDER_MAIN, ACTION_FREE_HOSTAGE);
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        CloseGossipMenuFor(player);
+
+        if (action != ACTION_FREE_HOSTAGE)
+            return true;
+
+        // Un seul coffre par captif, quel que soit le nombre de joueurs qui lui parlent.
+        if (!creature->HasFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP))
+            return true;
+
+        creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+
+        if (uint32 chest = ChestForHostage(creature->GetEntry()))
+            creature->SummonGameObject(chest, creature->GetPositionX() - 2.0f, creature->GetPositionY(),
+                creature->GetPositionZ(), 0.0f, QuaternionData(), WEEK);
+
+        return true;
+    }
+};
+
 void AddSC_zulaman()
 {
+    new npc_zulaman_hostage();
     new npc_voljin_zulaman();
     new spell_banging_the_gong();
 }

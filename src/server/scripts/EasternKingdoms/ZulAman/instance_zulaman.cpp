@@ -20,9 +20,26 @@
 #include "GameObject.h"
 #include "InstanceScript.h"
 #include "Map.h"
+#include "Player.h"
 #include "ScriptedCreature.h"
 #include "WorldStatePackets.h"
 #include "zulaman.h"
+
+// Les quatre captifs liberes par la course contre la montre. Chacun apparait la
+// ou son boss vient de tomber et remet un coffre de recompense quand on lui parle.
+struct HostageInfoEntry
+{
+    uint32 Npc;
+    float X, Y, Z, O;
+};
+
+static HostageInfoEntry const HostageInfo[4] =
+{
+    { 23790, -57.0f, 1343.0f, 40.77f, 3.2f },   // Tanzar   - ours       (Nalorakk)
+    { 23999, 400.0f, 1414.0f, 74.36f, 3.3f },   // Harkor   - aigle      (Akil'zon)
+    { 24001, -35.0f, 1134.0f, 18.71f, 1.9f },   // Ashli    - dragonhalc (Jan'alai)
+    { 24024, 413.0f, 1117.0f,  6.32f, 3.1f }    // Kraz     - lynx       (Halazzi)
+};
 
 class instance_zulaman : public InstanceMapScript
 {
@@ -139,6 +156,28 @@ class instance_zulaman : public InstanceMapScript
                 return ObjectGuid::Empty;
             }
 
+            // Rien n'invoquait les captifs : la course contre la montre se deroulait
+            // jusqu'au bout sans que personne n'apparaisse, donc sans recompense.
+            void SummonHostage(uint8 num)
+            {
+                if (ZulAmanState != IN_PROGRESS)
+                    return;
+
+                Map::PlayerList const& playerList = instance->GetPlayers();
+                if (playerList.isEmpty())
+                    return;
+
+                if (Player* player = playerList.begin()->GetSource())
+                {
+                    HostageInfoEntry const& hostageInfo = HostageInfo[num];
+                    if (Creature* hostage = player->SummonCreature(hostageInfo.Npc, hostageInfo.X, hostageInfo.Y, hostageInfo.Z, hostageInfo.O, TEMPSUMMON_DEAD_DESPAWN))
+                    {
+                        hostage->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+                        hostage->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                    }
+                }
+            }
+
             void SetData(uint32 type, uint32 data) override
             {
                 switch (type)
@@ -202,12 +241,21 @@ class instance_zulaman : public InstanceMapScript
                 switch (type)
                 {
                     case DATA_AKILZON:
+                        if (state == DONE)
+                            SummonHostage(1);
                         break;
                     case DATA_NALORAKK:
+                        if (state == DONE)
+                            SummonHostage(0);
                         break;
                     case DATA_JANALAI:
+                        if (state == DONE)
+                            SummonHostage(2);
                         break;
                     case DATA_HALAZZI:
+                        if (state == DONE)
+                            SummonHostage(3);
+                        break;
                     case DATA_HEXLORD:
                     case DATA_DAAKARA:
                         break;
