@@ -300,9 +300,11 @@ class boss_lord_rhyolith : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
-                if (!UpdateVictim())
-                    return;
-
+                // Les joueurs frappent les pieds, jamais le colosse lui-meme : il lui
+                // arrive de n'avoir aucune cible, et on sortait alors d'UpdateAI avant
+                // meme d'avoir teste la bascule en phase 2. Le boss restait plante en
+                // premiere forme a un point de vie. Le passage de phase passe donc en
+                // premier, avant toute verification de cible.
                 if ((instance->GetData(DATA_RHYOLITH_HEALTH_SHARED) != 0))
                     me->SetHealth(instance->GetData(DATA_RHYOLITH_HEALTH_SHARED) * 2);
 
@@ -349,6 +351,9 @@ class boss_lord_rhyolith : public CreatureScript
                     }
                     return;
                 }
+
+                if (!UpdateVictim())
+                    return;
 
                 events.Update(diff);
 

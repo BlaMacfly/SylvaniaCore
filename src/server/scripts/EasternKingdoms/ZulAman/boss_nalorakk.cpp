@@ -115,7 +115,7 @@ class boss_nalorakk : public CreatureScript
         {
             boss_nalorakkAI(Creature* creature) : BossAI(creature, DATA_NALORAKK),
                 _bearForm(false), _waveEvent(true), _waveInProgress(false), _inMove(false),
-                _wave(0), _currentPoint(0), _targetPoint(0), _checkTimer(0) { }
+                _wave(0), _currentPoint(0), _targetPoint(0), _checkTimer(0), _moveTimeout(0) { }
 
             void Reset() override
             {
@@ -134,6 +134,7 @@ class boss_nalorakk : public CreatureScript
                 _currentPoint = 0;
                 _targetPoint = 0;
                 _checkTimer = 0;
+                _moveTimeout = 0;
                 _waveGuids.clear();
 
                 me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
@@ -284,13 +285,15 @@ class boss_nalorakk : public CreatureScript
                             : (_targetPoint == 8 ? 8 : _targetPoint);
 
                 _currentPoint = next;
+                _moveTimeout = 20000;
                 me->GetMotionMaster()->MovePoint(_currentPoint, NalorakkWay[_currentPoint][0], NalorakkWay[_currentPoint][1], NalorakkWay[_currentPoint][2]);
             }
 
-            void MovementInform(uint32 type, uint32 id) override
+            // Arrivee a une etape -- soit annoncee par le moteur de deplacement, soit
+            // forcee par le chrono ci-dessous quand la montee se bloque.
+            void OnReachedPoint()
             {
-                if (!_waveEvent || type != POINT_MOTION_TYPE || !_inMove || _currentPoint != id)
-                    return;
+                _moveTimeout = 0;
 
                 if (_currentPoint == _targetPoint)
                 {
@@ -300,6 +303,14 @@ class boss_nalorakk : public CreatureScript
                 }
 
                 AdvanceOnePoint();
+            }
+
+            void MovementInform(uint32 type, uint32 id) override
+            {
+                if (!_waveEvent || type != POINT_MOTION_TYPE || !_inMove || _currentPoint != id)
+                    return;
+
+                OnReachedPoint();
             }
 
             void EnterCombat(Unit* /*who*/) override
@@ -350,6 +361,21 @@ class boss_nalorakk : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
+                // Le trajet entre deux paliers passe par un escalier bati en VMAP : si le
+                // calcul de chemin cale, le boss reste plante en route et l'evenement ne
+                // repart jamais. Au-dela de vingt secondes on le pose d'office sur l'etape.
+                if (_inMove && _moveTimeout)
+                {
+                    if (_moveTimeout <= diff)
+                    {
+                        me->GetMotionMaster()->Clear(false);
+                        me->NearTeleportTo(NalorakkWay[_currentPoint][0], NalorakkWay[_currentPoint][1], NalorakkWay[_currentPoint][2], me->GetOrientation());
+                        OnReachedPoint();
+                    }
+                    else
+                        _moveTimeout -= diff;
+                }
+
                 // Deroulement des vagues : il ne recule qu'une fois la vague abattue.
                 if (_waveInProgress)
                 {
@@ -447,6 +473,7 @@ class boss_nalorakk : public CreatureScript
             uint32 _currentPoint;
             uint32 _targetPoint;
             uint32 _checkTimer;
+            uint32 _moveTimeout;
             std::vector<ObjectGuid> _waveGuids;
         };
 
