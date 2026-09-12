@@ -300,6 +300,16 @@ namespace WorldPackets
             uint8 Legacy = 0;
         };
 
+        // Le bouton « heroique » des raids d'avant Warlords : aucune difficulte n'est
+        // transmise, le client demande simplement la bascule normal <-> heroique.
+        class ToggleDifficulty final : public ClientPacket
+        {
+        public:
+            ToggleDifficulty(WorldPacket&& packet) : ClientPacket(CMSG_TOGGLE_DIFFICULTY, std::move(packet)) { }
+
+            void Read() override { }
+        };
+
         class DungeonDifficultySet final : public ServerPacket
         {
         public:

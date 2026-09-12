@@ -993,6 +993,68 @@ void WorldSession::HandleSetRaidDifficultyOpcode(WorldPackets::Misc::SetRaidDiff
     }
 }
 
+// Les raids d'avant Warlords ne passent pas par CMSG_SET_RAID_DIFFICULTY pour le mode
+// heroique : le client envoie CMSG_TOGGLE_DIFFICULTY, sans rien preciser, et attend que
+// le serveur bascule entre normal et heroique en conservant la taille du raid. Cet
+// opcode n'etait pas traite du tout, si bien que le client repondait « vous ne remplissez
+// pas les conditions requises » -- impossible de monter les Terres de feu en heroique.
+void WorldSession::HandleToggleDifficultyOpcode(WorldPackets::Misc::ToggleDifficulty& /*toggleDifficulty*/)
+{
+    Difficulty difficultyID;
+    switch (_player->GetLegacyRaidDifficultyID())
+    {
+        case DIFFICULTY_10_N:  difficultyID = DIFFICULTY_10_HC; break;
+        case DIFFICULTY_25_N:  difficultyID = DIFFICULTY_25_HC; break;
+        case DIFFICULTY_10_HC: difficultyID = DIFFICULTY_10_N;  break;
+        case DIFFICULTY_25_HC: difficultyID = DIFFICULTY_25_N;  break;
+        default:
+            return;
+    }
+
+    // Memes garde-fous que le changement de difficulte ordinaire : on ne bascule pas
+    // depuis l'interieur d'une instance, et seul le chef decide pour le groupe.
+    Map* map = _player->FindMap();
+    if (map && map->IsDungeon())
+    {
+        TC_LOG_DEBUG("network", "WorldSession::HandleToggleDifficultyOpcode: player (Name: %s, %s) tried to toggle the difficulty while inside an instance!",
+            _player->GetName().c_str(), _player->GetGUID().ToString().c_str());
+        return;
+    }
+
+    Group* group = _player->GetGroup();
+    if (group)
+    {
+        if (!group->IsLeader(_player->GetGUID()))
+            return;
+
+        for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+        {
+            Player* groupGuy = itr->GetSource();
+            if (!groupGuy)
+                continue;
+
+            if (!groupGuy->IsInMap(groupGuy))
+                return;
+
+            if (groupGuy->GetMap()->IsRaid())
+            {
+                TC_LOG_DEBUG("network", "WorldSession::HandleToggleDifficultyOpcode: %s tried to toggle the difficulty while group member (Name: %s, %s) is inside!",
+                    _player->GetGUID().ToString().c_str(), groupGuy->GetName().c_str(), groupGuy->GetGUID().ToString().c_str());
+                return;
+            }
+        }
+
+        group->ResetInstances(INSTANCE_RESET_CHANGE_DIFFICULTY, true, true, _player);
+        group->SetLegacyRaidDifficultyID(difficultyID);
+    }
+    else
+    {
+        _player->ResetInstances(INSTANCE_RESET_CHANGE_DIFFICULTY, true, true);
+        _player->SetLegacyRaidDifficultyID(difficultyID);
+        _player->SendRaidDifficulty(true);
+    }
+}
+
 void WorldSession::HandleSetTaxiBenchmark(WorldPackets::Misc::SetTaxiBenchmarkMode& packet)
 {
     _player->ApplyModFlag(PLAYER_FLAGS, PLAYER_FLAGS_TAXI_BENCHMARK, packet.Enable);

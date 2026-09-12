@@ -569,6 +569,7 @@ namespace WorldPackets
         class TutorialSetFlag;
         class SetDungeonDifficulty;
         class SetRaidDifficulty;
+        class ToggleDifficulty;
         class PortGraveyard;
         class ReclaimCorpse;
         class RepopRequest;
@@ -1727,6 +1728,7 @@ class TC_GAME_API WorldSession
         void HandleFarSightOpcode(WorldPackets::Misc::FarSight& packet);
         void HandleSetDungeonDifficultyOpcode(WorldPackets::Misc::SetDungeonDifficulty& setDungeonDifficulty);
         void HandleSetRaidDifficultyOpcode(WorldPackets::Misc::SetRaidDifficulty& setRaidDifficulty);
+        void HandleToggleDifficultyOpcode(WorldPackets::Misc::ToggleDifficulty& toggleDifficulty);
         void HandleSetTitleOpcode(WorldPackets::Character::SetTitle& packet);
         void HandleTimeSyncResponse(WorldPackets::Misc::TimeSyncResponse& packet);
         void HandleDiscardedTimeSyncAcks(WorldPackets::Misc::DiscardedTimeSyncAcks& packet);
