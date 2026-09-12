@@ -2777,7 +2777,11 @@ GameObject* WorldObject::SummonGameObject(uint32 entry, Position const& pos, Qua
     go->SetVisibleBySummonerOnly(visibleBySummonerOnly);
 
     go->SetRespawnTime(respawnTime);
-    if (GetTypeId() == TYPEID_PLAYER || GetTypeId() == TYPEID_UNIT) //not sure how to handle this
+    // Un coffre de butin ne doit pas etre rattache a son invocateur : les objets
+    // rattaches sont detruits avec lui (RemoveAllGameObjects), donc le coffre d'un
+    // boss disparaissait cote serveur des que son cadavre s'effacait -- le raid
+    // voyait encore le coffre mais ne pouvait plus l'ouvrir (Ragnaros, entre autres).
+    if ((GetTypeId() == TYPEID_PLAYER || GetTypeId() == TYPEID_UNIT) && goinfo->type != GAMEOBJECT_TYPE_CHEST)
         ToUnit()->AddGameObject(go);
     else
         go->SetSpawnedByDefault(false);

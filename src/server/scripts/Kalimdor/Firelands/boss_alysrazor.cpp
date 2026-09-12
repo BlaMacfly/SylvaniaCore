@@ -539,6 +539,10 @@ class boss_alysrazor : public CreatureScript
                 RemoveEncounterAuras();
                 me->SetCanFly(false);
                 me->SetDisableGravity(false);
+                // Elle meurt en vol : laissee a elle-meme, la depouille traverse le vide
+                // entre les plateformes et finit dans la lave, butin compris. On la ramene
+                // au centre de l'arene avant la chute, comme en jeu officiel.
+                me->NearTeleportTo(centerPos.GetPositionX(), centerPos.GetPositionY(), centerPos.GetPositionZ(), centerPos.GetOrientation());
                 me->GetMotionMaster()->MoveFall();
             }
 

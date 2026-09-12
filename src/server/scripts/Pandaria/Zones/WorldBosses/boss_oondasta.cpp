@@ -70,7 +70,7 @@ class boss_oondasta : public CreatureScript
 
         struct boss_oondastaAI : public ScriptedAI
         {
-            boss_oondastaAI(Creature* creature) : ScriptedAI(creature), summons(me) { }
+            boss_oondastaAI(Creature* creature) : ScriptedAI(creature), summons(me), _introEnd(false) { }
 
             EventMap _events;
             EventMap _introEvents;
@@ -85,8 +85,10 @@ class boss_oondasta : public CreatureScript
 
             void Reset() override
             {
-                _introEnd = false;
-
+                // _introEnd n'est volontairement plus remis a false ici : chaque evade
+                // reposait UNIT_FLAG_IMMUNE_TO_PC et effacait les evenements d'intro, si
+                // bien que le boss redevenait intouchable pour de bon -- il frappait les
+                // joueurs sans qu'ils puissent riposter.
                 me->RemoveAurasDueToSpell(SPELL_CRUSH);
                 me->RemoveAura(SPELL_GROWING_FURY);
 
@@ -119,6 +121,13 @@ class boss_oondasta : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) override
             {
+                // Filet de securite : un boss qui frappe doit pouvoir etre frappe.
+                if (me->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC))
+                {
+                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_PC);
+                    _introEnd = true;
+                }
+
                 _events.ScheduleEvent(EVENT_SPIRITFIRE_BEAM, 15s);
                 _events.ScheduleEvent(EVENT_PIERCING_ROAR, 20s);
                 _events.ScheduleEvent(EVENT_FRILL_BLAST, 40s);
