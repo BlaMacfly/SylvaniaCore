@@ -188,6 +188,15 @@ Map* MapInstanced::CreateInstanceForPlayer(const uint32 mapId, Player* player, u
             newInstanceId = sMapMgr->GenerateInstanceId();
 
             Difficulty diff = player->GetGroup() ? player->GetGroup()->GetDifficultyID(GetEntry()) : player->GetDifficultyID(GetEntry());
+
+            // La difficulte retenue par le joueur n'existe pas forcement pour cette carte.
+            // Les raids a quarante joueurs n'en proposent qu'une seule, et le joueur arrive
+            // avec sa difficulte de raid d'ancienne generation (10 ou 25) : l'instance etait
+            // alors creee dans une difficulte ou AUCUN spawn n'est declare, et le raid entier
+            // paraissait vide. Le controle d'entree faisait deja cet ajustement, pas la
+            // creation. Meme appel ici.
+            sDB2Manager.GetDownscaledMapDifficultyData(GetId(), diff);
+
             //Seems it is now possible, but I do not know if it should be allowed
             //ASSERT(!FindInstanceMap(NewInstanceId));
             map = FindInstanceMap(newInstanceId);

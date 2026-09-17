@@ -188,6 +188,9 @@ class boss_lord_rhyolith : public CreatureScript
                 phase = 0;
 
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
+                // L'armure en fusion n'etait nettoyee nulle part : elle restait collee aux
+                // joueurs apres le combat, sans duree, comme la barre de direction.
+                instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MOLTEN_ARMOR);
                 instance->SetData(DATA_RHYOLITH_HEALTH_SHARED, me->GetMaxHealth() / 2);
 
                 controllerGUID  = ObjectGuid::Empty;
@@ -198,6 +201,7 @@ class boss_lord_rhyolith : public CreatureScript
             void EnterEvadeMode(EvadeReason /*why*/) override
             {
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
+                instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MOLTEN_ARMOR);
                 BossAI::EnterEvadeMode();
             }
 
@@ -212,10 +216,13 @@ class boss_lord_rhyolith : public CreatureScript
                     BossAI::JustSummoned(summon);
             }
 
+            uint32 _debugTimer = 0;
+
             void EnterCombat(Unit* /*attacker*/) override
             {
                 Talk(SAY_AGGRO);
 
+                _debugTimer = 0;
                 curMove = 0;
                 bAchieve = true;
                 phase = 0;
@@ -308,6 +315,25 @@ class boss_lord_rhyolith : public CreatureScript
                 if ((instance->GetData(DATA_RHYOLITH_HEALTH_SHARED) != 0))
                     me->SetHealth(instance->GetData(DATA_RHYOLITH_HEALTH_SHARED) * 2);
 
+                // SONDE TEMPORAIRE -- a retirer une fois la bascule de phase comprise.
+                if (phase == 0)
+                {
+                    if (_debugTimer <= diff)
+                    {
+                        Creature* lf = ObjectAccessor::GetCreature(*me, leftFootGUID);
+                        Creature* rf = ObjectAccessor::GetCreature(*me, rightFootGUID);
+                        TC_LOG_ERROR("scripts", "RHYODBG vie=%u/%u (%.1f%%) partage=%u phase=%u evade=%u victime=%u piedG=%u/%u piedD=%u/%u",
+                            uint32(me->GetHealth()), uint32(me->GetMaxHealth()), me->GetHealthPct(),
+                            instance->GetData(DATA_RHYOLITH_HEALTH_SHARED), phase, uint32(me->IsInEvadeMode()),
+                            uint32(me->GetVictim() ? 1 : 0),
+                            uint32(lf ? lf->GetHealth() : 0), uint32(lf ? lf->GetMaxHealth() : 0),
+                            uint32(rf ? rf->GetHealth() : 0), uint32(rf ? rf->GetMaxHealth() : 0));
+                        _debugTimer = 3000;
+                    }
+                    else
+                        _debugTimer -= diff;
+                }
+
                 if (me->HealthBelowPct(25) && phase == 0)
                 {
                     phase = 1;
@@ -333,6 +359,7 @@ class boss_lord_rhyolith : public CreatureScript
                     Talk(SAY_TRANS);
                     instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_ERUPTION_DMG);
                     instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
+                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MOLTEN_ARMOR);
 
                     if (Creature* controller = ObjectAccessor::GetCreature(*me, controllerGUID))
                     {
