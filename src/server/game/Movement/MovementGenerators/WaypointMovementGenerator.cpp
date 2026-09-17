@@ -19,6 +19,7 @@
 #include "WaypointMovementGenerator.h"
 #include "CreatureAI.h"
 #include "CreatureGroups.h"
+#include "DB2Stores.h"
 #include "Log.h"
 #include "MapManager.h"
 #include "MoveSpline.h"
@@ -394,6 +395,9 @@ void FlightPathMovementGenerator::DoFinalize(Player* player)
     // remove flag to prevent send object build movement packets for flight state and crash (movement generator already not at top of stack)
     player->ClearUnitState(UNIT_STATE_IN_FLIGHT);
 
+    // A relever avant tout nettoyage : c'est la destination du trajet.
+    uint32 taxiNodeId = player->m_taxi.GetTaxiDestination();
+
     player->Dismount();
     player->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_REMOVE_CLIENT_CONTROL | UNIT_FLAG_TAXI_FLIGHT);
 
@@ -405,14 +409,15 @@ void FlightPathMovementGenerator::DoFinalize(Player* player)
         // when client side flight end early in comparison server side
         player->StopMoving();
 
-        // Le commentaire ci-dessus promet de reposer le joueur au sol, mais personne ne
-        // le faisait : quand le dernier point du trajet est en altitude -- le Fort cenarien
-        // en Silithus, entre autres -- le passager etait lache en plein ciel et mourait de
-        // sa chute. On ne corrige que les ecarts manifestes, un atterrissage correct est
-        // deja a quelques centimetres du sol.
-        float ground = player->GetMap()->GetHeight(player->GetPhaseShift(), player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), true, MAX_FALL_DISTANCE);
-        if (ground > INVALID_HEIGHT && player->GetPositionZ() - ground > 5.0f)
-            player->NearTeleportTo(player->GetPositionX(), player->GetPositionY(), ground, player->GetOrientation());
+        // Le trajet relache le passager la ou s'arrete la trajectoire, parfois en plein
+        // ciel -- le vol du Fort cenarien, en Silithus, tuait de la chute. L'amont
+        // Cataclysm pose le joueur sur le point d'arrivee officiel du reseau de vol et
+        // remet son compteur de chute a zero ; on fait pareil.
+        if (TaxiNodesEntry const* node = sTaxiNodesStore.LookupEntry(taxiNodeId))
+        {
+            player->SetFallInformation(0, node->Pos.Z);
+            player->TeleportTo(node->ContinentID, node->Pos.X, node->Pos.Y, node->Pos.Z, player->GetOrientation());
+        }
     }
 
     player->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_TAXI_BENCHMARK);
