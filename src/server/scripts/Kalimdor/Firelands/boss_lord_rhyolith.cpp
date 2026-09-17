@@ -80,8 +80,16 @@ enum Spells
     SPELL_FUSE                              = 99875,
 };
 
+// Les trois carcasses successives du colosse. Le combat officiel ne fait PAS
+// apparaitre un second personnage : c'est la meme creature qui change d'entree
+// a 75, 50 puis 25 pour cent de sa vie, la derniere etant sa forme de phase 2.
+// C'est ce que fait l'amont Cataclysm, et c'est ce qui manquait ici -- notre
+// version invoquait un sosie et rendait l'original invisible, laissant sur place
+// un Rhyolith inerte, injouable et sans butin.
 enum Adds
 {
+    NPC_RHYOLITH_DAMAGED_1      = 54192,
+    NPC_RHYOLITH_DAMAGED_2      = 54199,
     NPC_SPARK_OF_RHYOLITH       = 53211,
     NPC_FRAGMENT_OF_RHYOLITH    = 52620,
     NPC_CRATER                  = 52866,
@@ -95,6 +103,10 @@ enum Adds
 
 enum Events
 {
+    EVENT_BALANCE_FEET_HEALTH = 90,  // reporte la vie des pieds sur le colosse
+    EVENT_STAND_UP            = 91,
+    EVENT_TURN_AGGRESSIVE     = 92,
+
     EVENT_CHECK_MOVE        = 1,
     EVENT_CONCLUSIVE_STOMP  = 2,
     EVENT_ACTIVATE_VOLCANO  = 3,
@@ -172,6 +184,11 @@ class boss_lord_rhyolith : public CreatureScript
                 _Reset();
                 me->AddUnitState(UNIT_STATE_IGNORE_PATHFINDING);
 
+                // Retour a la premiere carcasse apres une tentative ratee.
+                _transformationCount = 0;
+                if (me->GetEntry() != NPC_RHYOLITH)
+                    me->UpdateEntry(NPC_RHYOLITH, nullptr, false);
+
                 me->SetHealth(me->GetMaxHealth());
                 me->SetReactState(REACT_PASSIVE);
                 me->LowerPlayerDamageReq(me->GetMaxHealth());
@@ -205,9 +222,73 @@ class boss_lord_rhyolith : public CreatureScript
                 BossAI::EnterEvadeMode();
             }
 
+            // Porte de l'amont Cataclysm. Le colosse encaisse pour de bon, mais change
+            // de carcasse a 75, 50 et 25 pour cent, et ne peut pas mourir avant d'avoir
+            // pris sa forme finale -- sinon ni butin ni haut fait.
             void DamageTaken(Unit* /*who*/, uint32 &damage) override
             {
-                damage = 0;
+                if ((me->HealthBelowPctDamaged(75, damage) && _transformationCount == 0)
+                    || (me->HealthBelowPctDamaged(50, damage) && _transformationCount == 1)
+                    || (me->HealthBelowPctDamaged(25, damage) && _transformationCount == 2))
+                {
+                    static uint32 const transformations[3] = { NPC_RHYOLITH_DAMAGED_1, NPC_RHYOLITH_DAMAGED_2, NPC_RHYOLITH_2 };
+                    me->UpdateEntry(transformations[_transformationCount], nullptr, false);
+
+                    // UpdateEntry remet l'etat de reaction a zero et efface le drapeau de
+                    // combat, ce qui provoque de fausses evasions : on les repose.
+                    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
+                    me->SetReactState(REACT_PASSIVE);
+
+                    ++_transformationCount;
+                }
+
+                if (_transformationCount == 3 && phase == 0)
+                    StartPhaseTwo();
+
+                if (damage >= me->GetHealth() && _transformationCount < 3)
+                    damage = me->GetHealth() - 1;
+            }
+
+            // Bascule en seconde forme : les pieds disparaissent, le colosse s'assied,
+            // redevient ciblable et se releve pour se battre pour de bon.
+            void StartPhaseTwo()
+            {
+                phase = 1;
+
+                me->InterruptNonMeleeSpells(true);
+                me->StopMoving();
+                events.Reset();
+
+                summons.DespawnEntry(NPC_VOLCANO);
+                summons.DespawnEntry(NPC_LIQUID_OBSIDIAN);
+                summons.DespawnEntry(NPC_FRAGMENT_OF_RHYOLITH);
+                summons.DespawnEntry(NPC_SPARK_OF_RHYOLITH);
+
+                if (Creature* controller = ObjectAccessor::GetCreature(*me, controllerGUID))
+                    controller->DespawnOrUnsummon();
+
+                for (ObjectGuid const& guid : { leftFootGUID, rightFootGUID })
+                    if (Creature* foot = ObjectAccessor::GetCreature(*me, guid))
+                    {
+                        instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, foot);
+                        foot->DespawnOrUnsummon();
+                    }
+
+                leftFootGUID.Clear();
+                rightFootGUID.Clear();
+
+                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
+                me->SetVisible(true);
+                me->LowerPlayerDamageReq(me->GetMaxHealth());
+                DoCast(me, SPELL_IMMOLATION, true);
+                Talk(SAY_TRANS);
+
+                instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_ERUPTION_DMG);
+                instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
+                instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MOLTEN_ARMOR);
+
+                events.ScheduleEvent(EVENT_STAND_UP, 3000);
+                events.ScheduleEvent(EVENT_CONCLUSIVE_STOMP, 7000);
             }
 
             void JustSummoned(Creature* summon) override
@@ -216,13 +297,12 @@ class boss_lord_rhyolith : public CreatureScript
                     BossAI::JustSummoned(summon);
             }
 
-            uint32 _debugTimer = 0;
+            uint8 _transformationCount = 0;
 
             void EnterCombat(Unit* /*attacker*/) override
             {
                 Talk(SAY_AGGRO);
 
-                _debugTimer = 0;
                 curMove = 0;
                 bAchieve = true;
                 phase = 0;
@@ -258,8 +338,8 @@ class boss_lord_rhyolith : public CreatureScript
                         leftFoot->EnterVehicle(me, 0);
                 }
 
-                TC_LOG_ERROR("scripts", "RHYODBG entree en combat : vehicule=%u piedD=%u piedG=%u",
-                    uint32(me->GetVehicleKit() ? 1 : 0), uint32(rightFoot ? 1 : 0), uint32(leftFoot ? 1 : 0));
+                _transformationCount = 0;
+                events.ScheduleEvent(EVENT_BALANCE_FEET_HEALTH, 5000);
 
                 if (controller)
                 {
@@ -332,78 +412,6 @@ class boss_lord_rhyolith : public CreatureScript
 
             void UpdateAI(uint32 diff) override
             {
-                // Les joueurs frappent les pieds, jamais le colosse lui-meme : il lui
-                // arrive de n'avoir aucune cible, et on sortait alors d'UpdateAI avant
-                // meme d'avoir teste la bascule en phase 2. Le boss restait plante en
-                // premiere forme a un point de vie. Le passage de phase passe donc en
-                // premier, avant toute verification de cible.
-                if ((instance->GetData(DATA_RHYOLITH_HEALTH_SHARED) != 0))
-                    me->SetHealth(instance->GetData(DATA_RHYOLITH_HEALTH_SHARED) * 2);
-
-                // SONDE TEMPORAIRE -- a retirer une fois la bascule de phase comprise.
-                if (phase == 0)
-                {
-                    if (_debugTimer <= diff)
-                    {
-                        Creature* lf = ObjectAccessor::GetCreature(*me, leftFootGUID);
-                        Creature* rf = ObjectAccessor::GetCreature(*me, rightFootGUID);
-                        TC_LOG_ERROR("scripts", "RHYODBG vie=%u/%u (%.1f%%) partage=%u phase=%u evade=%u victime=%u piedG=%u/%u piedD=%u/%u",
-                            uint32(me->GetHealth()), uint32(me->GetMaxHealth()), me->GetHealthPct(),
-                            instance->GetData(DATA_RHYOLITH_HEALTH_SHARED), phase, uint32(me->IsInEvadeMode()),
-                            uint32(me->GetVictim() ? 1 : 0),
-                            uint32(lf ? lf->GetHealth() : 0), uint32(lf ? lf->GetMaxHealth() : 0),
-                            uint32(rf ? rf->GetHealth() : 0), uint32(rf ? rf->GetMaxHealth() : 0));
-                        _debugTimer = 3000;
-                    }
-                    else
-                        _debugTimer -= diff;
-                }
-
-                if (me->HealthBelowPct(25) && phase == 0)
-                {
-                    phase = 1;
-                    me->StopMoving();
-                    events.Reset();
-
-                    uint32 _health = me->GetHealth();
-
-                    if (Creature* pRhyolith = me->SummonCreature(NPC_RHYOLITH_2, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ()))
-                    {
-                        pRhyolith->RemoveAllAuras();
-                        pRhyolith->SetHealth(_health);
-                        pRhyolith->LowerPlayerDamageReq(pRhyolith->GetMaxHealth());
-                        pRhyolith->CastSpell(pRhyolith, SPELL_IMMOLATION, true);
-                    }
-
-                    summons.DespawnEntry(NPC_VOLCANO);
-                    summons.DespawnEntry(NPC_LIQUID_OBSIDIAN);
-                    me->AttackStop();
-                    me->SetVisible(false);
-                    events.Reset();
-
-                    Talk(SAY_TRANS);
-                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_ERUPTION_DMG);
-                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
-                    instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MOLTEN_ARMOR);
-
-                    if (Creature* controller = ObjectAccessor::GetCreature(*me, controllerGUID))
-                    {
-                        controller->DespawnOrUnsummon();
-                        controller = nullptr;
-                    }
-                    if (Creature* leftFoot = ObjectAccessor::GetCreature(*me, leftFootGUID))
-                    {
-                        leftFoot->DespawnOrUnsummon();
-                        leftFoot = nullptr;
-                    }
-                    if (Creature* rightFoot = ObjectAccessor::GetCreature(*me, rightFootGUID))
-                    {
-                        rightFoot->DespawnOrUnsummon();
-                        rightFoot = nullptr;
-                    }
-                    return;
-                }
-
                 if (!UpdateVictim())
                     return;
 
@@ -416,6 +424,37 @@ class boss_lord_rhyolith : public CreatureScript
                 {
                     switch (eventId)
                     {
+                        // Coeur de la mecanique officielle : ce sont les pieds qu'on frappe.
+                        // Toutes les cinq secondes on fait la moyenne de leur vie, on les
+                        // remet a egalite, et on inflige au colosse ce qui lui manque pour
+                        // s'y aligner. Passer par de vrais degats declenche DamageTaken,
+                        // donc les changements de carcasse et la bascule de phase.
+                        case EVENT_BALANCE_FEET_HEALTH:
+                        {
+                            Creature* footLeft = ObjectAccessor::GetCreature(*me, leftFootGUID);
+                            Creature* footRight = ObjectAccessor::GetCreature(*me, rightFootGUID);
+
+                            if (!footLeft || !footRight || !footLeft->IsAlive() || !footRight->IsAlive())
+                                break;
+
+                            float targetHealthPct = (footLeft->GetHealthPct() + footRight->GetHealthPct()) / 2.0f;
+                            footLeft->SetHealth(CalculatePct(footLeft->GetMaxHealth(), targetHealthPct));
+                            footRight->SetHealth(CalculatePct(footRight->GetMaxHealth(), targetHealthPct));
+
+                            if (targetHealthPct < me->GetHealthPct())
+                                me->DealDamage(me, CalculatePct(me->GetMaxHealth(), me->GetHealthPct() - targetHealthPct));
+
+                            events.ScheduleEvent(EVENT_BALANCE_FEET_HEALTH, 5000);
+                            break;
+                        }
+                        case EVENT_STAND_UP:
+                            events.ScheduleEvent(EVENT_TURN_AGGRESSIVE, 3600);
+                            break;
+                        case EVENT_TURN_AGGRESSIVE:
+                            me->SetReactState(REACT_AGGRESSIVE);
+                            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0))
+                                AttackStart(target);
+                            break;
                         case EVENT_CHECK_MOVE:
                         {
                             Creature* controller = ObjectAccessor::GetCreature(*me, controllerGUID);
