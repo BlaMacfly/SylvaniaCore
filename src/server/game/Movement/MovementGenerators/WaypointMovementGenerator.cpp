@@ -404,6 +404,15 @@ void FlightPathMovementGenerator::DoFinalize(Player* player)
         // this prevent cheating with landing  point at lags
         // when client side flight end early in comparison server side
         player->StopMoving();
+
+        // Le commentaire ci-dessus promet de reposer le joueur au sol, mais personne ne
+        // le faisait : quand le dernier point du trajet est en altitude -- le Fort cenarien
+        // en Silithus, entre autres -- le passager etait lache en plein ciel et mourait de
+        // sa chute. On ne corrige que les ecarts manifestes, un atterrissage correct est
+        // deja a quelques centimetres du sol.
+        float ground = player->GetMap()->GetHeight(player->GetPhaseShift(), player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), true, MAX_FALL_DISTANCE);
+        if (ground > INVALID_HEIGHT && player->GetPositionZ() - ground > 5.0f)
+            player->NearTeleportTo(player->GetPositionX(), player->GetPositionY(), ground, player->GetOrientation());
     }
 
     player->RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_TAXI_BENCHMARK);
