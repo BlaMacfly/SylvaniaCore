@@ -135,6 +135,22 @@ bool PlayerBotSetting::IsEquipByClasses(uint32 cls, const ItemTemplate* itemTemp
 {
 	if (!itemTemplate || itemTemplate->ExtendedData->AllowableClass == 0)
 		return false;
+
+	// OBJETS RESERVES A UNE RACE.
+	//
+	// MESURE : tous les bots accumulaient neuf a seize refus de code 10
+	// -- EQUIP_ERR_CANT_EQUIP_EVER -- et il leur manquait toujours les
+	// memes emplacements. CanUseItem rend ce code quand AllowableClass ou
+	// AllowableRace ne correspond pas. La classe etait deja filtree juste
+	// en dessous ; la race, jamais.
+	//
+	// Le reservoir est construit par CLASSE, pas par personnage : il ne
+	// peut pas savoir a quelle race servira l objet. On ecarte donc tout ce
+	// qui est reserve a une race quelconque. Le reservoir compte plus de
+	// dix-huit mille pieces par classe : la perte est negligeable, et elle
+	// garantit que tout ce qui en sort est reellement portable.
+	if (itemTemplate->ExtendedData->AllowableRace != -1)
+		return false;
 	if (itemTemplate->ExtendedData->AllowableClass > 0)
 	{
 		if (!(itemTemplate->ExtendedData->AllowableClass & (1 << (cls - 1))))
@@ -1909,6 +1925,31 @@ void PlayerBotSetting::RefreshEquipment()
 	}
 	TC_LOG_ERROR("botai", "EQUIPDBG %s : rehabillage lance (niveau %u).",
 		m_Player->GetName().c_str(), uint32(m_Player->getLevel()));
+
+	// =================================================================
+	// INCANTATION_EN_COURS
+	//
+	// SIGNALE EN JEU : « Juli, une demoniste, est nue » alors que le reste
+	// de l escorte etait habille.
+	//
+	// MESURE (sonde EQUIPDBG) : dix-sept refus, tous de code 39
+	// -- EQUIP_ERR_CLIENT_LOCKED_OUT -- la ou les autres bots n en avaient
+	// aucun. Or CanEquipItem refuse TOUT avec ce code des lors que le
+	// personnage incante :
+	//
+	//     if (IsNonMeleeSpellCast(false))
+	//         return EQUIP_ERR_CLIENT_LOCKED_OUT;
+	//
+	// Le bot etait au milieu d un sort au moment de son rhabillage. La
+	// garde d entree ne testait que le combat, pas l incantation -- et le
+	// demoniste, avec ses temps d incantation longs, tombait dedans bien
+	// plus souvent que les autres.
+	//
+	// Un mercenaire qu on rhabille n a rien a incanter : on coupe. Sans
+	// cela il repart nu, UnequipFromAll ayant deja vide ses emplacements.
+	// =================================================================
+	if (m_Player->IsNonMeleeSpellCast(false))
+		m_Player->InterruptNonMeleeSpells(false);
 
 	UnequipFromAll();
 	CheckInventroy();
