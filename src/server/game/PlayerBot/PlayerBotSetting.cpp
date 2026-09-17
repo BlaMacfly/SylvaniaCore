@@ -1850,40 +1850,78 @@ void PlayerBotSetting::SupplementAmmo()
 //
 // L ordre compte : AddEquipFromAll() remplit m_NeedEquips, UpequipFromAll() le
 // consomme et le vide.
+// Vide le sac de base, sans toucher a ce qui est porte.
+//
+// Extrait de UnequipFromAll(), dont c etait la seconde moitie. Sert a faire
+// de la place avant de creer une tenue candidate, puis a evacuer les pieces
+// que le personnage n a pas retenues.
+void PlayerBotSetting::ViderLesSacs()
+{
+	for (uint8 slot = InventoryPackSlots::INVENTORY_SLOT_ITEM_START + 1;
+		slot < InventoryPackSlots::INVENTORY_SLOT_ITEM_END; ++slot)
+	{
+		Item* pItem = m_Player->GetItemByPos(255, slot);
+		if (!pItem)
+			continue;
+		// La pierre de foyer ne se remplace pas.
+		if (pItem->GetEntry() == 6948)
+			continue;
+		m_Player->DestroyItem(255, slot, true);
+	}
+}
+
+// Rehabille le bot a son niveau courant.
+//
+// REECRITURE. L ordre precedent etait : tout detruire, puis constituer une
+// tenue neuve, puis l enfiler.
+//
+//     UnequipFromAll();   // DETRUIT les pieces portees et le sac
+//     CheckInventroy();
+//     AddEquipFromAll();  // cree une tenue candidate dans le sac
+//     UpequipFromAll();   // l enfile
+//
+// Tant que la derniere etape aboutissait, c etait transparent. Des qu elle
+// echouait, le bot restait NU -- ses anciennes pieces ayant deja ete
+// detruites, et les nouvelles refusees.
+//
+// Quatre causes de refus ont ete trouvees et bouchees pendant l audit du
+// 09/09/2026 : type d armure incompatible avec la classe, objet reserve a
+// une race, incantation en cours, combat. Aucune n aurait produit un bot nu
+// si la routine n avait pas detruit d abord.
+//
+// Le meme symptome est documente ailleurs, sur des projets sans lien de
+// parente et pour des causes differentes -- TortoiseBots issue 182 (139 bots
+// nus sur 280, sacs pleins), mod-playerbots issue 2023 (toujours ouverte).
+// Ce qui se repete n est pas la cause : c est cette forme de defaut.
+//
+// On inverse donc l ordre. EquipItem sait deja echanger en place : il
+// calcule l emplacement de destination et, s il est occupe, retire
+// l ancienne piece avant de poser la nouvelle. Si la nouvelle est refusee,
+// il rend false sans rien toucher -- et l ancienne reste portee.
+//
+// Desormais, une piece refusee coute une piece demodee, plus un bot nu.
 void PlayerBotSetting::RefreshEquipment()
 {
 	if (!m_Player || !m_Player->IsInWorld() || m_Player->IsInCombat())
 		return;
 
-	// =================================================================
-	// INCANTATION_EN_COURS
-	//
-	// SIGNALE EN JEU : « Juli, une demoniste, est nue » alors que le reste
-	// de l escorte etait habille.
-	//
-	// MESURE (sonde EQUIPDBG) : dix-sept refus, tous de code 39
-	// -- EQUIP_ERR_CLIENT_LOCKED_OUT -- la ou les autres bots n en avaient
-	// aucun. Or CanEquipItem refuse TOUT avec ce code des lors que le
-	// personnage incante :
-	//
-	//     if (IsNonMeleeSpellCast(false))
-	//         return EQUIP_ERR_CLIENT_LOCKED_OUT;
-	//
-	// Le bot etait au milieu d un sort au moment de son rhabillage. La
-	// garde d entree ne testait que le combat, pas l incantation -- et le
-	// demoniste, avec ses temps d incantation longs, tombait dedans bien
-	// plus souvent que les autres.
-	//
-	// Un mercenaire qu on rhabille n a rien a incanter : on coupe. Sans
-	// cela il repart nu, UnequipFromAll ayant deja vide ses emplacements.
-	// =================================================================
+	// CanEquipItem refuse tout pendant une incantation. Un mercenaire qu on
+	// rhabille n a rien a lancer.
 	if (m_Player->IsNonMeleeSpellCast(false))
 		m_Player->InterruptNonMeleeSpells(false);
 
-	UnequipFromAll();
+	// De la place pour la tenue candidate -- le sac seulement, jamais ce qui
+	// est porte.
+	ViderLesSacs();
 	CheckInventroy();
+
+	// AddEquipFromAll remplit m_NeedEquips, UpequipFromAll le consomme.
 	AddEquipFromAll();
 	UpequipFromAll();
+
+	// Ce qui n a pas ete retenu repart : les pieces refusees, et les
+	// anciennes qu EquipItem a deposees la en echangeant.
+	ViderLesSacs();
 	SupplementOtherItems();
 
 	m_Player->UpdateAllStats();
@@ -1927,7 +1965,15 @@ void PlayerBotSetting::UpdateReset()
 		++m_ResetStep;
 		break;
 	case 6:
-		UnequipFromAll();
+		// Meme principe que dans RefreshEquipment, reecrit ci-dessus : on ne
+		// detruit plus la tenue portee avant d avoir de quoi la remplacer.
+		//
+		// UnequipFromAll() detruisait les pieces portees ET le sac, trois
+		// ticks avant que UpequipFromAll (etape 9) ne tente d enfiler la
+		// tenue neuve. Tout refus dans cet intervalle laissait le bot nu.
+		// Vider le sac suffit a faire la place ; EquipItem echangera chaque
+		// piece en place, et gardera l ancienne si la nouvelle est refusee.
+		ViderLesSacs();
 		++m_ResetStep;
 		break;
 	case 7:

@@ -120,6 +120,7 @@ public:
 	uint32 SwitchPlayerTalent(uint32 talent);
 	void SupplementAmmo();
 	void UpdateReset();
+	void ViderLesSacs();
 	void RefreshEquipment();
 	void LearnSpells();
 	void ActivateSpecialization();
