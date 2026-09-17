@@ -264,22 +264,9 @@ void BotGroupAI::ProcessAttackCommand()
 {
 	Unit* pMasterTarget = m_MasterPlayer->GetSelectedUnit();
 	if (!pMasterTarget || !pMasterTarget->IsAlive())
-	{
-		TC_LOG_ERROR("botai", "ATTACKDBG %s: ordre recu mais le maitre n a pas de cible vivante.",
-			me->GetName().c_str());
 		return;
-	}
 	if (!me->IsValidAttackTarget(pMasterTarget))
-	{
-		TC_LOG_ERROR("botai", "ATTACKDBG %s: cible %u (entree %u) refusee par IsValidAttackTarget.",
-			me->GetName().c_str(), pMasterTarget->GetGUID().GetCounter(),
-			pMasterTarget->ToCreature() ? pMasterTarget->ToCreature()->GetEntry() : 0);
 		return;
-	}
-	TC_LOG_ERROR("botai", "ATTACKDBG %s: cible %u (entree %u) retenue, distance %.1f.",
-		me->GetName().c_str(), pMasterTarget->GetGUID().GetCounter(),
-		pMasterTarget->ToCreature() ? pMasterTarget->ToCreature()->GetEntry() : 0,
-		me->GetDistance(pMasterTarget));
 	me->SetSelection(pMasterTarget->GetGUID());
 	m_ForceFlee = false;
 	m_StopFollow = false;
@@ -3038,20 +3025,6 @@ Unit* BotGroupAI::GetBotAIValidSelectedUnit()
 		isValid = false;
 	if (!isValid)
 	{
-		// SONDE ATTACKDBG : nommer le filtre qui rejette, une fois par
-		// seconde au plus pour ne pas noyer le journal.
-		if (pTarget && m_AttackDbgTick + 1000 < getMSTime())
-		{
-			m_AttackDbgTick = getMSTime();
-			char const* motif = "inconnu";
-			if (!pTarget->IsVisible())                             motif = "IsVisible";
-			else if (!me->InSamePhase(pTarget->GetPhaseShift()))   motif = "phase";
-			else if (IsNotSelect(pTarget))                         motif = "IsNotSelect";
-			else if (TargetIsControl(pTarget))                     motif = "controle/evade";
-			else if (m_FliterCreatures.IsFliterCreature(pTarget->ToCreature())) motif = "filtre";
-			TC_LOG_ERROR("botai", "ATTACKDBG %s: cible %u rejetee -- %s.",
-				me->GetName().c_str(), pTarget->GetGUID().GetCounter(), motif);
-		}
 		me->AttackStop();
 		me->SetSelection(ObjectGuid::Empty);
 		return NULL;
