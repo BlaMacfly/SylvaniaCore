@@ -230,11 +230,36 @@ class boss_lord_rhyolith : public CreatureScript
 
                 Creature* controller = me->SummonCreature(NPC_MOVEMENT_CONTROLLER, movePos[curMove]);
 
-                if (Creature* rightFoot = me->FindNearestCreature(NPC_RIGHT_FOOT, 100.0f))
-                    rightFootGUID = rightFoot->GetGUID();
+                // Les deux pieds sont declares comme accessoires du vehicule Rhyolith
+                // (vehicle_template_accessory, sieges 0 et 1) mais ne sont jamais apparus
+                // en jeu : le script se contentait de les CHERCHER. Sans eux, plus rien ne
+                // met a jour la vie partagee -- le colosse, lui, est invulnerable -- et il
+                // restait fige en premiere forme, indefiniment. On les invoque donc si
+                // l'installation du vehicule ne l'a pas fait, et on les assied dessus.
+                Creature* rightFoot = me->FindNearestCreature(NPC_RIGHT_FOOT, 100.0f);
+                if (!rightFoot)
+                    rightFoot = me->SummonCreature(NPC_RIGHT_FOOT, *me, TEMPSUMMON_MANUAL_DESPAWN);
 
-                if (Creature* leftFoot = me->FindNearestCreature(NPC_LEFT_FOOT, 100.0f))
+                if (rightFoot)
+                {
+                    rightFootGUID = rightFoot->GetGUID();
+                    if (me->GetVehicleKit() && !rightFoot->GetVehicle())
+                        rightFoot->EnterVehicle(me, 1);
+                }
+
+                Creature* leftFoot = me->FindNearestCreature(NPC_LEFT_FOOT, 100.0f);
+                if (!leftFoot)
+                    leftFoot = me->SummonCreature(NPC_LEFT_FOOT, *me, TEMPSUMMON_MANUAL_DESPAWN);
+
+                if (leftFoot)
+                {
                     leftFootGUID = leftFoot->GetGUID();
+                    if (me->GetVehicleKit() && !leftFoot->GetVehicle())
+                        leftFoot->EnterVehicle(me, 0);
+                }
+
+                TC_LOG_ERROR("scripts", "RHYODBG entree en combat : vehicule=%u piedD=%u piedG=%u",
+                    uint32(me->GetVehicleKit() ? 1 : 0), uint32(rightFoot ? 1 : 0), uint32(leftFoot ? 1 : 0));
 
                 if (controller)
                 {
