@@ -140,6 +140,71 @@ bool PlayerBotSetting::IsEquipByClasses(uint32 cls, const ItemTemplate* itemTemp
 		if (!(itemTemplate->ExtendedData->AllowableClass & (1 << (cls - 1))))
 			return false;
 	}
+	// =================================================================
+	// SPECIALISATION_ARMURE
+	//
+	// SIGNALE EN JEU : sur une escorte de deux paladins, un habille et un
+	// nu. Meme classe, meme niveau, meme reservoir.
+	//
+	// MESURE (sonde EQUIPDBG) : les bots nus accumulaient seize a dix-sept
+	// refus de code 39 -- EQUIP_ERR_CLIENT_LOCKED_OUT -- la ou les habilles
+	// n en avaient aucun.
+	//
+	// Player::CanEquipItem impose une regle que ce filtre ignorait : passe
+	// le niveau 40, un guerrier, un paladin ou un chevalier de la mort ne
+	// peut porter QUE des plaques ; un chasseur ou un chaman, QUE des
+	// mailles ; un voleur ou un druide, QUE du cuir ; un mage, un pretre ou
+	// un demoniste, QUE du tissu.
+	//
+	// Ici on ne regardait que AllowableClass, bien plus permissif -- un
+	// paladin « peut » porter du tissu au sens du drapeau de l objet. Le
+	// reservoir melangeait donc les quatre types, la pioche etait aleatoire,
+	// et chaque piece du mauvais type repartait en refus silencieux. D ou
+	// deux paladins identiques aux sorts opposes : l un avait tire assez de
+	// plaques, l autre non.
+	//
+	// On applique la meme regle que le core, a l identique -- meme plage de
+	// sous-classes, meme exemption de la cape.
+	// =================================================================
+	if (itemTemplate->GetClass() == ITEM_CLASS_ARMOR &&
+		itemTemplate->GetSubClass() > ITEM_SUBCLASS_ARMOR_MISCELLANEOUS &&
+		itemTemplate->GetSubClass() < ITEM_SUBCLASS_ARMOR_COSMETIC &&
+		itemTemplate->GetInventoryType() != INVTYPE_CLOAK)
+	{
+		uint32 sousClasseAttendue = 0;
+		switch (cls)
+		{
+		case CLASS_WARRIOR:
+		case CLASS_PALADIN:
+		case CLASS_DEATH_KNIGHT:
+			sousClasseAttendue = ITEM_SUBCLASS_ARMOR_PLATE;
+			break;
+		case CLASS_HUNTER:
+		case CLASS_SHAMAN:
+			sousClasseAttendue = ITEM_SUBCLASS_ARMOR_MAIL;
+			break;
+		case CLASS_ROGUE:
+		case CLASS_DRUID:
+		case CLASS_MONK:
+		case CLASS_DEMON_HUNTER:
+			sousClasseAttendue = ITEM_SUBCLASS_ARMOR_LEATHER;
+			break;
+		case CLASS_MAGE:
+		case CLASS_PRIEST:
+		case CLASS_WARLOCK:
+			sousClasseAttendue = ITEM_SUBCLASS_ARMOR_CLOTH;
+			break;
+		default:
+			break;
+		}
+
+		// Le reservoir sert des bots de niveau 10 au minimum et se consulte
+		// par niveau ; on retient la regle du haut niveau, la seule qui vaille
+		// pour un mercenaire mis au niveau de son employeur.
+		if (sousClasseAttendue && itemTemplate->GetSubClass() != sousClasseAttendue)
+			return false;
+	}
+
 	if (cls == 1 || cls == 6 || cls == 3 || cls == 4)
 	{
 		if (!IsOnlyPhysicsAttributeEquip(itemTemplate, (cls == 3) ? false : true))
@@ -1557,6 +1622,69 @@ void PlayerBotSetting::Initialize()
 			beastCreatureEntrys.push_back(creature.Entry);
 	}
 
+	// =================================================================
+	// SONDE STUFFDBG -- temporaire.
+	//
+	// SIGNALE EN JEU : « Jandria et Ormyr sont totalement nus », alors que
+	// le demoniste et le voleur de la meme escorte portaient douze pieces.
+	// Constate en base : zero piece portee, mais 21 et 23 objets dans les
+	// sacs -- l ancien equipement, depose la par UnequipFromAll et jamais
+	// repris.
+	//
+	// RefreshEquipment deshabille d abord, puis pioche un equipement NEUF
+	// dans ce reservoir. Quand le reservoir est vide pour la classe, le bot
+	// reste nu. Les deux nus portent plaques et mailles ; les deux habilles,
+	// tissu et cuir.
+	//
+	// Le reservoir est indexe sur item.GetBaseRequiredLevel(), et
+	// Initialize() ecarte tout objet dont ce niveau vaut zero. Or en Legion
+	// l essentiel de l equipement est mis a l echelle et porte un niveau
+	// requis nul. D ou le soupcon : le reservoir serait vide, ou presque,
+	// pour certaines classes.
+	//
+	// Cette sonde le dit au demarrage, sans bot ni joueur. A retirer une
+	// fois la reponse obtenue.
+	// =================================================================
+	{
+		static char const* const nomsClasses[MAX_CLASSES] =
+		{
+			"", "Guerrier", "Paladin", "Chasseur", "Voleur", "Pretre",
+			"ChevalierMort", "Chaman", "Mage", "Demoniste", "Moine",
+			"Druide", "ChasseurDemons"
+		};
+
+		for (uint32 cls = 1; cls < MAX_CLASSES; ++cls)
+		{
+			uint32 totalObjets = 0;
+			uint32 emplacementsServis = 0;
+			uint32 dispoNiveau110 = 0;
+
+			for (uint32 type = 0; type <= InventoryType::INVTYPE_RELIC; ++type)
+			{
+				BotEquips const& parNiveau = classesEquips[cls][type];
+				if (parNiveau.empty())
+					continue;
+
+				++emplacementsServis;
+				bool sert110 = false;
+				for (BotEquips::const_iterator it = parNiveau.begin(); it != parNiveau.end(); ++it)
+				{
+					totalObjets += uint32(it->second.m_Items.size());
+					// Un objet sert un bot de niveau 110 si son niveau requis
+					// ne le depasse pas.
+					if (it->first <= 110 && !it->second.m_Items.empty())
+						sert110 = true;
+				}
+				if (sert110)
+					++dispoNiveau110;
+			}
+
+			TC_LOG_ERROR("server.loading",
+				"STUFFDBG classe=%u (%s) : %u objets, %u emplacements servis, %u servis au niveau 110.",
+				cls, nomsClasses[cls], totalObjets, emplacementsServis, dispoNiveau110);
+		}
+	}
+
 	classesCommonSpells[1].push_back(33388);
 	classesCommonSpells[1].push_back(33391);
 	classesCommonSpells[1].push_back(196);
@@ -1772,7 +1900,15 @@ void PlayerBotSetting::SupplementAmmo()
 void PlayerBotSetting::RefreshEquipment()
 {
 	if (!m_Player || !m_Player->IsInWorld() || m_Player->IsInCombat())
+	{
+		if (m_Player)
+			TC_LOG_ERROR("botai", "EQUIPDBG %s : rehabillage ANNULE (monde=%u combat=%u).",
+				m_Player->GetName().c_str(), uint32(m_Player->IsInWorld()),
+				uint32(m_Player->IsInCombat()));
 		return;
+	}
+	TC_LOG_ERROR("botai", "EQUIPDBG %s : rehabillage lance (niveau %u).",
+		m_Player->GetName().c_str(), uint32(m_Player->getLevel()));
 
 	UnequipFromAll();
 	CheckInventroy();
@@ -2206,16 +2342,39 @@ void PlayerBotSetting::UpequipFromAll()
 
 bool PlayerBotSetting::EquipItem(Item* pItem)
 {
+	// =================================================================
+	// SONDE EQUIPDBG -- temporaire.
+	//
+	// SIGNALE EN JEU : « Jandria et Ormyr sont totalement nus », alors que
+	// le demoniste et le voleur de la meme escorte portaient douze pieces.
+	//
+	// Deux hypotheses ecartees par la mesure : le reservoir d equipement est
+	// richement fourni pour toutes les classes (14 518 objets pour le
+	// guerrier, 19 861 pour le chaman, tous emplacements servis au niveau
+	// 110), et les competences d armure sont bien acquises -- Ormyr possede
+	// plaques, mailles, cuir, tissu et bouclier.
+	//
+	// Le refus vient donc d ici, et il est MUET : les deux sorties en echec
+	// ci-dessous ne disent rien, alors que CanEquipItem renvoie un code
+	// precis. On le journalise.
+	// =================================================================
 	uint16 dest;
 	InventoryResult msg = m_Player->CanEquipItem(NULL_SLOT, dest, pItem, !pItem->IsBag());
 	if (msg != EQUIP_ERR_OK)
 	{
+		TC_LOG_ERROR("botai", "EQUIPDBG %s (classe %u, niveau %u) : objet %u REFUSE, code %u.",
+			m_Player->GetName().c_str(), uint32(m_Player->getClass()),
+			uint32(m_Player->getLevel()), pItem->GetEntry(), uint32(msg));
 		return false;
 	}
 
 	uint16 src = pItem->GetPos();
 	if (dest == src)                                           // prevent equip in same slot, only at cheat
+	{
+		TC_LOG_ERROR("botai", "EQUIPDBG %s : objet %u deja a sa place (dest==src).",
+			m_Player->GetName().c_str(), pItem->GetEntry());
 		return false;
+	}
 
 	Item* pDstItem = m_Player->GetItemByPos(dest);
 	if (!pDstItem)                                         // empty slot, simple case
@@ -2232,6 +2391,8 @@ bool PlayerBotSetting::EquipItem(Item* pItem)
 		msg = m_Player->CanUnequipItem(dest, !pItem->IsBag());
 		if (msg != EQUIP_ERR_OK)
 		{
+			TC_LOG_ERROR("botai", "EQUIPDBG %s : objet %u refuse au retrait de l ancienne piece, code %u.",
+				m_Player->GetName().c_str(), pItem->GetEntry(), uint32(msg));
 			return false;
 		}
 
