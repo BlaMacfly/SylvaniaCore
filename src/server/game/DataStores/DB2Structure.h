@@ -3592,6 +3592,18 @@ struct VehicleSeatEntry
     bool IsEjectable() const { return (FlagsB & VEHICLE_SEAT_FLAG_B_EJECTABLE) != 0; }
 };
 
+struct VignetteEntry
+{
+    int32       ID;
+    LocalizedString* Name;
+    float       MaxHeight;
+    float       MinHeight;
+    int32       QuestFeedbackEffectID;
+    int32       Flags;
+    int32       PlayerConditionID;
+    int32       VisibleTrackingQuestID;
+};
+
 struct WMOAreaTableEntry
 {
     LocalizedString* AreaName;

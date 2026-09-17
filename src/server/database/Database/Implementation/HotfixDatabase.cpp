@@ -1199,6 +1199,10 @@ void HotfixDatabaseConnection::DoPrepareStatements()
     PREPARE_LOCALE_STMT(HOTFIX_SEL_UNIT_POWER_BAR, "SELECT ID, Name_lang, Cost_lang, OutOfError_lang, ToolTip_lang FROM unit_power_bar_locale"
         " WHERE locale = ?", CONNECTION_SYNCH);
 
+    // Vignette.db2
+    PrepareStatement(HOTFIX_SEL_VIGNETTE, "SELECT ID, Name, MaxHeight, MinHeight, QuestFeedbackEffectID, Flags, PlayerConditionID, "
+        "VisibleTrackingQuestID FROM vignette ORDER BY ID DESC", CONNECTION_SYNCH);
+
     // Vehicle.db2
     PrepareStatement(HOTFIX_SEL_VEHICLE, "SELECT ID, Flags, TurnSpeed, PitchSpeed, PitchMin, PitchMax, MouseLookOffsetPitch, CameraFadeDistScalarMin, "
         "CameraFadeDistScalarMax, CameraPitchOffset, FacingLimitRight, FacingLimitLeft, CameraYawOffset, SeatID1, SeatID2, SeatID3, SeatID4, SeatID5, "

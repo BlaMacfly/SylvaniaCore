@@ -36,6 +36,7 @@
 #include "PlayerTaxi.h"
 #include "QuestDef.h"
 #include "SceneMgr.h"
+#include "../../Vignette/VignetteMgr.h"
 #include <queue>
 #include "GarrisonMgr.h"
 #include "PlayerStorage.h"
@@ -2676,6 +2677,9 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         PlayerAchievementMgr* GetAchievementMgr() { return m_achievementMgr; }
         QuestObjectiveCriteriaMgr* GetQuestObjectiveCriteriaMgr() const { return m_questObjectiveCriteriaMgr.get(); }
+        // Marqueurs de la minicarte (rares, tresors) : un jeu par joueur.
+        Vignette::Manager& GetVignetteMgr() { return _vignetteMgr; }
+
         SceneMgr& GetSceneMgr() { return m_sceneMgr; }
         SceneMgr const& GetSceneMgr() const { return m_sceneMgr; }
         RestMgr& GetRestMgr() const { return *_restMgr; }
@@ -3133,6 +3137,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         int32 m_EquipCombatPower;
 
         SceneMgr m_sceneMgr;
+        Vignette::Manager _vignetteMgr;
 
         std::unordered_map<ObjectGuid /*LootObject*/, ObjectGuid /*world object*/> m_AELootView;
 

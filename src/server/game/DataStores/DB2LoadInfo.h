@@ -5980,6 +5980,26 @@ struct UnitPowerBarLoadInfo
     }
 };
 
+struct VignetteLoadInfo
+{
+    static DB2LoadInfo const* Instance()
+    {
+        static DB2FieldMeta const fields[] =
+        {
+            { true, FT_INT, "ID" },
+            { false, FT_STRING, "Name" },
+            { false, FT_FLOAT, "MaxHeight" },
+            { false, FT_FLOAT, "MinHeight" },
+            { true, FT_INT, "QuestFeedbackEffectID" },
+            { true, FT_INT, "Flags" },
+            { true, FT_INT, "PlayerConditionID" },
+            { true, FT_INT, "VisibleTrackingQuestID" },
+        };
+        static DB2LoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, VignetteMeta::Instance(), HOTFIX_SEL_VIGNETTE);
+        return &loadInfo;
+    }
+};
+
 struct VehicleLoadInfo
 {
     static DB2LoadInfo const* Instance()

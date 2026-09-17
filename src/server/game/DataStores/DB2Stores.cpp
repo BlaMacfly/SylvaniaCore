@@ -301,6 +301,7 @@ DB2Storage<TransmogSetItemEntry>                sTransmogSetItemStore("TransmogS
 DB2Storage<TransportAnimationEntry>             sTransportAnimationStore("TransportAnimation.db2", TransportAnimationLoadInfo::Instance());
 DB2Storage<TransportRotationEntry>              sTransportRotationStore("TransportRotation.db2", TransportRotationLoadInfo::Instance());
 DB2Storage<UnitPowerBarEntry>                   sUnitPowerBarStore("UnitPowerBar.db2", UnitPowerBarLoadInfo::Instance());
+DB2Storage<VignetteEntry>                       sVignetteStore("Vignette.db2", VignetteLoadInfo::Instance());
 DB2Storage<VehicleEntry>                        sVehicleStore("Vehicle.db2", VehicleLoadInfo::Instance());
 DB2Storage<VehicleSeatEntry>                    sVehicleSeatStore("VehicleSeat.db2", VehicleSeatLoadInfo::Instance());
 DB2Storage<WMOAreaTableEntry>                   sWMOAreaTableStore("WMOAreaTable.db2", WmoAreaTableLoadInfo::Instance());
@@ -824,6 +825,7 @@ void DB2Manager::LoadStores(std::string const& dataPath, uint32 defaultLocale)
     LOAD_DB2(sTransportAnimationStore);
     LOAD_DB2(sTransportRotationStore);
     LOAD_DB2(sUnitPowerBarStore);
+    LOAD_DB2(sVignetteStore);
     LOAD_DB2(sVehicleStore);
     LOAD_DB2(sVehicleSeatStore);
     LOAD_DB2(sWMOAreaTableStore);

@@ -144,7 +144,7 @@ static uint32 copseReclaimDelay[MAX_DEATH_COUNT] = { 30, 60, 120 };
 
 uint64 const MAX_MONEY_AMOUNT = 99999999999ULL;
 
-Player::Player(WorldSession* session) : Unit(true), m_sceneMgr(this), m_archaeologyPlayerMgr(this)
+Player::Player(WorldSession* session) : Unit(true), m_sceneMgr(this), _vignetteMgr(this), m_archaeologyPlayerMgr(this)
 {
     // SylvaniaCore : m_playerStorage etait DECLARE dans Player.h mais alloue
     // NULLE PART dans tout le depot. Le pointeur contenait donc des ordures
@@ -1247,6 +1247,10 @@ void Player::Update(uint32 p_time)
 {
     if (!IsInWorld())
         return;
+
+    // Marqueurs de la minicarte : on pousse au client ce qui a change depuis le tour
+    // precedent (marqueurs apparus, disparus, ou dont la source s'est deplacee).
+    GetVignetteMgr().Update();
 
     // undelivered mail
     if (m_nextMailDelivereTime && m_nextMailDelivereTime <= time(nullptr))
@@ -24920,6 +24924,7 @@ void Player::UpdateVisibilityOf(WorldObject* target)
 
             target->DestroyForPlayer(this);
             m_clientGUIDs.erase(target->GetGUID());
+            GetVignetteMgr().OnWorldObjectDisappear(target);
 
             #ifdef TRINITY_DEBUG
             TC_LOG_DEBUG("maps", "%s out of range for %s. Distance = %f", target->GetGUID().ToString().c_str(), GetGUID().ToString().c_str(), GetDistance(target));
@@ -24932,6 +24937,7 @@ void Player::UpdateVisibilityOf(WorldObject* target)
         {
             target->SendUpdateToPlayer(this);
             m_clientGUIDs.insert(target->GetGUID());
+            GetVignetteMgr().OnWorldObjectAppear(target);
 
             #ifdef TRINITY_DEBUG
             TC_LOG_DEBUG("maps", "%s is visible now for %s. Distance = %f", target->GetGUID().ToString().c_str(), GetGUID().ToString().c_str(), GetDistance(target));
