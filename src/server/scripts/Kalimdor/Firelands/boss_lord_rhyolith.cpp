@@ -122,6 +122,22 @@ enum Events
     EVENT_ERUPTION          = 13,
 };
 
+// La file d evenements du core sait etiqueter ses entrees par phase : une entree
+// programmee pour la phase 1 est ecartee d office si elle arrive a echeance alors
+// qu on est passe en phase 2. C est le mecanisme natif a utiliser, et il rend la
+// bascule atomique sans avoir a vider la file a la main.
+enum Phases
+{
+    PHASE_ONE = 1,
+    PHASE_TWO = 2,
+};
+
+enum AIAnimKits
+{
+    // Le colosse effondre, entre l eclatement de l armure et son relevement.
+    AI_ANIM_KIT_RHYOLITH_SITTING = 1498,
+};
+
 enum Others
 {
     DATA_PHASE                      = 1,
@@ -182,17 +198,20 @@ class boss_lord_rhyolith : public CreatureScript
             void Reset() override
             {
                 _Reset();
+                events.SetPhase(PHASE_ONE);
                 me->AddUnitState(UNIT_STATE_IGNORE_PATHFINDING);
 
-                // Retour a la premiere carcasse apres une tentative ratee.
+                // Retour a la premiere carcasse apres une tentative ratee : l entree du
+                // gabarit, donc ses drapeaux -- dont l intargetabilite du corps -- puis la
+                // posture et la vie pleine. _Reset a deja fait disparaitre les invocations.
                 _transformationCount = 0;
                 if (me->GetEntry() != NPC_RHYOLITH)
                     me->UpdateEntry(NPC_RHYOLITH, nullptr, false);
 
+                me->SetAIAnimKitId(0);
                 me->SetHealth(me->GetMaxHealth());
                 me->SetReactState(REACT_PASSIVE);
                 me->LowerPlayerDamageReq(me->GetMaxHealth());
-                summons.DespawnEntry(NPC_VOLCANO);
 
                 if (instance->GetBossState(DATA_RHYOLITH) != DONE)
                     me->SetVisible(true);
@@ -202,13 +221,11 @@ class boss_lord_rhyolith : public CreatureScript
                 curMove = 0;
                 bAchieve = true;
                 players_count = 0;
-                phase = 0;
 
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
                 // L'armure en fusion n'etait nettoyee nulle part : elle restait collee aux
                 // joueurs apres le combat, sans duree, comme la barre de direction.
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MOLTEN_ARMOR);
-                instance->SetData(DATA_RHYOLITH_HEALTH_SHARED, me->GetMaxHealth() / 2);
 
                 controllerGUID  = ObjectGuid::Empty;
                 leftFootGUID    = ObjectGuid::Empty;
@@ -239,10 +256,22 @@ class boss_lord_rhyolith : public CreatureScript
                     me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
                     me->SetReactState(REACT_PASSIVE);
 
+                    // InitEntry, appelee par UpdateEntry, recharge aussi les vitesses depuis
+                    // le nouveau gabarit. Les deux carcasses abimees de la phase 1 en portent
+                    // de bien plus vives (speed_run 1.14) que le pas trainant voulu ici : des
+                    // 75 pour cent, le colosse rattrapait son controleur d'un bond et la
+                    // direction au pied perdait tout sens. Sa forme finale, elle, garde les
+                    // siennes (speed_run 1.64) : c'est elle qui charge les joueurs.
+                    if (_transformationCount < 2)
+                    {
+                        me->SetSpeed(MOVE_RUN, 0.3f);
+                        me->SetSpeed(MOVE_WALK, 0.3f);
+                    }
+
                     ++_transformationCount;
                 }
 
-                if (_transformationCount == 3 && phase == 0)
+                if (_transformationCount == 3 && !events.IsInPhase(PHASE_TWO))
                     StartPhaseTwo();
 
                 if (damage >= me->GetHealth() && _transformationCount < 3)
@@ -253,11 +282,15 @@ class boss_lord_rhyolith : public CreatureScript
             // redevient ciblable et se releve pour se battre pour de bon.
             void StartPhaseTwo()
             {
-                phase = 1;
+                // SetPhase annule d office tout ce qui etait programme pour la phase 1, y
+                // compris le reequilibrage que la pile d appel est justement en train
+                // d executer : il se reprogrammera dans le vide et sera ecarte a son
+                // echeance. Aucun etat intermediaire ne survit a cet appel.
+                events.SetPhase(PHASE_TWO);
 
                 me->InterruptNonMeleeSpells(true);
+                me->GetMotionMaster()->MoveIdle();
                 me->StopMoving();
-                events.Reset();
 
                 summons.DespawnEntry(NPC_VOLCANO);
                 summons.DespawnEntry(NPC_LIQUID_OBSIDIAN);
@@ -266,6 +299,8 @@ class boss_lord_rhyolith : public CreatureScript
 
                 if (Creature* controller = ObjectAccessor::GetCreature(*me, controllerGUID))
                     controller->DespawnOrUnsummon();
+
+                controllerGUID.Clear();
 
                 for (ObjectGuid const& guid : { leftFootGUID, rightFootGUID })
                     if (Creature* foot = ObjectAccessor::GetCreature(*me, guid))
@@ -277,9 +312,18 @@ class boss_lord_rhyolith : public CreatureScript
                 leftFootGUID.Clear();
                 rightFootGUID.Clear();
 
+                // Ce qui rend le corps intargetable pendant la phase 1, c est
+                // UNIT_FLAG2_SELECTION_DISABLED, pose par le gabarit de chaque carcasse :
+                // c est ce drapeau-la qu il faut lever, et non ceux de UNIT_FIELD_FLAGS
+                // que le script retirait jusqu ici sans effet.
+                me->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_SELECTION_DISABLED);
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
                 me->SetVisible(true);
                 me->LowerPlayerDamageReq(me->GetMaxHealth());
+                // Il ne traine plus derriere un controleur : il se bat. On lui rend sa
+                // course, les vitesses de sa forme finale venant d'etre rechargees.
+                me->SetWalk(false);
+                me->SetAIAnimKitId(AI_ANIM_KIT_RHYOLITH_SITTING);
                 DoCast(me, SPELL_IMMOLATION, true);
                 Talk(SAY_TRANS);
 
@@ -287,8 +331,8 @@ class boss_lord_rhyolith : public CreatureScript
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_MOLTEN_ARMOR);
 
-                events.ScheduleEvent(EVENT_STAND_UP, 3000);
-                events.ScheduleEvent(EVENT_CONCLUSIVE_STOMP, 7000);
+                events.ScheduleEvent(EVENT_STAND_UP, 3000, 0, PHASE_TWO);
+                events.ScheduleEvent(EVENT_CONCLUSIVE_STOMP, 7000, 0, PHASE_TWO);
             }
 
             void JustSummoned(Creature* summon) override
@@ -305,7 +349,7 @@ class boss_lord_rhyolith : public CreatureScript
 
                 curMove = 0;
                 bAchieve = true;
-                phase = 0;
+                events.SetPhase(PHASE_ONE);
                 players_count = instance->instance->GetPlayers().getSize();
 
                 Creature* controller = me->SummonCreature(NPC_MOVEMENT_CONTROLLER, movePos[curMove]);
@@ -339,7 +383,7 @@ class boss_lord_rhyolith : public CreatureScript
                 }
 
                 _transformationCount = 0;
-                events.ScheduleEvent(EVENT_BALANCE_FEET_HEALTH, 5000);
+                events.ScheduleEvent(EVENT_BALANCE_FEET_HEALTH, 5000, 0, PHASE_ONE);
 
                 if (controller)
                 {
@@ -348,12 +392,11 @@ class boss_lord_rhyolith : public CreatureScript
                     me->SetWalk(true);
                     me->GetMotionMaster()->MoveFollow(controller, 0.0f, 0.0f);
                 }
-                instance->SetData(DATA_RHYOLITH_HEALTH_SHARED, me->GetMaxHealth() / 2);
 
-                events.ScheduleEvent(EVENT_CHECK_MOVE, 1000);
-                events.ScheduleEvent(EVENT_CONCLUSIVE_STOMP, 10000);
-                events.ScheduleEvent(EVENT_ACTIVATE_VOLCANO, urand(25000, 30000));
-                events.ScheduleEvent(EVENT_FRAGMENT, urand(25000, 30000));
+                events.ScheduleEvent(EVENT_CHECK_MOVE, 1000, 0, PHASE_ONE);
+                events.ScheduleEvent(EVENT_CONCLUSIVE_STOMP, 10000, 0, PHASE_ONE);
+                events.ScheduleEvent(EVENT_ACTIVATE_VOLCANO, urand(25000, 30000), 0, PHASE_ONE);
+                events.ScheduleEvent(EVENT_FRAGMENT, urand(25000, 30000), 0, PHASE_ONE);
                 events.ScheduleEvent(EVENT_SUPERHEATED, (IsHeroic() ? 5 * MINUTE * IN_MILLISECONDS : 6 * MINUTE * IN_MILLISECONDS));
 
                 DoCastAOE(SPELL_BALANCE_BAR, true);
@@ -364,7 +407,8 @@ class boss_lord_rhyolith : public CreatureScript
 
             void JustReachedHome() override
             {
-                me->GetVehicleKit()->InstallAllAccessories(false);
+                if (Vehicle* vehicleKit = me->GetVehicleKit())
+                    vehicleKit->InstallAllAccessories(false);
                 instance->DoRemoveAurasDueToSpellOnPlayers(SPELL_BALANCE_BAR);
             }
 
@@ -434,8 +478,16 @@ class boss_lord_rhyolith : public CreatureScript
                             Creature* footLeft = ObjectAccessor::GetCreature(*me, leftFootGUID);
                             Creature* footRight = ObjectAccessor::GetCreature(*me, rightFootGUID);
 
+                            // Un pied ne peut plus mourir (voir leur DamageTaken) : s il en
+                            // manque un, le combat est casse. On s evade -- l ancien break
+                            // sortait du switch AVANT la reprogrammation, l evenement ne
+                            // revenait jamais et le colosse restait fige a vie, invulnerable
+                            // et sans butin.
                             if (!footLeft || !footRight || !footLeft->IsAlive() || !footRight->IsAlive())
-                                break;
+                            {
+                                EnterEvadeMode(EVADE_REASON_OTHER);
+                                return;
+                            }
 
                             float targetHealthPct = (footLeft->GetHealthPct() + footRight->GetHealthPct()) / 2.0f;
                             footLeft->SetHealth(CalculatePct(footLeft->GetMaxHealth(), targetHealthPct));
@@ -444,11 +496,18 @@ class boss_lord_rhyolith : public CreatureScript
                             if (targetHealthPct < me->GetHealthPct())
                                 me->DealDamage(me, CalculatePct(me->GetMaxHealth(), me->GetHealthPct() - targetHealthPct));
 
-                            events.ScheduleEvent(EVENT_BALANCE_FEET_HEALTH, 5000);
+                            // Repeat conserve l etiquette de phase de l evenement courant :
+                            // si le coup ci-dessus a fait basculer en phase 2, celui-ci sera
+                            // ecarte a son echeance au lieu de survivre a la bascule.
+                            events.Repeat(5000);
                             break;
                         }
                         case EVENT_STAND_UP:
-                            events.ScheduleEvent(EVENT_TURN_AGGRESSIVE, 3600);
+                            // Fin de l effondrement : on lui rend sa posture. L evenement ne
+                            // faisait jusqu ici que programmer le suivant, et rien ne
+                            // relevait le colosse.
+                            me->SetAIAnimKitId(0);
+                            events.ScheduleEvent(EVENT_TURN_AGGRESSIVE, 3600, 0, PHASE_TWO);
                             break;
                         case EVENT_TURN_AGGRESSIVE:
                             me->SetReactState(REACT_AGGRESSIVE);
@@ -467,8 +526,12 @@ class boss_lord_rhyolith : public CreatureScript
                                 {
                                     me->StopMoving();
                                     me->CastSpell(me, SPELL_DRINK_MAGMA);
-                                    events.Reset();
-                                    events.ScheduleEvent(EVENT_CHECK_MOVE, 8000);
+                                    // Surtout ne pas vider la file : elle porte le
+                                    // reequilibrage de la vie, les pietinements, les volcans
+                                    // ET la phase courante. events.Reset() les emportait
+                                    // tous des la premiere gorgee de magma, ce qui figeait la
+                                    // progression du combat pour de bon.
+                                    events.Repeat(8000);
                                     return;
                                 }
                             }
@@ -485,7 +548,7 @@ class boss_lord_rhyolith : public CreatureScript
                                     if (rightFoot)
                                         rightFoot->RemoveAura(SPELL_BURNING_FEET);
                                     instance->DoSetAlternatePowerOnPlayers(25);
-                                    events.ScheduleEvent(EVENT_CHECK_MOVE, 1000);
+                                    events.Repeat(1000);
                                     return;
                                 }
 
@@ -512,13 +575,13 @@ class boss_lord_rhyolith : public CreatureScript
                                         rightFoot->CastSpell(rightFoot, SPELL_BURNING_FEET, true);
                                 }
                             }
-                            events.ScheduleEvent(EVENT_CHECK_MOVE, 1000);
+                            events.Repeat(1000);
                             break;
                         }
                         case EVENT_CONCLUSIVE_STOMP:
                             Talk(SAY_STOMP);
                             DoCastAOE(SPELL_CONCLUSIVE_STOMP);
-                            events.ScheduleEvent(EVENT_CONCLUSIVE_STOMP, urand(35000, 40000));
+                            events.Repeat(urand(35000, 40000));
                             break;
                         case EVENT_ACTIVATE_VOLCANO:
                         {
@@ -544,14 +607,14 @@ class boss_lord_rhyolith : public CreatureScript
                                 Talk(SAY_LAVA);
                                 DoCast(pTarget, SPELL_HEATED_VOLCANO, true);
                             }
-                            events.ScheduleEvent(EVENT_ACTIVATE_VOLCANO, urand(45000, 50000));
+                            events.Repeat(urand(45000, 50000));
                             break;
                         }
                         case EVENT_SPARK:
                         {
                             uint32 i = urand(0, _MAX_VOLCANO - 1);
                             me->CastSpell(volcanoPos[i].GetPositionX(), volcanoPos[i].GetPositionY(), volcanoPos[i].GetPositionZ(), SPELL_SUMMON_SPARK_OF_RHYOLITH, true);
-                            events.ScheduleEvent(EVENT_FRAGMENT, 30000);
+                            events.ScheduleEvent(EVENT_FRAGMENT, 30000, 0, PHASE_ONE);
                             break;
                         }
                         case EVENT_FRAGMENT:
@@ -570,12 +633,12 @@ class boss_lord_rhyolith : public CreatureScript
                             for (std::set<uint8>::const_iterator itr = posList.begin(); itr != posList.end(); ++itr)
                                 me->CastSpell(volcanoPos[(*itr)].GetPositionX(), volcanoPos[(*itr)].GetPositionY(), volcanoPos[(*itr)].GetPositionZ(), SPELL_SUMMON_FRAGMENT_OF_RHYOLITH, true);
 
-                            events.ScheduleEvent(EVENT_SPARK, 30000);
+                            events.ScheduleEvent(EVENT_SPARK, 30000, 0, PHASE_ONE);
                             break;
                         }
                         case EVENT_SUPERHEATED:
                             DoCast(me, SPELL_SUPERHEATED, true);
-                            events.ScheduleEvent(EVENT_SUPERHEATED, 10000);
+                            events.Repeat(10000);
                             break;
                         case EVENT_START_MOVE:
                             me->SetReactState(REACT_AGGRESSIVE);
@@ -595,7 +658,6 @@ class boss_lord_rhyolith : public CreatureScript
             int32 curMove;
             bool bAchieve;
             uint8 players_count;
-            uint8 phase;
 
             int32 CalculateNextMove(int32 left, int32 right)
             {
@@ -773,7 +835,6 @@ class npc_lord_rhyolith_right_foot : public CreatureScript
         {
             npc_lord_rhyolith_right_footAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
             {
-                pInstance = me->GetInstanceScript();
                 me->SetReactState(REACT_PASSIVE);
                 me->CastCustomSpell(SPELL_OBSIDIAN_ARMOR, SPELLVALUE_AURA_STACK, 80, me, true);
                 memset(m_hits, 0, sizeof(m_hits));
@@ -804,7 +865,7 @@ class npc_lord_rhyolith_right_foot : public CreatureScript
 
             void DamageTaken(Unit* who, uint32 &damage) override
             {
-                if (!me || !me->IsAlive())
+                if (!me->IsAlive())
                     return;
 
                 if (who->GetGUID() == me->GetGUID())
@@ -812,8 +873,14 @@ class npc_lord_rhyolith_right_foot : public CreatureScript
 
                 m_hits[0]++;
 
-                if (pInstance)
-                    pInstance->SetData(DATA_RHYOLITH_HEALTH_SHARED, me->GetHealth() > damage ? me->GetHealth() - damage : 0);
+                // Un pied ne meurt jamais : la vie du combat est celle du colosse, et c est
+                // lui qui vient s aligner sur la leur toutes les cinq secondes. Sans ce
+                // garde-fou, un pied tue emportait tout l affrontement avec lui -- le
+                // reequilibrage ne revenait plus et le colosse restait debout, inerte.
+                // Le garde-fou de vie ci-dessus doit rester avant : sur un pied deja mort,
+                // GetHealth() vaut zero et la soustraction repasserait par le haut.
+                if (damage >= me->GetHealth())
+                    damage = me->GetHealth() - 1;
             }
 
             void UpdateAI(uint32 diff) override
@@ -829,12 +896,8 @@ class npc_lord_rhyolith_right_foot : public CreatureScript
                      hitsTimer = 1000;
                 }
 
-                if (pInstance)
-                    if (pInstance->GetData(DATA_RHYOLITH_HEALTH_SHARED) != 0)
-                        me->SetHealth(pInstance->GetData(DATA_RHYOLITH_HEALTH_SHARED));
             }
         private:
-            InstanceScript* pInstance;
             uint32 m_hits[3];
             int32 hitsTimer;
 
@@ -872,7 +935,6 @@ class npc_lord_rhyolith_left_foot : public CreatureScript
         {
             npc_lord_rhyolith_left_footAI(Creature* pCreature) : Scripted_NoMovementAI(pCreature)
             {
-                pInstance = me->GetInstanceScript();
                 me->SetReactState(REACT_PASSIVE);
                 me->CastCustomSpell(SPELL_OBSIDIAN_ARMOR, SPELLVALUE_AURA_STACK, 80, me, true);
                 memset(m_hits, 0, sizeof(m_hits));
@@ -903,7 +965,7 @@ class npc_lord_rhyolith_left_foot : public CreatureScript
 
             void DamageTaken(Unit* who, uint32 &damage) override
             {
-                if (!me || !me->IsAlive())
+                if (!me->IsAlive())
                     return;
 
                 if (who->GetGUID() == me->GetGUID())
@@ -911,8 +973,14 @@ class npc_lord_rhyolith_left_foot : public CreatureScript
 
                 m_hits[0]++;
 
-                if (pInstance)
-                    pInstance->SetData(DATA_RHYOLITH_HEALTH_SHARED, me->GetHealth() > damage ? me->GetHealth() - damage : 0);
+                // Un pied ne meurt jamais : la vie du combat est celle du colosse, et c est
+                // lui qui vient s aligner sur la leur toutes les cinq secondes. Sans ce
+                // garde-fou, un pied tue emportait tout l affrontement avec lui -- le
+                // reequilibrage ne revenait plus et le colosse restait debout, inerte.
+                // Le garde-fou de vie ci-dessus doit rester avant : sur un pied deja mort,
+                // GetHealth() vaut zero et la soustraction repasserait par le haut.
+                if (damage >= me->GetHealth())
+                    damage = me->GetHealth() - 1;
             }
 
             void UpdateAI(uint32 diff) override
@@ -928,12 +996,8 @@ class npc_lord_rhyolith_left_foot : public CreatureScript
                      hitsTimer = 1000;
                 }
 
-                if (pInstance)
-                    if (pInstance->GetData(DATA_RHYOLITH_HEALTH_SHARED) != 0)
-                        me->SetHealth(pInstance->GetData(DATA_RHYOLITH_HEALTH_SHARED));
             }
         private:
-            InstanceScript* pInstance;
             uint32 m_hits[3];
             int32 hitsTimer;
 

@@ -73,7 +73,7 @@ void Manager::DestroyAndRemoveVignetteByEntry(VignetteEntry const* vignetteEntry
         if (itr->second->GetVignetteEntry()->ID == vignetteEntry->ID)
         {
             delete itr->second;
-            _removedVignette.insert(itr->first);
+            ForgetVignette(itr->first);
             itr = _vignettes.erase(itr);
             continue;
         }
@@ -89,13 +89,24 @@ void Manager::DestroyAndRemoveVignettes(std::function<bool(Entity*)> const& lamb
         if (lambda(itr->second))
         {
             delete itr->second;
-            _removedVignette.insert(itr->first);
+            ForgetVignette(itr->first);
             itr = _vignettes.erase(itr);
             continue;
         }
 
         ++itr;
     }
+}
+
+// Un marqueur cree puis detruit avant le prochain envoi n'a jamais atteint le client :
+// on annule l'ajout en attente au lieu de lui transmettre le retrait d'un identifiant
+// qu'il ne connait pas.
+void Manager::ForgetVignette(ObjectGuid const& guid)
+{
+    _updatedVignette.erase(guid);
+
+    if (_addedVignette.erase(guid) == 0)
+        _removedVignette.insert(guid);
 }
 
 void Manager::SendVignetteUpdateToClient()
@@ -137,20 +148,43 @@ void Manager::SendVignetteUpdateToClient()
 
 void Manager::Update()
 {
-    for (auto itr : _vignettes)
+    for (auto itr = _vignettes.begin(); itr != _vignettes.end();)
     {
-        Entity* vignette = itr.second;
+        Entity* vignette = itr->second;
+
+        // Un marqueur pose par un script ne suit aucune source : lui seul decide de sa fin.
+        if (vignette->GetVignetteType() == Type::SourceScript)
+        {
+            ++itr;
+            continue;
+        }
+
+        // Le marqueur n'est que le reflet d'une source. L'eligibilite n'etait verifiee
+        // qu'a la creation : un rare tue sous les yeux du joueur gardait donc son
+        // marqueur, puisque OnWorldObjectDisappear n'est appelee qu'a la sortie du champ
+        // de vision et qu'une depouille reste visible longtemps. On la reverifie ici.
+        // ObjectAccessor::GetWorldObject cherche dans la carte du joueur : ce meme test
+        // vidange aussi les marqueurs de la carte precedente apres un changement de
+        // carte, ou Map::AddPlayerToMap vide le jeu de visibilite sans nous prevenir.
+        WorldObject const* source = ObjectAccessor::GetWorldObject(*_owner, vignette->GetSourceGuid());
+        if (!source || !CanSeeVignette(source, vignette->GetVignetteEntry()->ID))
+        {
+            delete vignette;
+            ForgetVignette(itr->first);
+            itr = _vignettes.erase(itr);
+            continue;
+        }
 
         // Une creature qui patrouille deplace son marqueur.
-        if (vignette->GetSourceGuid().IsUnit())
-            if (Creature* sourceCreature = ObjectAccessor::GetCreature(*_owner, vignette->GetSourceGuid()))
-                vignette->UpdatePosition(sourceCreature->GetPosition());
+        vignette->UpdatePosition(source->GetPosition());
 
         if (vignette->NeedClientUpdate())
         {
             _updatedVignette.insert(vignette->GetGuid());
             vignette->ResetNeedClientUpdate();
         }
+
+        ++itr;
     }
 
     if (!_addedVignette.empty() || !_updatedVignette.empty() || !_removedVignette.empty())

@@ -457,7 +457,19 @@ bool Creature::UpdateEntry(uint32 entry, CreatureData const* data /*= nullptr*/,
     if (updateLevel)
         SelectLevel();
     else
+    {
+        // Un changement d'entree en plein combat -- une carcasse de boss qui s'abime, un
+        // volcan qui devient cratere -- doit garder l'etat de la creature, pas lui rendre
+        // sa vie. Or UpdateLevelDependantStats se termine par SetHealth(max) : on releve
+        // donc la vie avant et on la repose apres, comme le fait l'amont TrinityCore
+        // (notre fork avait perdu ces lignes, le commentaire ci-dessous en temoigne).
+        // Sans cela, chaque transformation remplit la barre du boss.
+        // Les gardiens sont laisses de cote : leur vie derive de celle de leur maitre.
+        uint32 previousHealth = IsGuardian() ? 0 : GetHealth();
         UpdateLevelDependantStats(); // We still re-initialize level dependant stats on entry update
+        if (previousHealth > 0)
+            SetHealth(previousHealth);
+    }
 
     SetMeleeDamageSchool(SpellSchools(cInfo->dmgschool));
     SetModifierValue(UNIT_MOD_RESISTANCE_HOLY,   BASE_VALUE, float(cInfo->resistance[SPELL_SCHOOL_HOLY]));

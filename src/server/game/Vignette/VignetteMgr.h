@@ -49,6 +49,7 @@ public:
     bool CanSeeVignette(WorldObject const* obj, uint32 vignetteID) const;
 
 private:
+    void ForgetVignette(ObjectGuid const& guid);
     void SendVignetteUpdateToClient();
 
     Player const* _owner;
