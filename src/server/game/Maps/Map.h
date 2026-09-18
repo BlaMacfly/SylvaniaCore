@@ -207,9 +207,18 @@ class TC_GAME_API GridMap
     uint8 _liquidHeight;
     bool _fileExists;
 
+    // Trous de l ADT : les endroits ou le terrain ne pose aucun sol (entrees de
+    // grottes, interieurs de batiments, la Plaie de Silithus...). L extracteur les
+    // ecrit depuis toujours -- holesOffset / holesSize dans l en-tete -- mais rien
+    // ne les lisait : le serveur interpolait une hauteur la ou le client n affiche
+    // rien. Un octet par rangee, huit rangees par chunk, seize chunks par cote.
+    uint8* _holes;
+
     bool loadAreaData(FILE* in, uint32 offset, uint32 size);
     bool loadHeightData(FILE* in, uint32 offset, uint32 size);
     bool loadLiquidData(FILE* in, uint32 offset, uint32 size);
+    bool loadHolesData(FILE* in, uint32 offset, uint32 size);
+    bool isHole(int row, int col) const;
 
     // Get height functions and pointers
     typedef float (GridMap::*GetHeightPtr) (float x, float y) const;

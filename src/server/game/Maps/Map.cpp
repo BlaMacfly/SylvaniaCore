@@ -1942,6 +1942,7 @@ GridMap::GridMap()
     _liquidEntry = nullptr;
     _liquidFlags = nullptr;
     _liquidMap  = nullptr;
+    _holes = nullptr;
     _fileExists = false;
 }
 
@@ -1991,6 +1992,13 @@ bool GridMap::loadData(const char* filename)
             fclose(in);
             return false;
         }
+        // load up holes data -- les chunks ou l ADT ne pose aucun terrain
+        if (header.holesSize && !loadHolesData(in, header.holesOffset, header.holesSize))
+        {
+            TC_LOG_ERROR("maps", "Error loading map holes data");
+            fclose(in);
+            return false;
+        }
         fclose(in);
         return true;
     }
@@ -2010,6 +2018,7 @@ void GridMap::unloadData()
     delete[] _liquidEntry;
     delete[] _liquidFlags;
     delete[] _liquidMap;
+    delete[] _holes;
     _areaMap = nullptr;
     m_V9 = nullptr;
     m_V8 = nullptr;
@@ -2017,6 +2026,7 @@ void GridMap::unloadData()
     _liquidEntry = nullptr;
     _liquidFlags = nullptr;
     _liquidMap  = nullptr;
+    _holes = nullptr;
     _gridGetHeight = &GridMap::getHeightFromFlat;
     _fileExists = false;
 }
@@ -2163,6 +2173,34 @@ bool GridMap::loadLiquidData(FILE* in, uint32 offset, uint32 /*size*/)
     return true;
 }
 
+bool GridMap::loadHolesData(FILE* in, uint32 offset, uint32 /*size*/)
+{
+    if (fseek(in, offset, SEEK_SET) != 0)
+        return false;
+
+    _holes = new uint8[16 * 16 * 8];
+    if (fread(_holes, sizeof(uint8), 16 * 16 * 8, in) != 16 * 16 * 8)
+        return false;
+
+    return true;
+}
+
+// Un chunk d ADT est decoupe en 8 x 8 carres ; chaque carre troue est un bit pose.
+// Seize chunks par cote de tuile, huit octets par chunk : exactement les 2048 octets
+// que notre extracteur ecrit (uint8 holes[16][16][8] dans map_extractor/System.cpp).
+bool GridMap::isHole(int row, int col) const
+{
+    if (!_holes)
+        return false;
+
+    int cellRow = row / 8;     // 8 squares per cell
+    int cellCol = col / 8;
+    int holeRow = row % 8;
+    int holeCol = col % 8;
+
+    return (_holes[cellRow * 16 * 8 + cellCol * 8 + holeRow] & (1 << holeCol)) != 0;
+}
+
 uint16 GridMap::getArea(float x, float y) const
 {
     if (!_areaMap)
@@ -2194,6 +2232,11 @@ float GridMap::getHeightFromFloat(float x, float y) const
     y -= y_int;
     x_int&=(MAP_RESOLUTION - 1);
     y_int&=(MAP_RESOLUTION - 1);
+
+    // Pas de terrain ici : c est au vmap (grotte, batiment, plate-forme) de fournir
+    // le sol, ou a personne. Map::GetHeight sait deja traiter INVALID_HEIGHT.
+    if (isHole(x_int, y_int))
+        return INVALID_HEIGHT;
 
     // Height stored as: h5 - its v8 grid, h1-h4 - its v9 grid
     // +--------------> X
@@ -2277,6 +2320,11 @@ float GridMap::getHeightFromUint8(float x, float y) const
     x_int&=(MAP_RESOLUTION - 1);
     y_int&=(MAP_RESOLUTION - 1);
 
+    // Pas de terrain ici : c est au vmap (grotte, batiment, plate-forme) de fournir
+    // le sol, ou a personne. Map::GetHeight sait deja traiter INVALID_HEIGHT.
+    if (isHole(x_int, y_int))
+        return INVALID_HEIGHT;
+
     int32 a, b, c;
     uint8 *V9_h1_ptr = &m_uint8_V9[x_int*128 + x_int + y_int];
     if (x+y < 1)
@@ -2343,6 +2391,11 @@ float GridMap::getHeightFromUint16(float x, float y) const
     y -= y_int;
     x_int&=(MAP_RESOLUTION - 1);
     y_int&=(MAP_RESOLUTION - 1);
+
+    // Pas de terrain ici : c est au vmap (grotte, batiment, plate-forme) de fournir
+    // le sol, ou a personne. Map::GetHeight sait deja traiter INVALID_HEIGHT.
+    if (isHole(x_int, y_int))
+        return INVALID_HEIGHT;
 
     int32 a, b, c;
     uint16 *V9_h1_ptr = &m_uint16_V9[x_int*128 + x_int + y_int];
