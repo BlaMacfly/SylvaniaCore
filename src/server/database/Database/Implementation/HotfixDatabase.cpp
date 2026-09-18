@@ -1202,6 +1202,7 @@ void HotfixDatabaseConnection::DoPrepareStatements()
     // Vignette.db2
     PrepareStatement(HOTFIX_SEL_VIGNETTE, "SELECT ID, Name, MaxHeight, MinHeight, QuestFeedbackEffectID, Flags, PlayerConditionID, "
         "VisibleTrackingQuestID FROM vignette ORDER BY ID DESC", CONNECTION_SYNCH);
+    PREPARE_LOCALE_STMT(HOTFIX_SEL_VIGNETTE, "SELECT ID, Name_lang FROM vignette_locale WHERE locale = ?", CONNECTION_SYNCH);
 
     // Vehicle.db2
     PrepareStatement(HOTFIX_SEL_VEHICLE, "SELECT ID, Flags, TurnSpeed, PitchSpeed, PitchMin, PitchMax, MouseLookOffsetPitch, CameraFadeDistScalarMin, "
