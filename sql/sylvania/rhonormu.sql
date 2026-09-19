@@ -25,7 +25,7 @@ INSERT INTO `conditions`
  (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry`, `SourceId`, `ElseGroup`,
   `ConditionTypeOrReference`, `ConditionTarget`, `ConditionValue1`, `ConditionValue2`,
   `ConditionValue3`, `NegativeCondition`, `ErrorType`, `ErrorTextId`, `ScriptName`, `Comment`) VALUES
-(25, 0, 1817, 0, 0, 1, 0, 255152, 0, 0, 1, 0, 0, '', 'La Plaie : seulement si le joueur ne voyage pas dans le temps (aura 255152)');
+(25, 0, 1817, 0, 0, 1, 0, 255152, 2, 0, 1, 0, 0, '', 'La Plaie : seulement si le joueur ne voyage pas dans le temps (aura 255152, effet 2)');
 
 -- Annulation : db-backups/rhonormu-*.sql
 
