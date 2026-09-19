@@ -258,6 +258,51 @@ enum Zidormi
 #define GOSSIP_ZIDORMI_1 "Can you show me what it's like to be helissus before the trauma of the world?"
 #define GOSSIP_ZIDORMI_2 "Can you take me back now?"
 
+#define GOSSIP_RHONORMU_AVANT  "Montre-moi Silithus telle qu'elle etait avant l'epee."
+#define GOSSIP_RHONORMU_RETOUR "Ramene-moi au present."
+
+/// Rhonormu, le bronze poste a l'entree de Silithus. Il rend au joueur la zone
+/// d'avant l'epee de Sargeras, et l'en ramene.
+///
+/// L'echange de terrain 1817 -- La Plaie -- est conditionne sur le niveau 110. On lui
+/// ajoute une seconde condition : ne pas porter l'aura Voyage temporel (255152).
+/// Rhonormu se contente donc de poser ou de retirer cette aura, puis de demander au
+/// core de reevaluer. PhasingHandler::OnConditionChange reexamine aussi bien les
+/// phases que les cartes visibles, si bien que le terrain ET la population basculent
+/// sur place -- sans teleportation, sans deconnexion.
+///
+/// C'est volontairement l'inverse de ce que fait npc_zidormi_128607 juste en dessous,
+/// qui teleporte vers la carte 1817 comme s'il s'agissait d'une carte a part entiere.
+/// Chez nous 1817 n'est qu'un terrain de substitution de la carte 1 : ce script-la est
+/// laisse sans ScriptName tant qu'il n'aura pas ete repris.
+struct npc_rhonormu_133263 : public ScriptedAI
+{
+    npc_rhonormu_133263(Creature* creature) : ScriptedAI(creature) { }
+
+    void sGossipHello(Player* player) override
+    {
+        ClearGossipMenuFor(player);
+
+        bool dansLePasse = player->HasAura(AURA_TIME_TRAVELLING);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            dansLePasse ? GOSSIP_RHONORMU_RETOUR : GOSSIP_RHONORMU_AVANT,
+            GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+        SendGossipMenuFor(player, 33093, me->GetGUID());
+    }
+
+    void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
+    {
+        CloseGossipMenuFor(player);
+
+        if (player->HasAura(AURA_TIME_TRAVELLING))
+            player->RemoveAurasDueToSpell(AURA_TIME_TRAVELLING);
+        else
+            player->CastSpell(player, AURA_TIME_TRAVELLING, true);
+
+        PhasingHandler::OnConditionChange(player);
+    }
+};
+
 struct npc_zidormi_128607 : public ScriptedAI
 {
     npc_zidormi_128607(Creature* creature) : ScriptedAI(creature)
@@ -850,7 +895,9 @@ void AddSC_silithus_legion()
 {
     new On110Silithus();
     RegisterCreatureAI(npc_master_mathias_shaw_132255);
-    RegisterCreatureAI(npc_zidormi_128607);
+    RegisterCreatureAI(npc_rhonormu_133263);
+    // npc_zidormi_128607 : laisse non enregistre, il teleporte vers la carte 1817
+    // comme vers une carte autonome, ce que notre architecture ne fait pas.
     RegisterCreatureAI(npc_nolan_speed_131963);
     RegisterCreatureAI(npc_kelsey_steelspark_130030);
     RegisterCreatureAI(npc_tammy_tinkspinner_132606);
