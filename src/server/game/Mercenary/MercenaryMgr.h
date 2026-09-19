@@ -52,6 +52,18 @@ class Player;
 #define MERCENARY_ARRIVAL_RANGE       80.0f   // distance au-dela de laquelle il n est pas arrive
 #define MERCENARY_SUMMON_RETRIES      4       // ordres de rappel au maximum
 #define MERCENARY_SUMMON_RECHECK      3       // secondes entre deux verifications
+
+// SIGNALE EN JEU : « quand je rentre dans le scenario du rivage brise
+// certains mercenaires restent deconnectes, et j ai ete rembourse ».
+//
+// Changer de carte, c est quitter le monde puis y revenir. Entre les deux --
+// le temps de l ecran de chargement -- IsInWorld() est faux. Le module
+// tournant chaque seconde tombait sur cet instant, concluait a la
+// disparition de l employeur, et liberait toute l escorte.
+//
+// On tolere desormais une absence passagere. Vingt secondes : large pour un
+// chargement d instance, court devant la minute d attente d une invocation.
+#define MERCENARY_ABSENCE_GRACE       20      // secondes d absence tolerees
 #define MERCENARY_COPPER_PER_GOLD     10000
 
 enum MercenaryStage
@@ -79,7 +91,7 @@ struct MercenaryContract
 {
     MercenaryContract() : accountId(0), role(0), stage(MERC_STAGE_SUMMONING), waitSeconds(0),
         pendingRelease(false), summonPending(false), summonAttempts(0),
-        summonCheckTimer(0), hasPortal(false), portalMap(0) { }
+        summonCheckTimer(0), absenceSeconds(0), hasPortal(false), portalMap(0) { }
 
     uint32     accountId;       // compte bot reserve
     ObjectGuid ownerGuid;       // joueur qui a paye
@@ -102,6 +114,11 @@ struct MercenaryContract
     // conclurait a un echec alors qu il est simplement en cours de route.
     uint8      summonAttempts;
     uint32     summonCheckTimer;
+
+    // Secondes consecutives pendant lesquelles l employeur ou le mercenaire
+    // est introuvable ou hors du monde. Remis a zero des que les deux sont
+    // de nouveau presents.
+    uint32     absenceSeconds;
 
     // Le portail d ou part l invocation : le mercenaire doit en sortir, pas
     // se materialiser aux pieds de son employeur reste en retrait.

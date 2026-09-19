@@ -629,9 +629,21 @@ void MercenaryMgr::Update(uint32 diff)
 
         // L employeur d abord : plus de maitre, plus de contrat. C est le filet
         // de securite si un hook n a pas ete appele (crash client, timeout...).
+        //
+        // Mais un joueur qui change de carte quitte le monde le temps de son
+        // ecran de chargement. Sans le delai de grace ci-dessous, entrer dans
+        // un scenario suffisait a faire conclure a sa disparition et a liberer
+        // toute l escorte -- signale en jeu sur le rivage brise, avec
+        // remboursement a la cle.
         Player* owner = ObjectAccessor::FindConnectedPlayer(it->ownerGuid);
         if (!owner || !owner->IsInWorld())
         {
+            if (++it->absenceSeconds < MERCENARY_ABSENCE_GRACE)
+            {
+                ++it;
+                continue;
+            }
+
             MercenaryContract const contract = *it;
             it = m_contracts.erase(it);
             ReleaseBot(contract);
@@ -642,13 +654,35 @@ void MercenaryMgr::Update(uint32 diff)
         {
             Player* bot = ObjectAccessor::FindConnectedPlayer(it->botGuid);
             Group* group = owner->GetGroup();
-            if (!bot || !bot->IsInWorld() || !group || bot->GetGroup() != group)
+
+            // Meme tolerance pour le mercenaire : il suit son employeur d une
+            // carte a l autre, et se trouve donc hors du monde exactement dans
+            // les memes instants. Le depart du GROUPE, lui, reste immediat :
+            // c est la rupture de contrat prevue, pas un aleas de chargement.
+            if (!bot || !bot->IsInWorld())
+            {
+                if (++it->absenceSeconds < MERCENARY_ABSENCE_GRACE)
+                {
+                    ++it;
+                    continue;
+                }
+
+                MercenaryContract const contract = *it;
+                it = m_contracts.erase(it);
+                ReleaseBot(contract);
+                continue;
+            }
+
+            if (!group || bot->GetGroup() != group)
             {
                 MercenaryContract const contract = *it;
                 it = m_contracts.erase(it);
                 ReleaseBot(contract);
                 continue;
             }
+
+            // Les deux sont la : le compteur d absence repart de zero.
+            it->absenceSeconds = 0;
 
             // Materialisation aupres de l employeur, au premier tick qui suit
             // l entree dans le groupe. On passe par l ordre « summon » de l IA
