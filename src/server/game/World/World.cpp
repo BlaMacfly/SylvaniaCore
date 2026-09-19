@@ -1856,8 +1856,16 @@ void World::SetInitialWorldSettings()
     for (MapEntry const* mapEntry : sMapStore)
     {
         mapData.emplace(std::piecewise_construct, std::forward_as_tuple(mapEntry->ID), std::forward_as_tuple());
+        // Une carte d echange de terrain -- l ancienne Silithus, La Plaie, Gilneas,
+        // l Ile Vagabonde... -- se rattache a sa carte parente par CosmeticParentMapID
+        // et non par ParentMapID. Sans ce repli, elle n est jamais enregistree comme
+        // carte enfant : la phase du joueur dit bien 1815, mais Map::GetGrid ne trouve
+        // pas l enfant et retombe en silence sur le terrain de la carte 1. Le client
+        // dessine alors un sol que le serveur n a pas. Repli pris de l amont.
         if (mapEntry->ParentMapID != -1)
             mapData[mapEntry->ParentMapID].push_back(mapEntry->ID);
+        else if (mapEntry->CosmeticParentMapID != -1)
+            mapData[mapEntry->CosmeticParentMapID].push_back(mapEntry->ID);
     }
 
     sMapMgr->InitializeParentMapData(mapData);

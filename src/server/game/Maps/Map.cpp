@@ -2629,7 +2629,11 @@ GridMap* Map::GetGrid(uint32 mapId, float x, float y)
 
     GridMap* grid = GridMaps[gx][gy];
     auto childMapItr = std::find_if(m_childTerrainMaps->begin(), m_childTerrainMaps->end(), [mapId](Map* childTerrainMap) { return childTerrainMap->GetId() == mapId; });
-    if (childMapItr != m_childTerrainMaps->end() && (*childMapItr)->GridMaps[gx][gy]->fileExists())
+    // Le pointeur doit etre teste avant d etre suivi -- HasGrid, deux fonctions plus
+    // bas, le fait deja. Tant que les cartes enfants n etaient jamais rattachees, la
+    // recherche echouait toujours et personne ne voyait le trou ; elles le sont
+    // desormais, et une grille pas encore chargee ferait tomber le serveur.
+    if (childMapItr != m_childTerrainMaps->end() && (*childMapItr)->GridMaps[gx][gy] && (*childMapItr)->GridMaps[gx][gy]->fileExists())
         grid = (*childMapItr)->GridMaps[gx][gy];
 
     return grid;
