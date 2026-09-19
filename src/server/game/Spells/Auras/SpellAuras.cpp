@@ -730,13 +730,19 @@ void Aura::UpdateOwner(uint32 diff, WorldObject* owner)
 
 void Aura::Update(uint32 diff, Unit* caster)
 {
+    // Les scripts d aura doivent tourner a CHAQUE mise a jour, y compris sur une aura
+    // permanente. L appel etait enferme dans le test de duree ci-dessous, donc mort
+    // des que m_duration valait -1 : un script qui sert de filet de securite -- << retire
+    // cette aura quand le joueur s eloigne >> -- ne pouvait jamais s executer. Cas vecu :
+    // Submerge par la colere (129356), pose par le Sha de la Colere, restait collee a vie
+    // au joueur et l empechait de piller quoi que ce soit.
+    CallScriptAuraUpdateHandlers(diff);
+
     if (m_duration > 0)
     {
         m_duration -= diff;
         if (m_duration < 0)
             m_duration = 0;
-
-        CallScriptAuraUpdateHandlers(diff);
 
         // handle manaPerSecond/manaPerSecondPerLevel
         if (m_timeCla)

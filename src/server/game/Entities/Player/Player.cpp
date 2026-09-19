@@ -25318,6 +25318,13 @@ void Player::SendInitialPacketsAfterAddToMap()
 {
     UpdateVisibilityForPlayer();
 
+    // Le terrain AVANT les aires. OnMapChange remplit VisibleMapIds -- l echange de
+    // terrain -- et UpdateArea declenche OnAreaChange, qui evalue les conditions de
+    // phase. Or CONDITION_TERRAIN_SWAP interroge justement VisibleMapIds : appele
+    // dans l autre sens, il repond toujours non a la connexion, et le joueur se
+    // retrouve avec la phase de l ancienne version de la zone.
+    PhasingHandler::OnMapChange(this);
+
     // update zone
     UpdateArea(GetAreaIdFromPosition());                            // also call SendInitWorldStates();
 
@@ -25390,8 +25397,6 @@ void Player::SendInitialPacketsAfterAddToMap()
         DifficultyEntry const* difficulty = sDifficultyStore.AssertEntry(m_prevMapDifficulty);
         SendRaidDifficulty((difficulty->Flags & DIFFICULTY_FLAG_LEGACY) != 0);
     }
-
-    PhasingHandler::OnMapChange(this);
 
     SendGarrisonRemoteInfo();
     GetSession()->SendBattlePetJournal();
