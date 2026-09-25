@@ -801,6 +801,53 @@ void MercenaryMgr::Update(uint32 diff)
         // son maitre. Voir la branche MERC_STAGE_ACTIVE.
         it->summonPending = true;
 
+        // =============================================================
+        // LIAISONS_D_INSTANCE
+        //
+        // SIGNALE EN JEU : « deux bots de mon groupe sont deconnectes ».
+        //
+        // MESURE, dans le journal :
+        //     le groupe est lie a l instance 1460, 13
+        //     Olmin est lie a 1460, 34
+        //     Botqa est lie a 1460, 6
+        //     -> « failed to teleport ... because of unknown reason »
+        //
+        // InstanceMap::Add refuse un joueur dont la liaison personnelle
+        // designe une autre copie que celle de son groupe. Les bots
+        // gardaient les leurs de partie en partie, et finissaient par ne
+        // plus pouvoir suivre leur employeur nulle part.
+        //
+        // C est exactement ce que « .instance unbind all » regle pour un
+        // joueur. Un mercenaire n a aucune raison de conserver des
+        // sauvegardes d instance : on le delie a l embauche, sur le meme
+        // principe que la commande, en sautant la carte ou il se trouve.
+        // =============================================================
+        {
+            uint32 deliees = 0;
+            for (uint8 d = 0; d < MAX_DIFFICULTY; ++d)
+            {
+                auto binds = bot->GetBoundInstances(Difficulty(d));
+                if (binds == bot->m_boundInstances.end())
+                    continue;
+
+                for (auto itr = binds->second.begin(); itr != binds->second.end();)
+                {
+                    if (itr->first != bot->GetMapId())
+                    {
+                        bot->UnbindInstance(itr, binds);
+                        ++deliees;
+                    }
+                    else
+                        ++itr;
+                }
+            }
+
+            if (deliees)
+                TC_LOG_INFO("server.worldserver",
+                    "Mercenaires: %s deliee de %u instance(s) avant son contrat.",
+                    bot->GetName().c_str(), deliees);
+        }
+
         PlayerBotMgr::SwitchPlayerBotAI(bot, PlayerBotAIType::PBAIT_GROUP, true);
 
         // =============================================================
