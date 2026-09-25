@@ -220,6 +220,35 @@ void PlayerBotSession::ProcessNoWorld(uint32 diff)
         return;
     }
 
+    // =================================================================
+    // HORS_DU_MONDE
+    //
+    // SECOND PLANTAGE, meme pile que le premier -- et la verification de
+    // destination posee juste avant n'avait rien change : elle n'a jamais
+    // parle, la destination etant valide. L'assertion etait ailleurs.
+    //
+    //     void RemoveFromGrid() { ASSERT(IsInGrid()); ... }
+    //
+    // Map::PlayerRelocation retire le joueur de sa grille avant de l'y
+    // remettre. Or ProcessNoWorld ne traite, par definition, que des bots
+    // HORS du monde : ils n'appartiennent a aucune grille. L'assertion
+    // partait donc a tous les coups, et emportait le serveur entier.
+    //
+    // Un vrai client n'envoie jamais CMSG_MOVE_TELEPORT_ACK hors du
+    // monde -- c'est MSG_MOVE_WORLDPORT_ACK qui couvre ce cas, et il est
+    // traite juste au-dessus. Notre simulation, elle, ne faisait pas la
+    // difference.
+    //
+    // On ne simule donc l'accuse de teleport proche que dans le monde.
+    // Le bot hors du monde garde son semaphore : le teleport lointain ou
+    // la sortie de file le reprendront.
+    // =================================================================
+    if (player->IsBeingTeleportedNear() && !player->IsInWorld())
+    {
+        m_NoWorldTick = 500;
+        return;
+    }
+
     // idem pour un teleport proche (meme map) : un client reel repond CMSG_MOVE_TELEPORT_ACK
     if (player->IsBeingTeleportedNear())
     {
