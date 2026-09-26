@@ -53,6 +53,7 @@ struct SpellScalingEntry;
 struct SpellShapeshiftEntry;
 struct SpellTargetRestrictionsEntry;
 struct SpellTotemsEntry;
+enum AuraType;
 
 // only used in code
 enum SpellCategories
