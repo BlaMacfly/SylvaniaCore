@@ -737,7 +737,7 @@ class boss_koragh : public CreatureScript
                     case EventExpelMagicFel:
                     {
                         me->CastSpell(me, eSpells::ExpelMagicFelDummy, true);
-                        m_Events.ScheduleEvent(eEvents::EventExpelMagicFel, 15.5 * TimeConstants::IN_MILLISECONDS);
+                        m_Events.ScheduleEvent(eEvents::EventExpelMagicFel, 15500);
                         break;
                     }
                     default:
