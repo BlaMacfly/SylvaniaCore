@@ -354,6 +354,15 @@ bool Item::Create(ObjectGuid::LowType guidlow, uint32 itemId, Player const* owne
     return true;
 }
 
+std::string Item::GetNameForLocaleIdx(LocaleConstant locale) const
+{
+    ItemTemplate const* itemTemplate = GetTemplate();
+    if (ItemNameDescriptionEntry const* suffix = sItemNameDescriptionStore.LookupEntry(_bonusData.Suffix))
+        return Trinity::StringFormat("%s %s", itemTemplate->GetName(locale), suffix->Description->Str[locale]);
+
+    return itemTemplate->GetName(locale);
+}
+
 // Returns true if Item is a bag AND it is not empty.
 // Returns false if Item is not a bag OR it is an empty bag.
 bool Item::IsNotEmptyBag() const
@@ -2821,6 +2830,8 @@ void BonusData::Initialize(ItemTemplate const* proto)
     HasFixedLevel = false;
     RequiredLevelOverride = 0;
 
+    Suffix = 0;
+    _state.SuffixPriority = std::numeric_limits<int32>::max();
     _state.AppearanceModPriority = std::numeric_limits<int32>::max();
     _state.ScalingStatDistributionPriority = std::numeric_limits<int32>::max();
     _state.HasQualityBonus = false;
@@ -2871,6 +2882,13 @@ void BonusData::AddBonus(uint32 type, int32 const (&values)[3])
             }
             else if (Quality < static_cast<uint32>(values[0]))
                 Quality = static_cast<uint32>(values[0]);
+            break;
+        case ITEM_BONUS_SUFFIX:
+            if (values[1] < _state.SuffixPriority)
+            {
+                Suffix = static_cast<uint32>(values[0]);
+                _state.SuffixPriority = values[1];
+            }
             break;
         case ITEM_BONUS_SOCKET:
         {
