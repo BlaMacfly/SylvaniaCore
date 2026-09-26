@@ -13229,7 +13229,7 @@ void Player::DestroyItem(uint8 bag, uint8 slot, bool update)
                 ItemTemplate const* pProto = pItem->GetTemplate();
 
                 // item set bonuses applied only at equip and removed at unequip, and still active for broken items
-                if (pProto && pProto->GetItemSet())
+                if (pProto->GetItemSet())
                     RemoveItemsSetItem(this, pProto);
 
                 _ApplyItemMods(pItem, slot, false);
