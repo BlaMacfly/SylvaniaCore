@@ -3617,7 +3617,6 @@ void AddSC_deathknight_spell_scripts()
     new spell_dk_ghoul_huddle();
     new spell_dk_ghoul_gnaw();
     new spell_dk_ghoul_leap();
-    new spell_dk_asphyxiate();
     new spell_dk_debilitating_infestation();
     new spell_dk_frost_strike();
     new spell_dk_dark_succor();
