@@ -42,6 +42,9 @@ struct BIODeleter
     }
 };
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 CHECK_AND_DECLARE_FUNCTION_TYPE(PEM_read, PEM_read_bio_RSAPublicKey, PEM_read_bio_RSAPrivateKey);
 CHECK_AND_DECLARE_FUNCTION_TYPE(RSA_encrypt, RSA_public_encrypt, RSA_private_encrypt);
 }
@@ -60,6 +63,11 @@ Trinity::Crypto::RSA::RSA(RSA&& rsa)
 Trinity::Crypto::RSA::~RSA()
 {
     RSA_free(_rsa);
+}
+
+uint32 Trinity::Crypto::RSA::GetOutputSize() const
+{
+    return uint32(RSA_size(_rsa));
 }
 
 template <typename KeyTag>
@@ -132,3 +140,5 @@ namespace Crypto
     template TC_COMMON_API bool RSA::Encrypt<RSA::PrivateKey>(uint8 const* data, std::size_t dataLength, uint8* output, int32 paddingType);
 }
 }
+
+#pragma GCC diagnostic pop
