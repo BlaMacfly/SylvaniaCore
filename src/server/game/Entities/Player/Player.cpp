@@ -19738,9 +19738,10 @@ void Player::_LoadInventory(PreparedQueryResult result, PreparedQueryResult arti
                     }
                     else
                     {
-                        item->DeleteFromDB(trans);
+                        TC_LOG_ERROR("entities.player", "Player::_LoadInventory: Player '%s' (%s) has child item (%s, entry: %u) which can't be loaded into inventory because parent item was not found (Bag %s, slot: %u). Item will be sent by mail.",
+                            GetName().c_str(), GetGUID().ToString().c_str(), item->GetGUID().ToString().c_str(), item->GetEntry(), bagGuid.ToString().c_str(), slot);
                         item->DeleteFromInventoryDB(trans);
-                        delete item;
+                        problematicItems.push_back(item);
                         continue;
                     }
                 }
