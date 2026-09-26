@@ -1490,7 +1490,7 @@ void Spell::DoCreateItem(uint32 /*i*/, uint32 itemtype, uint8 context /*= 0*/, s
 	std::vector<int32> bonusesListIDs;
     bonusesListIDs.insert(bonusesListIDs.end(), bonusListIDs.begin(), bonusListIDs.end());
     /// HACK: Added bonus and Random bonus for Craft items "Legion"
-    if (num_to_add && bgType == 0 && m_spellInfo->HasAttribute(SPELL_ATTR0_TRADESPELL) && pProto->GetBaseItemLevel() >= 810 && pProto->GetBaseItemLevel() <= 815)
+    if (num_to_add && m_spellInfo->HasAttribute(SPELL_ATTR0_TRADESPELL) && pProto->GetBaseItemLevel() >= 810 && pProto->GetBaseItemLevel() <= 815)
     {
         // bonus obliterum 0/10
         bonusesListIDs.push_back(596); // TODO get bonus from ItemBonusTree
