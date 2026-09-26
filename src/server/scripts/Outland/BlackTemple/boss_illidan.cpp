@@ -2300,7 +2300,6 @@ class spell_illidan_find_target : public SpellScriptLoader
                 if (Creature* caster = GetCaster()->ToCreature())
                 {
                     caster->CastSpell(target, SPELL_PARALYZE, true);
-                    caster->ClearUnitState(UNIT_STATE_CASTING);
                     caster->AI()->SetGUID(target->GetGUID(), 0);
                 }
             }
