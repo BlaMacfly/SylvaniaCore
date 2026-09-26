@@ -24,6 +24,7 @@
 class Creature;
 class GameObject;
 class Player;
+class Quest;
 class SpellInfo;
 class Unit;
 class WorldObject;
@@ -36,9 +37,9 @@ class TC_GAME_API SmartScript
         SmartScript();
         ~SmartScript();
 
-        void OnInitialize(WorldObject* obj, AreaTriggerEntry const* at = nullptr, SceneTemplate const* scene = nullptr);
+        void OnInitialize(WorldObject* obj, AreaTriggerEntry const* at = nullptr, SceneTemplate const* scene = nullptr, Quest const* qst = nullptr);
         void GetScript();
-        void FillScript(SmartAIEventList e, WorldObject* obj, AreaTriggerEntry const* at, SceneTemplate const* scene);
+        void FillScript(SmartAIEventList e, WorldObject* obj, AreaTriggerEntry const* at, SceneTemplate const* scene, Quest const* quest);
 
         void ProcessEventsFor(SMART_EVENT e, Unit* unit = nullptr, uint32 var0 = 0, uint32 var1 = 0, bool bvar = false, const SpellInfo* spell = nullptr, GameObject* gob = nullptr, std::string const& varString = "");
         void ProcessEvent(SmartScriptHolder& e, Unit* unit = nullptr, uint32 var0 = 0, uint32 var1 = 0, bool bvar = false, const SpellInfo* spell = nullptr, GameObject* gob = nullptr, std::string const& varString = "");
@@ -127,6 +128,7 @@ class TC_GAME_API SmartScript
         ObjectGuid goOrigGUID;
         AreaTriggerEntry const* trigger;
         SceneTemplate const* sceneTemplate;
+        Quest const* quest;
         SmartScriptType mScriptType;
         uint32 mEventPhase;
 

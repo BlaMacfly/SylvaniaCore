@@ -49,6 +49,7 @@ SmartScript::SmartScript()
     me = nullptr;
     trigger = nullptr;
     sceneTemplate = nullptr;
+    quest = nullptr;
     mEventPhase = 0;
     mPathId = 0;
     mTargetStorage = new ObjectListMap();
@@ -3558,6 +3559,20 @@ void SmartScript::ProcessEvent(SmartScriptHolder& e, Unit* unit, uint32 var0, ui
                 ProcessAction(e, unit, var0, var1, bvar, spell, gob);
             break;
         }
+        case SMART_EVENT_QUEST_ACCEPTED:
+        case SMART_EVENT_QUEST_COMPLETION:
+        case SMART_EVENT_QUEST_REWARDED:
+        case SMART_EVENT_QUEST_FAIL:
+        {
+            ProcessAction(e, unit);
+            break;
+        }
+        case SMART_EVENT_QUEST_OBJ_COPLETETION:
+        {
+            if (var0 == (e.event.questObjective.id))
+                ProcessAction(e, unit);
+            break;
+        }
         //no params
         case SMART_EVENT_AGGRO:
         case SMART_EVENT_DEATH:
@@ -3568,11 +3583,6 @@ void SmartScript::ProcessEvent(SmartScriptHolder& e, Unit* unit, uint32 var0, ui
         case SMART_EVENT_AI_INIT:
         case SMART_EVENT_TRANSPORT_ADDPLAYER:
         case SMART_EVENT_TRANSPORT_REMOVE_PLAYER:
-        case SMART_EVENT_QUEST_ACCEPTED:
-        case SMART_EVENT_QUEST_OBJ_COPLETETION:
-        case SMART_EVENT_QUEST_COMPLETION:
-        case SMART_EVENT_QUEST_REWARDED:
-        case SMART_EVENT_QUEST_FAIL:
         case SMART_EVENT_JUST_SUMMONED:
         case SMART_EVENT_RESET:
         case SMART_EVENT_JUST_CREATED:
@@ -4206,7 +4216,7 @@ void SmartScript::OnUpdate(uint32 const diff)
     }
 }
 
-void SmartScript::FillScript(SmartAIEventList e, WorldObject* obj, AreaTriggerEntry const* at, SceneTemplate const* scene)
+void SmartScript::FillScript(SmartAIEventList e, WorldObject* obj, AreaTriggerEntry const* at, SceneTemplate const* scene, Quest const* quest)
 {
     if (e.empty())
     {
@@ -4216,6 +4226,8 @@ void SmartScript::FillScript(SmartAIEventList e, WorldObject* obj, AreaTriggerEn
             TC_LOG_DEBUG("scripts.ai", "SmartScript: EventMap for AreaTrigger %u is empty but is using SmartScript.", at->ID);
         if (scene)
             TC_LOG_DEBUG("scripts.ai", "SmartScript: EventMap for SceneId %u is empty but is using SmartScript.", scene->SceneId);
+        if (quest)
+            TC_LOG_DEBUG("scripts.ai", "SmartScript: EventMap for Quest %u is empty but is using SmartScript.", quest->GetQuestId());
         return;
     }
     for (SmartAIEventList::iterator i = e.begin(); i != e.end(); ++i)
@@ -4268,28 +4280,33 @@ void SmartScript::GetScript()
         e = sSmartScriptMgr->GetScript(-((int32)me->GetSpawnId()), mScriptType);
         if (e.empty())
             e = sSmartScriptMgr->GetScript((int32)me->GetEntry(), mScriptType);
-        FillScript(std::move(e), me, nullptr, nullptr);
+        FillScript(std::move(e), me, nullptr, nullptr, nullptr);
     }
     else if (go)
     {
         e = sSmartScriptMgr->GetScript(-((int32)go->GetSpawnId()), mScriptType);
         if (e.empty())
             e = sSmartScriptMgr->GetScript((int32)go->GetEntry(), mScriptType);
-        FillScript(std::move(e), go, nullptr, nullptr);
+        FillScript(std::move(e), go, nullptr, nullptr, nullptr);
     }
     else if (trigger)
     {
         e = sSmartScriptMgr->GetScript((int32)trigger->ID, mScriptType);
-        FillScript(std::move(e), nullptr, trigger, nullptr);
+        FillScript(std::move(e), nullptr, trigger, nullptr, nullptr);
     }
     else if (sceneTemplate)
     {
         e = sSmartScriptMgr->GetScript(sceneTemplate->SceneId, mScriptType);
-        FillScript(std::move(e), nullptr, nullptr, sceneTemplate);
+        FillScript(std::move(e), nullptr, nullptr, sceneTemplate, nullptr);
+    }
+    else if (quest)
+    {
+        e = sSmartScriptMgr->GetScript(quest->GetQuestId(), mScriptType);
+        FillScript(std::move(e), nullptr, nullptr, nullptr, quest);
     }
 }
 
-void SmartScript::OnInitialize(WorldObject* obj, AreaTriggerEntry const* at, SceneTemplate const* scene)
+void SmartScript::OnInitialize(WorldObject* obj, AreaTriggerEntry const* at, SceneTemplate const* scene, Quest const* qst)
 {
     if (obj)//handle object based scripts
     {
@@ -4321,6 +4338,12 @@ void SmartScript::OnInitialize(WorldObject* obj, AreaTriggerEntry const* at, Sce
         mScriptType = SMART_SCRIPT_TYPE_SCENE;
         sceneTemplate = scene;
         TC_LOG_DEBUG("scripts.ai", "SmartScript::OnInitialize: source is Scene with id %u", scene->SceneId);
+    }
+    else if (qst)
+    {
+        mScriptType = SMART_SCRIPT_TYPE_QUEST;
+        quest = qst;
+        TC_LOG_DEBUG("scripts.ai", "SmartScript::OnInitialize: source is Quest with id %u", qst->GetQuestId());
     }
     else
     {
