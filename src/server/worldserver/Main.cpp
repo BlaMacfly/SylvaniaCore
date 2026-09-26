@@ -64,10 +64,6 @@
 #include "ToolSocketMgr.h"
 #include "PathfindingMgr.h"
 
-#ifdef WITH_CPR
-    #include <cpr/cpr.h>
-#endif
-
 using namespace boost::program_options;
 namespace fs = boost::filesystem;
 
@@ -111,26 +107,6 @@ private:
     uint32 _lastChangeMsTime;
     uint32 _maxCoreStuckTimeInMs;
 };
-
-#ifdef WITH_CPR
-class WorldToDiscord
-{
-public:
-    WorldToDiscord(Trinity::Asio::IoContext& ioContext)
-        : _timer(ioContext) { }
-
-    static void Start(std::shared_ptr<WorldToDiscord> const& worldToDiscord)
-    {
-        worldToDiscord->_timer.expires_from_now(boost::posix_time::seconds(5));
-        worldToDiscord->_timer.async_wait(std::bind(&WorldToDiscord::Handler, std::weak_ptr<WorldToDiscord>(worldToDiscord), std::placeholders::_1));
-    }
-
-    static void Handler(std::weak_ptr<WorldToDiscord> worldToDiscordRed, boost::system::error_code const& error);
-
-private:
-    boost::asio::deadline_timer _timer;
-};
-#endif
 
 void SignalHandler(boost::system::error_code const& error, int signalNumber);
 AsyncAcceptor* StartRaSocketAcceptor(Trinity::Asio::IoContext& ioContext);
@@ -357,16 +333,6 @@ extern int main(int argc, char** argv)
     realm.PopulationLevel = 0.0f;
     realm.Flags = RealmFlags(realm.Flags & ~uint32(REALM_FLAG_OFFLINE));
 
-#ifdef WITH_CPR
-    std::shared_ptr<WorldToDiscord> worldToDiscord;
-    if (sConfigMgr->GetBoolDefault("WorldToDiscord.Enabled", false))
-    {
-        worldToDiscord = std::make_shared<WorldToDiscord>(*ioContext);
-        WorldToDiscord::Start(worldToDiscord);
-        TC_LOG_INFO("server.worldserver", "Starting up world to discord thread...");
-    }
-#endif
-
     // Start the freeze check callback cycle in 5 seconds (cycle itself is 1 sec)
     std::shared_ptr<FreezeDetector> freezeDetector;
     if (int coreStuckTime = sConfigMgr->GetIntDefault("MaxCoreStuckTime", 0))
@@ -534,95 +500,6 @@ void FreezeDetector::Handler(std::weak_ptr<FreezeDetector> freezeDetectorRef, bo
         }
     }
 }
-
-#ifdef WITH_CPR
-std::string GetFormatedMessage(DiscordMessage* discordMessage)
-{
-    std::ostringstream returnString;
-    std::string blizzIcon = discordMessage->isGm ? ":blizz: " : "";
-    returnString << blizzIcon << "[" << discordMessage->characterName << "] : " << discordMessage->message;
-    return returnString.str();
-}
-
-std::string GetChannelName(DiscordMessageChannel channelType)
-{
-    switch (channelType)
-    {
-        case DISCORD_WORLD_A:   return "world_a";
-        case DISCORD_WORLD_H:   return "world_h";
-        case DISCORD_TICKET:    return "tickets";
-    }
-
-    return "";
-}
-
-bool SendToDiscord(std::string channel, std::string text)
-{
-    std::string nodeServerRelayURL = sConfigMgr->GetStringDefault("WorldToDiscord.RelayURL", "http://127.0.0.1:8083");
-    boost::replace_all(text, "\"", "\\\"");
-
-    std::ostringstream payload;
-    payload << "{ \"channel\": \"" << channel << "\", \"text\": \"" << text << "\"}";
-
-    cpr::Response r = cpr::Post(cpr::Url{ nodeServerRelayURL }, cpr::Body{ payload.str() });
-    return r.status_code == 200;
-}
-
-void WorldToDiscord::Handler(std::weak_ptr<WorldToDiscord> worldToDiscordRef, boost::system::error_code const& error)
-{
-    if (!error)
-    {
-        if (std::shared_ptr<WorldToDiscord> worldToDiscord = worldToDiscordRef.lock())
-        {
-            std::map<DiscordMessageChannel, std::list<std::string>> messagesByChannel;
-
-            if (!DiscordMessageQueue.empty())
-            {
-                DiscordMessage* discordMessage;
-
-                while (!DiscordMessageQueue.empty())
-                {
-                    DiscordMessageQueue.next(discordMessage);
-
-                    std::string formatedMessage;
-
-                    switch (discordMessage->channel)
-                    {
-                        case DISCORD_WORLD_A:
-                        case DISCORD_WORLD_H:
-                        {
-                            formatedMessage = GetFormatedMessage(discordMessage);
-                            break;
-                        }
-                        default:
-                        {
-                            formatedMessage = discordMessage->message;
-                            break;
-                        }
-                    }
-
-                    messagesByChannel[discordMessage->channel].push_back(formatedMessage);
-
-                    delete discordMessage;
-                }
-
-                for (auto messageList : messagesByChannel)
-                {
-                    const char* const delim = "\\n";
-
-                    std::ostringstream imploded;
-                    std::copy(messageList.second.begin(), messageList.second.end(), std::ostream_iterator<std::string>(imploded, delim));
-
-                    SendToDiscord(GetChannelName(messageList.first), imploded.str());
-                }
-            }
-
-            worldToDiscord->_timer.expires_from_now(boost::posix_time::seconds(2));
-            worldToDiscord->_timer.async_wait(std::bind(&WorldToDiscord::Handler, worldToDiscordRef, std::placeholders::_1));
-        }
-    }
-}
-#endif
 
 AsyncAcceptor* StartRaSocketAcceptor(Trinity::Asio::IoContext& ioContext)
 {
