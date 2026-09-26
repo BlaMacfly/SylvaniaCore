@@ -26,6 +26,7 @@
 #include "Battleground.h"
 #include "BattlegroundMgr.h"
 #include "ClassHall.h"
+#include "CellImpl.h"
 #include "CombatLogPackets.h"
 #include "CombatPackets.h"
 #include "Common.h"
@@ -40,6 +41,7 @@
 #include "GameObjectAI.h"
 #include "Garrison.h"
 #include "GossipDef.h"
+#include "GridNotifiers.h"
 #include "Group.h"
 #include "Guild.h"
 #include "InstanceScript.h"
@@ -4437,9 +4439,28 @@ void Spell::EffectForceDeselect(SpellEffIndex /*effIndex*/)
     if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 
+    float dist = m_caster->GetVisibilityRange();
+
+    // clear focus
+    WorldPackets::Combat::BreakTarget breakTarget;
+    breakTarget.UnitGUID = m_caster->GetGUID();
+    Trinity::MessageDistDelivererToHostile notifierBreak(m_caster, breakTarget.Write(), dist);
+    Cell::VisitWorldObjects(m_caster, notifierBreak, dist);
+
+    // and selection
     WorldPackets::Spells::ClearTarget clearTarget;
     clearTarget.Guid = m_caster->GetGUID();
-    m_caster->SendMessageToSet(clearTarget.Write(), true);
+    Trinity::MessageDistDelivererToHostile notifierClear(m_caster, clearTarget.Write(), dist);
+    Cell::VisitWorldObjects(m_caster, notifierClear, dist);
+
+    // we should also force pets to remove us from current target
+    Unit::AttackerSet attackerSet;
+    for (Unit::AttackerSet::const_iterator itr = m_caster->getAttackers().begin(); itr != m_caster->getAttackers().end(); ++itr)
+        if ((*itr)->GetTypeId() == TYPEID_UNIT && !(*itr)->CanHaveThreatList())
+            attackerSet.insert(*itr);
+
+    for (Unit::AttackerSet::const_iterator itr = attackerSet.begin(); itr != attackerSet.end(); ++itr)
+        (*itr)->AttackStop();
 }
 
 void Spell::EffectUncageBattlePet(SpellEffIndex /*effIndex*/)
