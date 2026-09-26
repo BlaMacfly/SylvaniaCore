@@ -217,7 +217,6 @@ void AddSC_boss_baron_silverlaine();
 void AddSC_boss_commander_springvale();
 void AddSC_boss_lord_walden();
 void AddSC_boss_lord_godfrey();
-void AddSC_shadowfang_keep();
 void AddSC_instance_throne_of_the_tides();      //Throne of the Tides
 void AddSC_boss_ulthok();
 void AddSC_boss_erunak_stonespeaker();
@@ -461,7 +460,6 @@ void AddEasternKingdomsScripts()
     AddSC_boss_commander_springvale();
     AddSC_boss_lord_walden();
     AddSC_boss_lord_godfrey();
-    AddSC_shadowfang_keep();
     AddSC_instance_throne_of_the_tides();       //Throne of the Tides
     AddSC_boss_ulthok();
     AddSC_boss_erunak_stonespeaker();
