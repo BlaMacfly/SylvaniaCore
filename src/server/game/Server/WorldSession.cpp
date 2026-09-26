@@ -30,7 +30,6 @@
 #include "CharacterPackets.h"
 #include "ChatPackets.h"
 #include "DatabaseEnv.h"
-#include "GameTime.h"
 #include "Group.h"
 #include "Guild.h"
 #include "GuildMgr.h"
@@ -769,7 +768,7 @@ void WorldSession::SendNotification(uint32 stringId, ...)
 
 bool WorldSession::CanSpeak() const
 {
-    return m_muteTime <= GameTime::GetGameTime();
+    return m_muteTime <= sWorld->GetGameTime();
 }
 
 char const* WorldSession::GetTrinityString(uint32 entry) const
