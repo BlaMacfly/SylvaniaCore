@@ -31,8 +31,6 @@ struct TC_GAME_API Position
     Position(float x = 0, float y = 0, float z = 0, float o = 0)
         : m_positionX(x), m_positionY(y), m_positionZ(z), m_orientation(NormalizeOrientation(o)) { }
 
-    Position(Position const& loc) { Relocate(loc); }
-
     // streamer tags
     struct XY;
     struct XYZ;
