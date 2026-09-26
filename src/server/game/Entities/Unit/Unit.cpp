@@ -5052,22 +5052,22 @@ int32 Unit::GetTotalSpellPowerValue(SpellSchoolMask mask, bool heal) const
 
 float Unit::GetResistanceBuffMods(SpellSchools school, bool positive) const
 {
-    return GetFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE+school : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE+school);
+    return GetFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE + AsUnderlyingType(school) : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE + AsUnderlyingType(school));
 }
 
 void Unit::SetResistanceBuffMods(SpellSchools school, bool positive, float val)
 {
-    SetFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE+school : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE+school, val);
+    SetFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE + AsUnderlyingType(school) : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE + AsUnderlyingType(school), val);
 }
 
 void Unit::ApplyResistanceBuffModsMod(SpellSchools school, bool positive, float val, bool apply)
 {
-    ApplyModSignedFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE+school : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE+school, val, apply);
+    ApplyModSignedFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE + AsUnderlyingType(school) : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE + AsUnderlyingType(school), val, apply);
 }
 
 void Unit::ApplyResistanceBuffModsPercentMod(SpellSchools school, bool positive, float val, bool apply)
 {
-    ApplyPercentModFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE+school : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE+school, val, apply);
+    ApplyPercentModFloatValue(positive ? UNIT_FIELD_RESISTANCEBUFFMODSPOSITIVE + AsUnderlyingType(school) : UNIT_FIELD_RESISTANCEBUFFMODSNEGATIVE + AsUnderlyingType(school), val, apply);
 }
 
 void Unit::InitStatBuffMods()
@@ -11190,7 +11190,7 @@ void Unit::SetBaseAttackTime(WeaponAttackType att, uint32 val)
 
 void Unit::UpdateAttackTimeField(WeaponAttackType att)
 {
-    SetUInt32Value(UNIT_FIELD_BASEATTACKTIME + att, uint32(m_baseAttackSpeed[att] * m_modAttackSpeedPct[att]));
+    SetUInt32Value(UNIT_FIELD_BASEATTACKTIME + AsUnderlyingType(att), uint32(m_baseAttackSpeed[att] * m_modAttackSpeedPct[att]));
 }
 
 void Unit::ApplyAttackTimePercentMod(WeaponAttackType att, float val, bool apply)

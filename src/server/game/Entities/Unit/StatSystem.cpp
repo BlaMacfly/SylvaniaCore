@@ -601,7 +601,7 @@ void Player::UpdateMastery()
 void Player::UpdateVersatilityDamageDone()
 {
     // No proof that CR_VERSATILITY_DAMAGE_DONE is allways = PLAYER_VERSATILITY
-    SetUInt32Value(PLAYER_VERSATILITY, GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + CR_VERSATILITY_DAMAGE_DONE));
+    SetUInt32Value(PLAYER_VERSATILITY, GetUInt32Value(PLAYER_FIELD_COMBAT_RATING_1 + AsUnderlyingType(CR_VERSATILITY_DAMAGE_DONE)));
 
     if (getClass() == CLASS_HUNTER)
         UpdateDamagePhysical(RANGED_ATTACK);
@@ -1311,14 +1311,14 @@ void Guardian::UpdateDamagePhysical(WeaponAttackType attType)
         //force of nature
         if (GetEntry() == ENTRY_TREANT)
         {
-            int32 spellDmg = m_owner->GetInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + SPELL_SCHOOL_NATURE) - m_owner->GetInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + SPELL_SCHOOL_NATURE);
+            int32 spellDmg = m_owner->GetInt32Value(AsUnderlyingType(PLAYER_FIELD_MOD_DAMAGE_DONE_POS) + SPELL_SCHOOL_NATURE) - m_owner->GetInt32Value(AsUnderlyingType(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG) + AsUnderlyingType(SPELL_SCHOOL_NATURE));
             if (spellDmg > 0)
                 bonusDamage = spellDmg * 0.09f;
         }
         //greater fire elemental
         else if (GetEntry() == ENTRY_FIRE_ELEMENTAL)
         {
-            int32 spellDmg = m_owner->GetInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_POS + SPELL_SCHOOL_FIRE) - m_owner->GetInt32Value(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG + SPELL_SCHOOL_FIRE);
+            int32 spellDmg = m_owner->GetInt32Value(AsUnderlyingType(PLAYER_FIELD_MOD_DAMAGE_DONE_POS) + SPELL_SCHOOL_FIRE) - m_owner->GetInt32Value(AsUnderlyingType(PLAYER_FIELD_MOD_DAMAGE_DONE_NEG) + AsUnderlyingType(SPELL_SCHOOL_FIRE));
             if (spellDmg > 0)
                 bonusDamage = spellDmg * 0.4f;
         }
