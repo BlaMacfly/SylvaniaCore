@@ -1968,9 +1968,12 @@ void Creature::Respawn(bool force)
             SelectLevel();
 
         setDeathState(JUST_RESPAWNED);
-
         uint32 displayID = GetNativeDisplayId();
+        if (sObjectMgr->GetCreatureModelRandomGender(&displayID))
+        {
             SetDisplayId(displayID);
+            SetNativeDisplayId(displayID);
+        }
 
         GetMotionMaster()->InitDefault();
         //Re-initialize reactstate that could be altered by movementgenerators
