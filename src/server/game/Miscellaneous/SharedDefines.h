@@ -5423,6 +5423,14 @@ enum DiminishingLevels
     DIMINISHING_LEVEL_TAUNT_IMMUNE  = 4
 };
 
+enum WeaponAttackType : uint8
+{
+    BASE_ATTACK   = 0,
+    OFF_ATTACK    = 1,
+    RANGED_ATTACK = 2,
+    MAX_ATTACK
+};
+
 enum TokenResult
 {
     TOKEN_RESULT_SUCCESS                        = 0,
