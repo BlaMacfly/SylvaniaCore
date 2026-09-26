@@ -2645,8 +2645,6 @@ void ObjectMgr::LoadGameobjects()
         data.isActive = fields[22].GetBool();
 
         data.ScriptId = GetScriptId(fields[23].GetString());
-        if (!data.ScriptId)
-            data.ScriptId = gInfo->ScriptId;
 
         if (std::abs(data.orientation) > 2 * float(M_PI))
         {
