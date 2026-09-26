@@ -817,7 +817,7 @@ void AuraEffect::ChangeAmount(int32 newAmount, bool mark, bool onStackOrReapply)
     if (!handleMask)
         return;
 
-    std::vector<AuraApplication*> effectApplications;
+    std::list<AuraApplication*> effectApplications;
     GetApplicationList(effectApplications);
 
     for (AuraApplication* aurApp : effectApplications)
@@ -984,7 +984,7 @@ void AuraEffect::Update(uint32 diff, Unit* caster)
             m_periodicTimer += m_period - diff;
             UpdatePeriodic(caster);
 
-            std::vector<AuraApplication*> effectApplications;
+            std::list<AuraApplication*> effectApplications;
             GetApplicationList(effectApplications);
 
             // tick on targets of effects
