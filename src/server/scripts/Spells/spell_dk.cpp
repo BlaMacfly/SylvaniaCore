@@ -1371,6 +1371,57 @@ public:
     }
 };
 
+// Asphyxiate - 108194
+class spell_dk_asphyxiate : public SpellScriptLoader
+{
+public:
+    spell_dk_asphyxiate() : SpellScriptLoader("spell_dk_asphyxiate") { }
+
+    class spell_dk_asphyxiate_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_dk_asphyxiate_AuraScript);
+
+        void HandleApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        {
+            if (Unit* target = GetTarget())
+            {
+                target->AttackStop();
+                target->StopMoving();
+                target->CastStop();
+                target->SetControlled(true, UNIT_STATE_STUNNED);
+            }
+        }
+
+        void HandleRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+        {
+            if (Unit* target = GetTarget())
+                target->SetControlled(false, UNIT_STATE_STUNNED);
+        }
+
+        void Register() override
+        {
+            AfterEffectApply += AuraEffectApplyFn(
+                spell_dk_asphyxiate_AuraScript::HandleApply,
+                EFFECT_0,
+                SPELL_AURA_STRANGULATE,
+                AURA_EFFECT_HANDLE_REAL
+            );
+
+            AfterEffectRemove += AuraEffectRemoveFn(
+                spell_dk_asphyxiate_AuraScript::HandleRemove,
+                EFFECT_0,
+                SPELL_AURA_STRANGULATE,
+                AURA_EFFECT_HANDLE_REAL
+            );
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_dk_asphyxiate_AuraScript();
+    }
+};
+
 // Death Siphon - 108196
 class spell_dk_death_siphon : public SpellScriptLoader
 {
@@ -2415,32 +2466,134 @@ class spell_dk_glacial_advance : public SpellScript
 {
     PrepareSpellScript(spell_dk_glacial_advance);
 
-    void HandleHit(SpellEffIndex /*effIndex*/)
+public:
+    static std::map<ObjectGuid, GuidSet> HitTargets;
+
+    static GuidSet* GetHitList(Unit* caster)
+    {
+        if (!caster)
+            return nullptr;
+
+        auto itr = HitTargets.find(caster->GetGUID());
+        if (itr == HitTargets.end())
+            return nullptr;
+
+        return &itr->second;
+    }
+
+    void HandleHit(SpellEffIndex effIndex)
     {
         Unit* caster = GetCaster();
+        if (!caster)
+            return;
+
+        SpellEffectInfo const* effectInfo = GetEffectInfo(effIndex);
+        if (!effectInfo || !effectInfo->MaxRadiusEntry)
+            return;
+
+        ObjectGuid casterGuid = caster->GetGUID();
+
+        // Start a fresh hit list for this Glacial Advance cast.
+        HitTargets[casterGuid].clear();
 
         Position castPosition = *caster;
-        Position collisonPos = caster->GetFirstCollisionPosition(GetEffectInfo()->MaxRadiusEntry->RadiusMax);
-        float maxDistance = caster->GetDistance(collisonPos);
+        Position collisionPos = caster->GetFirstCollisionPosition(effectInfo->MaxRadiusEntry->RadiusMax);
+        float maxDistance = caster->GetDistance(collisionPos);
+
+        uint32 lastDelay = 0;
 
         for (float dist = 0.0f; dist <= maxDistance; dist += 1.5f)
         {
-            caster->GetScheduler().Schedule(Milliseconds(uint32(dist / 1.5f * 50.0f)), [castPosition, dist](TaskContext context)
+            uint32 delay = uint32(dist / 1.5f * 50.0f);
+            lastDelay = delay;
+
+            caster->GetScheduler().Schedule(Milliseconds(delay), [castPosition, dist](TaskContext context)
             {
                 Unit* caster = context.GetUnit();
+                if (!caster)
+                    return;
 
                 Position targetPosition = castPosition;
                 caster->MovePosition(targetPosition, dist);
+
                 caster->CastSpell(targetPosition, SPELL_DK_GLACIAL_ADVANCE_DAMAGE, true);
             });
         }
+
+        // Clear the hit list after the spike wave is done.
+        caster->GetScheduler().Schedule(Milliseconds(lastDelay + 1000), [casterGuid](TaskContext /*context*/)
+        {
+            HitTargets.erase(casterGuid);
+        });
     }
 
     void Register() override
     {
-        OnEffectHit += SpellEffectFn(spell_dk_glacial_advance::HandleHit, EFFECT_0, SPELL_EFFECT_DUMMY);
+        OnEffectHit += SpellEffectFn(
+            spell_dk_glacial_advance::HandleHit,
+            EFFECT_0,
+            SPELL_EFFECT_DUMMY
+        );
     }
 };
+
+std::map<ObjectGuid, GuidSet> spell_dk_glacial_advance::HitTargets;
+
+
+// 195975 - Glacial Advance damage filter
+class spell_dk_glacial_advance_damage_filter : public SpellScript
+{
+    PrepareSpellScript(spell_dk_glacial_advance_damage_filter);
+
+    void FilterTargets(std::list<WorldObject*>& targets)
+    {
+        Unit* caster = GetCaster();
+        GuidSet* hitList = spell_dk_glacial_advance::GetHitList(caster);
+        
+        if (!hitList)
+            return;
+
+        targets.remove_if([hitList](WorldObject* object)
+        {
+            Unit* target = object ? object->ToUnit() : nullptr;
+            if (!target)
+                return true;
+
+            return hitList->find(target->GetGUID()) != hitList->end();
+        });
+    }
+
+    void RememberHitTarget(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        Unit* target = GetHitUnit();
+
+        if (!caster || !target)
+            return;
+
+        GuidSet* hitList = spell_dk_glacial_advance::GetHitList(caster);
+        if (!hitList)
+            return;
+
+        hitList->insert(target->GetGUID());
+    }
+
+    void Register() override
+    {
+        OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(
+            spell_dk_glacial_advance_damage_filter::FilterTargets,
+            EFFECT_0,
+            TARGET_UNIT_DEST_AREA_ENEMY
+        );
+
+        OnEffectHitTarget += SpellEffectFn(
+            spell_dk_glacial_advance_damage_filter::RememberHitTarget,
+            EFFECT_0,
+            SPELL_EFFECT_SCHOOL_DAMAGE
+        );
+    }
+};
+
 
 // 49020 - Obliterate
 class spell_dk_obliterate : public SpellScript
@@ -3427,6 +3580,7 @@ void AddSC_deathknight_spell_scripts()
     new spell_dk_anti_magic_shell_self();
     new spell_dk_army_periodic_taunt();
     new spell_dk_army_transform();
+    new spell_dk_asphyxiate();
     new spell_dk_blood_boil();
     new spell_dk_blood_charges();
     new spell_dk_blood_gorged();
@@ -3475,6 +3629,7 @@ void AddSC_deathknight_spell_scripts()
     new spell_dk_vampiric_blood();
     RegisterAuraScript(spell_dk_will_of_the_necropolis);
     RegisterSpellScript(spell_dk_glacial_advance);
+    RegisterSpellScript(spell_dk_glacial_advance_damage_filter);
     RegisterSpellScript(spell_dk_obliterate);
     RegisterSpellScript(spell_dk_epidemic);
     RegisterSpellScript(spell_dk_epidemic_aoe);
