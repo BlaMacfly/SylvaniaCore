@@ -93,6 +93,7 @@
 #include "OutdoorPvPMgr.h"
 #include "Pet.h"
 #include "PetPackets.h"
+#include "PoolMgr.h"
 #include "PhasingHandler.h"
 #include "QueryHolder.h"
 #include "QuestDef.h"
@@ -17172,7 +17173,22 @@ std::string Player::GetQuestStatusString(QuestStatus status) const
 bool Player::CanShareQuest(uint32 quest_id) const
 {
     Quest const* qInfo = sObjectMgr->GetQuestTemplate(quest_id);
-    return qInfo && qInfo->HasFlag(QUEST_FLAGS_SHARABLE) && IsActiveQuest(quest_id);
+    if (qInfo && qInfo->HasFlag(QUEST_FLAGS_SHARABLE))
+    {
+        QuestStatusMap::const_iterator itr = m_QuestStatus.find(quest_id);
+        if (itr != m_QuestStatus.end())
+        {
+            // in pool and not currently available (wintergrasp weekly, dalaran weekly) - can't share
+            if (sPoolMgr->IsPartOfAPool<Quest>(quest_id) && !sPoolMgr->IsSpawnedObject<Quest>(quest_id))
+            {
+                SendPushToPartyResponse(this, static_cast<QuestPushReason>(QUEST_PUSH_NOT_DAILY));
+                return false;
+            }
+
+            return true;
+        }
+    }
+    return false;
 }
 
 void Player::SetQuestStatus(uint32 questId, QuestStatus status, bool update /*= true*/)
@@ -18286,7 +18302,7 @@ void Player::SendQuestConfirmAccept(Quest const* quest, Player* receiver) const
     receiver->GetSession()->SendPacket(packet.Write());
 }
 
-void Player::SendPushToPartyResponse(Player* player, QuestPushReason reason) const
+void Player::SendPushToPartyResponse(Player const* player, QuestPushReason reason) const
 {
     if (player)
     {
