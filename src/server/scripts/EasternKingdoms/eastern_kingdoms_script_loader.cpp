@@ -212,7 +212,6 @@ void AddSC_boss_drahga_shadowburner();
 void AddSC_boss_erudax();
 void AddSC_boss_forgemaster_throngus();
 void AddSC_grimbatol();
-void AddSC_instance_shadowfang_keep();          //Shadowfang Keep
 void AddSC_boss_baron_ashbury();
 void AddSC_boss_baron_silverlaine();
 void AddSC_boss_commander_springvale();
@@ -457,7 +456,6 @@ void AddEasternKingdomsScripts()
     AddSC_boss_erudax();
     AddSC_boss_forgemaster_throngus();
     AddSC_grimbatol();
-    AddSC_instance_shadowfang_keep();           //Shadowfang Keep
     AddSC_boss_baron_ashbury();
     AddSC_boss_baron_silverlaine();
     AddSC_boss_commander_springvale();
