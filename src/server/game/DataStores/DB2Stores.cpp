@@ -503,7 +503,7 @@ inline void LoadDB2(uint32& availableDb2Locales, DB2StoreProblemList& errlist, S
 
         if (loadFileAllLocales)
         {
-            for (uint8 i = LOCALE_enUS; i < MAX_LOCALES; ++i)
+            for (uint8 i = LOCALE_enUS; i < TOTAL_LOCALES; ++i)
             {
                 if (LOCALE_enUS == i || i == LOCALE_none)
                     continue;
@@ -518,7 +518,7 @@ inline void LoadDB2(uint32& availableDb2Locales, DB2StoreProblemList& errlist, S
         }
         else if (loadHotfixData && loadHotfixStrings && loadHotfixAllLocales)
         {
-            for (uint8 i = LOCALE_enUS; i < MAX_LOCALES; ++i)
+            for (uint8 i = LOCALE_enUS; i < TOTAL_LOCALES; ++i)
             {
                 if (LOCALE_enUS == i || i == LOCALE_none || defaultLocale == i)
                     continue;
