@@ -442,7 +442,7 @@ static bool HandlePBotTestRoll(ChatHandler* handler, const char* args)
             std::string itemName = itemNameStr + 1;
             auto itr = std::find_if(sItemSparseStore.begin(), sItemSparseStore.end(), [&itemName](ItemSparseEntry const* sparse)
                 {
-                    for (uint32 i = 0; i < MAX_LOCALES; ++i)
+                    for (uint32 i = 0; i < TOTAL_LOCALES; ++i)
                         if (itemName == sparse->Display->Str[i])
                             return true;
                     return false;
