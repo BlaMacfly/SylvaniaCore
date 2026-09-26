@@ -3346,42 +3346,7 @@ public:
     {
         return new spell_dk_ghoul_leap_SpellScript();
     }
-};
 
-
-class spell_dk_asphyxiate : public SpellScriptLoader
-{
-public:
-    spell_dk_asphyxiate() : SpellScriptLoader("spell_dk_asphyxiate") {}
-
-    class spell_dk_asphyxiate_SpellScript : public SpellScript
-    {
-        PrepareSpellScript(spell_dk_asphyxiate_SpellScript);
-
-        void OnCastSpell()
-        {
-            Unit* caster = GetCaster();
-
-            if (!caster)
-                return;
-
-            if (!caster->GetTarget())
-                return;
-
-            Unit* target = ObjectAccessor::GetUnit(*caster, caster->GetTarget());
-            target->CastSpell(target, SPELL_DK_ASPHYXIATE_STUN, true);
-        }
-
-        void Register() override
-        {
-            AfterCast += SpellCastFn(spell_dk_asphyxiate_SpellScript::OnCastSpell);
-        }
-    };
-
-    SpellScript* GetSpellScript() const override
-    {
-        return new spell_dk_asphyxiate_SpellScript();
-    }
 };
 
 
