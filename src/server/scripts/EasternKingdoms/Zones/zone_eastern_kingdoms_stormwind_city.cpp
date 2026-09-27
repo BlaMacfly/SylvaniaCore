@@ -385,12 +385,48 @@ public:
             if (etat == QUEST_STATUS_INCOMPLETE)
                 player->KilledMonsterCredit(creature->GetEntry());
 
+            // =========================================================
+            // LIAISON_PERIMEE
+            //
+            // SIGNALE EN JEU : « ca m'a affiche phase finale des le
+            // debut puis ca a disparu, je ne peux rien faire ».
+            //
+            // MESURE : le joueur etait lie a l'instance 16 du Rivage
+            // brise, alors que les copies recentes portent les numeros
+            // 29 a 34. Il rentrait donc dans une partie DEJA TERMINEE --
+            // d'ou la phase finale affichee d'emblee, puis refermee.
+            //
+            // « .instance unbind all » corrige le cas, mais la commande
+            // saute volontairement la carte ou l'on se trouve : lancee
+            // depuis le Rivage brise, elle deliait tout SAUF le Rivage
+            // brise. Le piege se refermait a chaque essai.
+            //
+            // Un scenario n'est pas un raid : rien ne justifie qu'il
+            // garde une sauvegarde d'une session a l'autre. On delie
+            // donc le joueur de ses anciennes copies avant de l'envoyer,
+            // comme on le fait deja pour les mercenaires a l'embauche.
+            // =========================================================
+            for (uint8 d = 0; d < MAX_DIFFICULTY; ++d)
+            {
+                auto binds = player->GetBoundInstances(Difficulty(d));
+                if (binds == player->m_boundInstances.end())
+                    continue;
+
+                for (auto itr = binds->second.begin(); itr != binds->second.end();)
+                {
+                    if (itr->first == 1460 && itr->first != player->GetMapId())
+                        player->UnbindInstance(itr, binds);
+                    else
+                        ++itr;
+                }
+            }
+
             player->TeleportTo(1460, PONT_DU_NAVIRE_X, PONT_DU_NAVIRE_Y,
                                      PONT_DU_NAVIRE_Z, 0.4f);
         }
         else
             ChatHandler(player->GetSession()).PSendSysMessage(
-                "Prenez d'abord la quete La bataille du rivage Brise.");
+                "Prenez d'abord la quête « La bataille du rivage Brisé ».");
 
         return true;
     };

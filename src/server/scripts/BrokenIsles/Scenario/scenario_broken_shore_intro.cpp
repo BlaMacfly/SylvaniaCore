@@ -336,7 +336,7 @@ struct scenario_broken_shore_intro : public InstanceScript
 
             if (recrutes)
                 ChatHandler(player->GetSession()).PSendSysMessage(
-                    "Une escorte de %u combattants se joint a vous pour l'assaut.", recrutes);
+                    "Une escorte de %u combattants se joint à vous pour l'assaut.", recrutes);
         }
 
         if (!introDone)

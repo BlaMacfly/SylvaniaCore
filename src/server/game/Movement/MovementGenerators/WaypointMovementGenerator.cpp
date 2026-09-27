@@ -398,6 +398,29 @@ void FlightPathMovementGenerator::DoFinalize(Player* player)
     // A relever avant tout nettoyage : c'est la destination du trajet.
     uint32 taxiNodeId = player->m_taxi.GetTaxiDestination();
 
+    // SONDE TEMPORAIRE [FLYDBG] -- une seule ligne par vol, a retirer une fois tranche.
+    // Question posee : GetTaxiDestination() exige au moins deux entrees dans la file,
+    // empty() en exige zero. Si les deux conditions s'excluent vraiment, la teleportation
+    // d'arrivee ci-dessous est inatteignable et le vol de Silithus n'a jamais ete corrige.
+    {
+        std::deque<uint32> const& file = player->m_taxi.GetPath();
+        uint32 n0 = file.size() > 0 ? file[0] : 0;
+        uint32 n1 = file.size() > 1 ? file[1] : 0;
+        uint32 n2 = file.size() > 2 ? file[2] : 0;
+        float sol = player->GetMap()->GetHeight(player->GetPhaseShift(), player->GetPositionX(),
+            player->GetPositionY(), player->GetPositionZ(), true, MAX_FALL_DISTANCE);
+
+        TC_LOG_ERROR("misc",
+            "FLYDBG %s | file=%u [%u %u %u] | GetTaxiDestination=%u GetTaxiSource=%u empty=%u "
+            "| largage %.2f %.2f %.2f carte %u | sol=%.2f ecart=%.2f | noeud trouve=%u | branche prise=%u",
+            player->GetName().c_str(), uint32(file.size()), n0, n1, n2,
+            taxiNodeId, player->m_taxi.GetTaxiSource(), uint32(player->m_taxi.empty() ? 1 : 0),
+            player->GetPositionX(), player->GetPositionY(), player->GetPositionZ(), player->GetMapId(),
+            sol, sol > INVALID_HEIGHT ? player->GetPositionZ() - sol : -1.0f,
+            uint32(sTaxiNodesStore.LookupEntry(taxiNodeId) ? 1 : 0),
+            uint32(player->m_taxi.empty() && sTaxiNodesStore.LookupEntry(taxiNodeId) ? 1 : 0));
+    }
+
     player->Dismount();
     player->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_REMOVE_CLIENT_CONTROL | UNIT_FLAG_TAXI_FLIGHT);
 
