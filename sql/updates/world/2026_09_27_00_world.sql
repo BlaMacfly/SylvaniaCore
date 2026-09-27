@@ -3321,9 +3321,24 @@ INSERT INTO `item_loot_template` (`Entry`,`Item`,`Reference`,`Chance`,`QuestRequ
 UPDATE `quest_template_addon` SET `AllowableClasses`=4 WHERE `ID` IN (41009, 40952);
 
 -- DB/Scenario: Add correct data for Battle for brokenshore
+-- SylvaniaCore : valeurs corrigees.
+--
+-- Ce bloc posait (1460, 12, 1018, 1017). Or 1018 « Broken Shore -
+-- Alliance » et 1017 « Broken Shore - Horde » sont de TYPE 0 : une autre
+-- famille de scenarios. La campagne d'introduction que nous implementons
+-- est de type 4, et la carte 1460 lui appartient.
+--
+-- Effet constate en jeu : le scenario s'ouvrait directement sur sa phase
+-- finale puis se refermait, sans que la phase 1 ne demarre jamais.
+--
+-- Verifie sur wago.tools, build 7.3.5.26972 :
+--   786  « The Battle for Broken Shore », type 4, 9 etapes,
+--        dont « Find Varian » et « Stop Gul'dan »        -> Alliance
+--   1189 « The Battle for Broken Shore », type 4, 9 etapes,
+--        dont « Find The Others » et « Hold The Ridge »  -> Horde
 DELETE FROM `scenarios` WHERE `map`=1460;
 INSERT INTO `scenarios` (map, difficulty, scenario_A, scenario_H) VALUES
-(1460, 12, 1018, 1017);
+(1460, 12, 786, 1189);
 
 -- DB/Loot: Fix prospecting from titanium and saronite
 -- Prospecting loot, 4 ores are wrongly assumed to work
