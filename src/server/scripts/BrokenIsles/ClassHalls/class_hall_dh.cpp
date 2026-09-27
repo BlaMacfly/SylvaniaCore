@@ -126,6 +126,9 @@ public:
         if (choiceID != PLAYER_CHOICE_DH_ARTIFACT_SELECTION)
             return;
 
+        // Le choix de l arme ne change plus la specialisation (bascule forcee
+        // retiree, comme pour le chasseur) : le joueur garde sa spe et ses talents.
+
         switch (responseID)
         {
             case PLAYER_CHOICE_DH_HAVOC:
@@ -133,18 +136,12 @@ public:
                 player->RemoveRewardedQuest(QUEST_ALDRACHI_WARBLADES_CHOSEN);
                 player->KilledMonsterCredit(KILL_CREDIT_DH_ARTIFACT_CHOSEN);
 
-                if (ChrSpecializationEntry const* spec = sChrSpecializationStore.AssertEntry(577))
-                    player->ActivateTalentGroup(spec);
-
                 break;
             }   
             case PLAYER_CHOICE_DH_VENGEANCE:
             {
                 player->RemoveRewardedQuest(QUEST_TWINBLADES_OFTHE_DECEIVER_CHOSEN);
                 player->KilledMonsterCredit(KILL_CREDIT_DH_ARTIFACT_CHOSEN);
-
-                if (ChrSpecializationEntry const* spec = sChrSpecializationStore.AssertEntry(581))
-                    player->ActivateTalentGroup(spec);
 
                 break;
             }   
