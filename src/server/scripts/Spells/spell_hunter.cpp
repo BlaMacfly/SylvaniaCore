@@ -2424,6 +2424,7 @@ class aura_trailblazer : public AuraScript
 
     void HandleProc(AuraEffect const* /*aurEff*/, ProcEventInfo& /*eventInfo*/)
     {
+        PreventDefaultAction();
         RescheduleBuff();
     }
 
