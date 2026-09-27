@@ -529,7 +529,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             // qui couvre toute la greve devant le navire.
             bool debarque = false;
             Position const& plage = Anchors().beach;
-            DoOnPlayers([&debarque, &plage](Player* player)
+            DoOnVraisJoueurs([&debarque, &plage](Player* player)
             {
                 if (player->GetExactDist2d(plage.GetPositionX(), plage.GetPositionY()) < 90.0f)
                     debarque = true;
@@ -839,7 +839,7 @@ struct scenario_broken_shore_intro : public InstanceScript
 
             Position const& cite = Anchors().city;
             float reste = 99999.0f;
-            DoOnPlayers([&reste, &cite](Player* player)
+            DoOnVraisJoueurs([&reste, &cite](Player* player)
             {
                 float const d = player->GetExactDist2d(cite.GetPositionX(), cite.GetPositionY());
                 if (d < reste)
@@ -867,7 +867,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             Creature* leader = FindLeader();
             if (leader)
             {
-                DoOnPlayers([&found, leader](Player* player)
+                DoOnVraisJoueurs([&found, leader](Player* player)
                 {
                     if (player->IsWithinDist(leader, 35.0f, false))
                         found = true;
@@ -895,10 +895,37 @@ struct scenario_broken_shore_intro : public InstanceScript
     }
 
     // Les deux chefs emboitent le pas au joueur, chacun sur son flanc.
+    // =================================================================
+    // DoOnVraisJoueurs
+    //
+    // SIGNALE EN JEU : « je suis passe en p8 alors que je n'ai pas encore
+    // trouve Tirion en p7 ».
+    //
+    // DoOnPlayers parcourt TOUS les joueurs de l'instance -- et un
+    // playerbot EST un joueur. Les mercenaires validaient donc les
+    // objectifs a la place de leur employeur : il suffisait qu'un seul
+    // derive a portee de Tirion, de Varian ou de la plage pour clore
+    // l'etape sans que le joueur n'ait rien fait.
+    //
+    // Le meme defaut choisissait la cible de l'escorte : Jaina et Genn
+    // pouvaient se mettre a suivre un bot plutot que le joueur.
+    //
+    // Les objectifs d'un scenario se remplissent par celui qui le joue.
+    // L'aide qu'il paie l'accompagne, elle ne le remplace pas.
+    // =================================================================
+    void DoOnVraisJoueurs(std::function<void(Player*)>&& fonction)
+    {
+        DoOnPlayers([&fonction](Player* player)
+        {
+            if (player && !player->IsPlayerBot())
+                fonction(player);
+        });
+    }
+
     void StartEscorteChefs()
     {
         Player* marcheur = nullptr;
-        DoOnPlayers([&marcheur](Player* player)
+        DoOnVraisJoueurs([&marcheur](Player* player)
         {
             if (!marcheur)
                 marcheur = player;
@@ -918,12 +945,77 @@ struct scenario_broken_shore_intro : public InstanceScript
             if (!pnj || !pnj->IsAlive())
                 continue;
 
+            // =========================================================
+            // ESCORTE_TENACE
+            //
+            // SIGNALE EN JEU : « les PNJ qui devaient me suivre sont
+            // retournes a leur spawn initial ; je soupconne mon
+            // speedhack de GM d'avoir casse le suivi ».
+            //
+            // Le diagnostic est juste, mais le mecanisme n'est pas la
+            // vitesse : c'est la GRILLE. Une creature n'est mise a jour
+            // que dans une grille active. Quand le joueur prend
+            // suffisamment d'avance, la grille qui porte Jaina et Genn se
+            // decharge ; a son rechargement, la creature repart de son
+            // point d'apparition avec son mouvement par defaut, et le
+            // suivi est perdu sans que rien ne le signale.
+            //
+            // setActive maintient leur grille chargee tant que dure
+            // l'escorte -- c'est ce que fait le core pour les convois de
+            // quete. On le retire a l'arrivee : garder une grille active
+            // pour rien coute cher.
+            // =========================================================
+            pnj->setActive(true);
+
             pnj->SetWalk(false);
             pnj->GetMotionMaster()->Clear();
             // Un flanc chacun, a quatre metres : ils encadrent le joueur.
             pnj->GetMotionMaster()->MoveFollow(marcheur, 4.0f,
                 (i == 0) ? float(M_PI) * 0.75f : float(M_PI) * 1.25f);
         }
+
+        // Seconde protection : on reprend le suivi s'il s'est perdu. Un
+        // decrochage ne se voit pas autrement -- le PNJ rentre chez lui
+        // en silence, et le joueur croit le script casse.
+        scheduler.Schedule(Seconds(4), [this](TaskContext context)
+        {
+            if (stage != STAGE_FIND_LEADER)
+                return;
+
+            Player* marcheur = nullptr;
+            DoOnVraisJoueurs([&marcheur](Player* player)
+            {
+                if (!marcheur)
+                    marcheur = player;
+            });
+
+            if (marcheur)
+            {
+                ObjectGuid const chefs[2] =
+                {
+                    (team == TEAM_HORDE) ? sylvanasGUID : jainaGUID,
+                    (team == TEAM_HORDE) ? thrallGUID   : gennGUID
+                };
+
+                for (uint8 i = 0; i < 2; ++i)
+                {
+                    Creature* pnj = instance->GetCreature(chefs[i]);
+                    if (!pnj || !pnj->IsAlive())
+                        continue;
+
+                    if (pnj->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+                    {
+                        pnj->setActive(true);
+                        pnj->SetWalk(false);
+                        pnj->GetMotionMaster()->Clear();
+                        pnj->GetMotionMaster()->MoveFollow(marcheur, 4.0f,
+                            (i == 0) ? float(M_PI) * 0.75f : float(M_PI) * 1.25f);
+                    }
+                }
+            }
+
+            context.Repeat(Seconds(4));
+        });
     }
 
     void ArreterEscorteChefs()
@@ -939,6 +1031,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             {
                 pnj->GetMotionMaster()->Clear();
                 pnj->StopMoving();
+                pnj->setActive(false);
             }
     }
 
@@ -1079,7 +1172,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             }
 
             bool atteint = false;
-            DoOnPlayers([&atteint, tirion](Player* player)
+            DoOnVraisJoueurs([&atteint, tirion](Player* player)
             {
                 // SIGNALE EN JEU : « le scenario ne se declenche que si
                 // on saute dans la lave, le perimetre de detection est
