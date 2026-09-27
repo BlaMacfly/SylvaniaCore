@@ -206,7 +206,7 @@ public:
 
         if (player->HasQuest(40618) &&
             player->GetQuestStatus(40618) != QUEST_STATUS_REWARDED) {
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "I would like to review weapons we might pursue.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "J'aimerais revoir les armes que nous pourrions rechercher.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
         }
 
         SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());

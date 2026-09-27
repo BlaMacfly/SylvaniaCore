@@ -269,7 +269,15 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
 
 void PlayerMenu::SendCloseGossip()
 {
+    // Le choix en attente survit a la fermeture du dialogue : la fenetre de
+    // PlayerChoice est une interface distincte. Sans cela, un choix ouvert par
+    // un sort lance dans OnQuestAccept/sQuestAccept etait efface aussitot par
+    // le SendCloseGossip() que HandleQuestgiverAcceptQuestOpcode envoie juste
+    // apres, et le clic du joueur etait rejete (armes prodigieuses : chasseur,
+    // DK, paladin, DH, pretre, druide).
+    uint32 pendingPlayerChoiceId = _interactionData.PlayerChoiceId;
     _interactionData.Reset();
+    _interactionData.PlayerChoiceId = pendingPlayerChoiceId;
 
     WorldPackets::NPC::GossipComplete packet;
     _session->SendPacket(packet.Write());
