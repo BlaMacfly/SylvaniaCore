@@ -25,6 +25,7 @@
 #include "MiscPackets.h"
 #include "GameObjectAI.h"
 #include "ScriptMgr.h"
+#include "Group.h"
 #include "ScriptedCreature.h"
 #include "Player.h"
 #include "ObjectMgr.h"
@@ -418,6 +419,33 @@ public:
                         player->UnbindInstance(itr, binds);
                     else
                         ++itr;
+                }
+            }
+
+            // =========================================================
+            // LIAISON_DE_GROUPE
+            //
+            // La deliaison ci-dessus ne suffisait pas : InstanceMap::Add
+            // consulte DEUX liaisons -- celle du joueur et celle de son
+            // groupe -- et c'est la seconde qui l'emporte.
+            //
+            // MESURE : apres etre passe par Angelica, le joueur retombait
+            // toujours dans l'instance 11, terminee de longue date. Son
+            // propre lien avait bien ete efface ; le groupe 1, lui,
+            // restait accroche a cette copie. Le journal le disait des le
+            // premier incident -- « the group is bound to the instance »
+            // -- et je n'avais traite que la ligne precedente.
+            // =========================================================
+            if (Group* groupe = player->GetGroup())
+            {
+                for (uint8 d = 0; d < MAX_DIFFICULTY; ++d)
+                {
+                    auto binds = groupe->GetBoundInstances(Difficulty(d));
+                    if (binds == groupe->GetBoundInstanceEnd())
+                        continue;
+
+                    if (binds->second.find(1460) != binds->second.end())
+                        groupe->UnbindInstance(1460, uint8(d));
                 }
             }
 
