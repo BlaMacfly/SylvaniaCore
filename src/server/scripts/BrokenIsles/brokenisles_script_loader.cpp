@@ -179,7 +179,6 @@ void AddSC_boss_the_desolate_host();
 void AddSC_boss_fallen_avatar();
 void AddSC_boss_goroth();
 void AddSC_boss_sisters_of_the_moon();
-void AddSC_boss_shiwar();
 void AddSC_boss_harjatan();
 void AddSC_boss_tos_kiljaeden();
 void AddSC_boss_maiden_of_vigilance();
@@ -382,7 +381,6 @@ void AddBrokenIslesScripts()
     AddSC_boss_fallen_avatar();
     AddSC_boss_goroth();
     AddSC_boss_sisters_of_the_moon();
-    AddSC_boss_shiwar();
     AddSC_boss_harjatan();
     AddSC_boss_tos_kiljaeden();
     AddSC_boss_maiden_of_vigilance();
