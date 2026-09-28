@@ -749,8 +749,29 @@ struct scenario_broken_shore_intro : public InstanceScript
                 // =====================================================
                 if (cityWeight >= CITY_RAZED_POINTS)
                 {
+                    // =============================================
+                    // DOUBLE_AVANCEE
+                    //
+                    // SIGNALE EN JEU : « la p7 a encore ete validee
+                    // automatiquement ».
+                    //
+                    // Le moteur cloture « Raze the Black City » de
+                    // lui-meme des que l arbre 42770 atteint ses 300
+                    // points -- ce sont nos propres evenements qui l y
+                    // amenent. Un CompleteStep() ici faisait avancer une
+                    // SECONDE fois, et le scenario sautait par-dessus
+                    // « The Highlord ».
+                    //
+                    // L avertissement figurait deja quelques lignes plus
+                    // haut, ecrit lors du meme defaut sur la phase 2. En
+                    // alignant hier ce seuil sur celui de la barre, j ai
+                    // rendu la collision exacte au lieu de la supprimer.
+                    //
+                    // On ne touche donc plus a l etape : on met seulement
+                    // notre propre suivi a jour, et on arme la detection
+                    // de Tirion.
+                    // =============================================
                     stage = STAGE_HIGHLORD;
-                    CompleteStep();
                     StartHighlord();
                 }
                 break;
@@ -1003,7 +1024,26 @@ struct scenario_broken_shore_intro : public InstanceScript
                     if (!pnj || !pnj->IsAlive())
                         continue;
 
-                    if (pnj->GetMotionMaster()->GetCurrentMovementGeneratorType() != FOLLOW_MOTION_TYPE)
+                    // =============================================
+                    // PIVOTEMENT
+                    //
+                    // SIGNALE EN JEU : « les deplacements de Jaina et
+                    // Genn sont etranges, ils tournent sur eux-memes
+                    // quand ils marchent, mais ils suivent bien ».
+                    //
+                    // La reprise se fondait sur le TYPE de generateur de
+                    // mouvement. Or celui-ci change le temps d'un
+                    // recalcul de chemin, ce qui arrive sans cesse
+                    // derriere une cible mobile. On vidait donc la pile
+                    // de mouvement et on relancait le suivi toutes les
+                    // quatre secondes : a chaque reprise le PNJ se
+                    // reoriente d'un bloc, d'ou le pivotement.
+                    //
+                    // On ne reprend plus que sur un vrai decrochage --
+                    // trente metres, largement au-dela de l'ecart normal
+                    // d'un suiveur a quatre metres, meme en virage.
+                    // =============================================
+                    if (pnj->GetDistance(marcheur) > 30.0f)
                     {
                         pnj->setActive(true);
                         pnj->SetWalk(false);
