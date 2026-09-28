@@ -1,0 +1,32 @@
+-- =====================================================================
+-- Conclave des Vents : Anshal et Rohash n'avaient aucun butin.
+--
+-- SIGNALE PAR UN JOUEUR : « au Trône des Quatre Vents on n'a pas looté
+-- le diamant du boss, du coup pas de loot ».
+--
+-- MESURE. Les trois djinns du Conclave meurent independamment -- chacun
+-- a son propre JustDied qui marque la rencontre achevee -- et chacun
+-- laisse donc un corps fouillable. Mais seul Nezir portait une table :
+--
+--     Anshal (45870)  lootid 0      aucune
+--     Nezir  (45871)  lootid 45871  11 objets, tirage de groupe
+--     Rohash (45872)  lootid 0      aucune
+--
+-- Un joueur qui fouillait Anshal ou Rohash ne trouvait rien, et pouvait
+-- raisonnablement conclure que la rencontre n'avait rien donne.
+--
+-- Les deux manquants pointent desormais sur la table de Nezir, par
+-- reference plutot que par copie : les trois restent ainsi synchrones si
+-- la table evolue.
+--
+-- CONSEQUENCE ASSUMEE, A CONNAITRE : les trois corps devenant fouillables
+-- avec la meme table, un groupe qui les fouille tous recevra TROIS lots
+-- au lieu d'un. En officiel la rencontre n'en donne qu'un.
+--
+-- Deux facons de revenir en arriere si c'est trop genereux :
+--   - remettre lootid a 0 sur 45870 et 45872 (etat d'origine), ou
+--   - ne garder la table que sur le dernier mort, ce qui demande un
+--     ajustement du script boss_conclave_of_wind.cpp.
+-- =====================================================================
+
+UPDATE `creature_template` SET `lootid` = 45871 WHERE `entry` IN (45870, 45872);
