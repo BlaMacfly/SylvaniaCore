@@ -399,6 +399,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             case NPC_VOLJIN:        placedVoljinGUID  = creature->GetGUID(); break;
             case NPC_JAINA:         jainaGUID         = creature->GetGUID(); break;
             case NPC_SYLVANAS:      sylvanasGUID      = creature->GetGUID(); break;
+            case NPC_BAINE:         baineGUID         = creature->GetGUID(); break;
             case NPC_GENN:          gennGUID          = creature->GetGUID(); break;
             case NPC_MEKKATORQUE:   mekkaGUID         = creature->GetGUID(); break;
             case NPC_THRALL:        thrallGUID        = creature->GetGUID(); break;
@@ -1222,15 +1223,37 @@ struct scenario_broken_shore_intro : public InstanceScript
                     if (stage != STAGE_HIGHLORD)
                         return;
 
+                    // =========================================
+                    // DISTRIBUTION_HORDE
+                    //
+                    // La scene se joue a l'identique dans les deux camps,
+                    // avec deux distributions. Le bloc Horde
+                    // (99393-99399) repond un pour un a celui de
+                    // l'Alliance (99229-99234) :
+                    //
+                    //   Genn    « ils battent en retraite »  -> Vol'jin
+                    //   Varian  « pas encore terminee »      -> Sylvanas
+                    //   Jaina   repere Tirion                -> Thrall
+                    //   Varian  « suivez Jaina »             -> Vol'jin
+                    //   Gelbin  « comment traverser ? »      -> Baine
+                    //   Jaina   gele un passage              -> Thrall
+                    //
+                    // Thrall appelle la terre la ou Jaina gele l'eau.
+                    //
+                    // Deux locuteurs etaient restes en dur cote Alliance
+                    // -- Genn au premier rang, Gelbin au cinquieme --
+                    // et la Horde serait restee muette sur ces deux-la.
+                    // =========================================
+                    bool const horde = (team == TEAM_HORDE);
                     ObjectGuid guid;
                     switch (rang)
                     {
-                        case 0: guid = gennGUID;  break;   // « Ils battent en retraite. »
-                        case 1: guid = (team == TEAM_HORDE) ? placedVoljinGUID : placedVarianGUID; break;
-                        case 2: guid = (team == TEAM_HORDE) ? sylvanasGUID : jainaGUID; break;
-                        case 3: guid = (team == TEAM_HORDE) ? placedVoljinGUID : placedVarianGUID; break;
-                        case 4: guid = mekkaGUID; break;   // « Comment va-t-on traverser ? »
-                        case 5: guid = (team == TEAM_HORDE) ? thrallGUID : jainaGUID; break;
+                        case 0: guid = horde ? placedVoljinGUID : gennGUID;         break;
+                        case 1: guid = horde ? sylvanasGUID     : placedVarianGUID; break;
+                        case 2: guid = horde ? thrallGUID       : jainaGUID;        break;
+                        case 3: guid = horde ? placedVoljinGUID : placedVarianGUID; break;
+                        case 4: guid = horde ? baineGUID        : mekkaGUID;        break;
+                        case 5: guid = horde ? thrallGUID       : jainaGUID;        break;
                         default: return;
                     }
 
@@ -1491,6 +1514,7 @@ private:
     ObjectGuid leaderGUID;
     ObjectGuid jainaGUID;
     ObjectGuid sylvanasGUID;
+    ObjectGuid baineGUID;
     ObjectGuid placedVarianGUID;
     ObjectGuid placedVoljinGUID;
     ObjectGuid tirionGUID;
