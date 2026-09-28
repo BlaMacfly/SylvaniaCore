@@ -57,6 +57,9 @@ enum BrokenShoreCreatures
     // communs
     NPC_KHADGAR             = 90707,
     NPC_ARGANOTH            = 90705,
+    // Le commandant de la Horde : « Defeat the Commander » vise Azgalor,
+    // pose sur la carte au meme titre qu'Arganoth.
+    NPC_AZGALOR             = 93719,
     NPC_TIRION              = 90367,
     NPC_KROSUS              = 90544,
     NPC_GULDAN              = 90413,
@@ -403,6 +406,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             case NPC_GULDAN_POSE:   guldanGUID        = creature->GetGUID(); break;
             case NPC_KROSUS:        krosusGUID        = creature->GetGUID(); break;
             case NPC_ARGANOTH:      arganothGUID      = creature->GetGUID(); break;
+            case NPC_AZGALOR:       azgalorGUID       = creature->GetGUID(); break;
             default: break;
         }
     }
@@ -579,15 +583,20 @@ struct scenario_broken_shore_intro : public InstanceScript
                 if (stage == STAGE_STORM_BEACH)
                 {
                     ++felLordKills;
-                    DoSendEventScenario(EVENT_FEL_LORDS_SLAIN);
+                    DoSendEventScenario(AssetSeigneurs());
                     TryFinishBeach();
                 }
                 break;
             case NPC_ARGANOTH:
+            case NPC_AZGALOR:
+                // Arganoth cote Alliance, Azgalor cote Horde : la meme
+                // etape, deux adversaires. On accepte les deux entrees
+                // plutot que de brancher sur l'equipe -- le mauvais des
+                // deux n'est de toute facon jamais engage.
                 if (stage == STAGE_COMMANDER)
                 {
                     creature->AI()->Talk(1);
-                    DoSendEventScenario(EVENT_COMMANDER_SLAIN);
+                    DoSendEventScenario(AssetCommandant());
                     stage = STAGE_FIND_LEADER;
                     StartFindLeader();
                 }
@@ -597,7 +606,7 @@ struct scenario_broken_shore_intro : public InstanceScript
                     break;
 
                 // Une activation par ancre : le critere en exige quatre.
-                DoSendEventScenario(EVENT_ANCHOR_DESTROYED);
+                DoSendEventScenario(AssetAncre());
 
                 if (++anchorsDown >= ANCHORS_PORTAL)
                 {
@@ -659,7 +668,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             return;
 
         ++spiresDown;
-        DoSendEventScenario(EVENT_SPIRES_DESTROYED);
+        DoSendEventScenario(AssetFleches());
         TryFinishBeach();
     }
 
@@ -683,7 +692,8 @@ struct scenario_broken_shore_intro : public InstanceScript
         // Arganoth est POSE sur la carte en (613, 2085) : quatrieme
         // occurrence du meme defaut, apres Varian, Tirion, Krosus et la
         // distribution de la plage. On emploie celui de la base.
-        if (Creature* arganoth = instance->GetCreature(arganothGUID))
+        ObjectGuid const commandantGuid = (team == TEAM_HORDE) ? azgalorGUID : arganothGUID;
+        if (Creature* arganoth = instance->GetCreature(commandantGuid))
         {
             arganoth->AI()->Talk(0);
             arganoth->SetInCombatWithZone();
@@ -696,7 +706,7 @@ struct scenario_broken_shore_intro : public InstanceScript
         {
             case STAGE_STORM_BEACH:
                 ++beachKills;
-                DoSendEventScenario(EVENT_DEMONS_SLAIN);
+                DoSendEventScenario(AssetDemons());
                 TryFinishBeach();
                 break;
             case STAGE_RAZE_CITY:
@@ -896,7 +906,7 @@ struct scenario_broken_shore_intro : public InstanceScript
             }
             if (found)
             {
-                DoSendEventScenario(EVENT_LEADER_FOUND);
+                DoSendEventScenario(AssetChefTrouve());
                 stage = STAGE_PORTAL;
 
                 // Ils sont arrives avec le joueur : ils s'arretent aupres
@@ -916,6 +926,43 @@ struct scenario_broken_shore_intro : public InstanceScript
     }
 
     // Les deux chefs emboitent le pas au joueur, chacun sur son flanc.
+    // =================================================================
+    // ASSETS_PAR_FACTION
+    //
+    // Les deux factions jouent des scenarios DISTINCTS : 786 cote
+    // Alliance, 1189 cote Horde. Le script envoyait les assets de
+    // l'Alliance en dur ; cote Horde ils ne nourrissaient aucun critere,
+    // et la progression restait morte de bout en bout.
+    //
+    // Releve sur wago.tools, build 7.3.5.26972, arbre par arbre. Six
+    // assets seulement different -- les quatre dernieres etapes sont
+    // PARTAGEES, y compris la barre de la cite avec ses memes poids :
+    //
+    //   etape            Alliance   Horde
+    //   demons tues        44095     54116
+    //   gangreseigneurs    52643     54114
+    //   fleches            44077     54117
+    //   commandant         45131     54109
+    //   chef trouve        45228     54123
+    //   ancres             45288     54141
+    //   cite / Tirion / Krosus / finale  -> identiques
+    //
+    // Cote Horde, « Trouver Varian » devient « Trouver les autres »
+    // (Sylvanas et Baine) et « Arreter Gul'dan » devient « Tenir la
+    // crete » -- mais l'asset de cette derniere est le meme.
+    // =================================================================
+    uint32 Asset(uint32 alliance, uint32 horde) const
+    {
+        return (team == TEAM_HORDE) ? horde : alliance;
+    }
+
+    uint32 AssetDemons() const     { return Asset(EVENT_DEMONS_SLAIN,     54116); }
+    uint32 AssetSeigneurs() const  { return Asset(EVENT_FEL_LORDS_SLAIN,  54114); }
+    uint32 AssetFleches() const    { return Asset(EVENT_SPIRES_DESTROYED, 54117); }
+    uint32 AssetCommandant() const { return Asset(EVENT_COMMANDER_SLAIN,  54109); }
+    uint32 AssetChefTrouve() const { return Asset(EVENT_LEADER_FOUND,     54123); }
+    uint32 AssetAncre() const      { return Asset(EVENT_ANCHOR_DESTROYED, 54141); }
+
     // =================================================================
     // DoOnVraisJoueurs
     //
@@ -1449,6 +1496,7 @@ private:
     ObjectGuid tirionGUID;
     ObjectGuid krosusGUID;
     ObjectGuid arganothGUID;
+    ObjectGuid azgalorGUID;
     // Total exige par l arbre officiel 42770, releve sur wago.tools.
     static uint32 const CITY_RAZED_POINTS = 300;
     uint32 cityWeight = 0;    // points accumules, comme la barre
