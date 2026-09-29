@@ -2656,6 +2656,8 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         void AddGarrisonFollower(uint32 garrFollowerId);
         void AddGarrisonMission(uint32 garrMissionId);
+        void AddQuestGarrisonMissions(Quest const* quest);
+        void AddQuestGarrisonMissions();
         void AddGarrisonShipment(uint32 garrShipmentId);
 
         void SendGarrisonInfo() const;

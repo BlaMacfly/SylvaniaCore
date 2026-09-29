@@ -623,6 +623,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_COMPLETE_ACHIEVEMENT:
         case CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
         case CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET:
+        case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION:
             SetCriteriaProgress(criteria, 1, referencePlayer);
             break;
         case CRITERIA_TYPE_BUY_BANK_SLOT:
@@ -770,7 +771,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_UPGRADE_GARRISON:
         case CRITERIA_TYPE_START_GARRISON_MISSION:
         case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT:
-        case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION:
         case CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
         case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
         case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL:
@@ -1217,6 +1217,7 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_LEARN_SPELL:
     case CRITERIA_TYPE_EXPLORE_AREA:
     case CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
+    case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION:
     case CRITERIA_TYPE_REACH_AREATRIGGER_WITH_ACTIONSET:
     case CRITERIA_TYPE_HONOR_LEVEL_REACHED:
     case CRITERIA_TYPE_PRESTIGE_REACHED:
@@ -1442,6 +1443,17 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
         break;
     case CRITERIA_TYPE_DEATHS_FROM:
         if (!miscValue1 || miscValue2 != criteria->Entry->Asset.DamageType)
+            return false;
+        break;
+    case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION:
+        // campagnes de domaine : l objectif designe UNE mission precise
+        if (!miscValue1 || miscValue1 != criteria->Entry->Asset.GarrMissionID)
+            return false;
+        break;
+    case CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER:
+        // sans ce test, recruter n importe quel champion validait « recruter Loren »
+        // ET « recruter Emmarel » (quete 42519)
+        if (criteria->Entry->Asset.ID && miscValue1 != criteria->Entry->Asset.ID)
             return false;
         break;
     case CRITERIA_TYPE_COMPLETE_QUEST:

@@ -16036,6 +16036,8 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
     sScriptMgr->OnQuestStatusChange(this, quest, oldStatus, questStatusData.Status);
     sScriptMgr->OnQuestAccept(this, quest);
 
+    AddQuestGarrisonMissions(quest);
+
     // meme raison que dans RewardQuest : accepter une quete change son statut et donc
     // l eligibilite des entrees spell_area qui en dependent. [fix Sylvania]
     UpdateAreaDependentAuras();
@@ -29990,6 +29992,37 @@ void Player::AddGarrisonMission(uint32 garrMissionId)
     if (GarrMissionEntry const* missionEntry = sGarrMissionStore.LookupEntry(garrMissionId))
         if (Garrison* garrison = GetGarrison((GarrisonType)missionEntry->GarrTypeID))
             garrison->AddMission(garrMissionId);
+}
+
+// Une quete de campagne de domaine peut exiger une mission precise (critere
+// COMPLETE_GARRISON_MISSION dans son arbre d objectif). Le core ne tirait les
+// missions qu au hasard (Garrison::GenerateMissions) : celle de la quete pouvait ne
+// jamais apparaitre sur la table. On la pose d office tant que la quete est en cours.
+void Player::AddQuestGarrisonMissions(Quest const* quest)
+{
+    for (QuestObjective const& obj : quest->Objectives)
+    {
+        if (obj.Type != QUEST_OBJECTIVE_CRITERIA_TREE)
+            continue;
+
+        CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(obj.ObjectID);
+        if (!tree)
+            continue;
+
+        CriteriaMgr::WalkCriteriaTree(tree, [this](CriteriaTree const* node)
+        {
+            if (node->Criteria && node->Criteria->Entry->Type == CRITERIA_TYPE_COMPLETE_GARRISON_MISSION)
+                AddGarrisonMission(node->Criteria->Entry->Asset.GarrMissionID);
+        });
+    }
+}
+
+void Player::AddQuestGarrisonMissions()
+{
+    for (auto const& itr : m_QuestStatus)
+        if (itr.second.Status == QUEST_STATUS_INCOMPLETE)
+            if (Quest const* quest = sObjectMgr->GetQuestTemplate(itr.first))
+                AddQuestGarrisonMissions(quest);
 }
 
 void Player::AddGarrisonShipment(uint32 garrShipmentId)

@@ -110,6 +110,8 @@ void WorldSession::HandleGarrisonOpenMissionNpc(WorldPackets::Garrison::Garrison
 
     if (garType == GARRISON_TYPE_CLASS_HALL)
     {
+        // quetes deja en cours avant ce correctif : leur mission n avait jamais ete posee
+        _player->AddQuestGarrisonMissions();
         SendPacket(WorldPackets::Garrison::ShowAdventureMap(garrisonOpenMissionNpcClient.NpcGUID).Write());
     }
     else

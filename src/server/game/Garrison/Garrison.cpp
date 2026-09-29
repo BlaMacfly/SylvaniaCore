@@ -467,7 +467,7 @@ void Garrison::AddFollower(uint32 garrFollowerId)
     addFollowerResult.Follower = follower.PacketInfo;
     _owner->SendDirectMessage(addFollowerResult.Write());
 
-    _owner->UpdateCriteria(CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER, follower.PacketInfo.DbID);
+    _owner->UpdateCriteria(CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER, follower.PacketInfo.GarrFollowerID);
 
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     SaveToDB(trans);
@@ -500,7 +500,7 @@ void Garrison::AddShipmentFollower(uint32 garrFollowerId)
     addFollowerResult.Follower = follower.PacketInfo;
     _owner->SendDirectMessage(addFollowerResult.Write());
 
-    _owner->UpdateCriteria(CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER, follower.PacketInfo.DbID);
+    _owner->UpdateCriteria(CRITERIA_TYPE_RECRUIT_GARRISON_FOLLOWER, follower.PacketInfo.GarrFollowerID);
 
     CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
     SaveToDB(trans);
@@ -1051,6 +1051,11 @@ void Garrison::CompleteMission(uint32 garrMissionId)
 
         success = roll_chance_i(mission->PacketInfo.SuccessChance);
         mission->PacketInfo.MissionState = success ? GarrisonMission::State::Completed : GarrisonMission::State::Reward2Claimed;
+
+        // Rien ne mettait ce critere a jour : les etapes « mission » des campagnes de
+        // domaine (ex. chasseur 42523/42525/42384/42402) etaient impossibles a valider.
+        if (success)
+            _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_MISSION, missionEntry->ID);
     }
 
     WorldPackets::Garrison::GarrisonCompleteMissionResult garrisonCompleteMissionResult;
