@@ -182,6 +182,7 @@ def spawn_filter(table):
             keep.append(r)
     keep_guids = {r["guid"] for r in keep}
     rows = [r for r in rows if r["guid"] not in keep_guids]
+    rows = [r for r in rows if int(r["id"]) < 400000]  # entrees propres a LegionCore, absentes chez nous
     for r in rows:
         ph = set(int(x) for x in r["PhaseId"].split())
         if any(int(r["zoneId"]) in zones_of[p] for p in ph & P):
