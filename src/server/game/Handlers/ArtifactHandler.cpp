@@ -165,6 +165,23 @@ void WorldSession::HandleArtifactAddPower(WorldPackets::Artifact::ArtifactAddPow
         artifact->InitArtifactPowers(artifact->GetTemplate()->GetArtifactID(), uint8(i));
 
     artifact->SetModifier(ITEM_MODIFIER_ARTIFACT_TIER, artifactTier);
+
+    // Quetes « choisir le premier trait de l arme » (objectif unique de type CRITERIA_TREE) :
+    // chez 5 classes l arbre pointe vers un critere absent du client ET des hotfixes, chez le
+    // paladin vers CRITERIA_TYPE_ARTIFACT_TRAITS_UNLOCKED, non implemente. Impossibles a valider ;
+    // pour le chasseur, c est elle qui garde l acces a la table de missions (Blez, 30/09/2026).
+    static uint32 const firstArtifactPowerQuests[] =
+    {
+        41047, // chasseur  - Infused with Power
+        41017, // pretre    - Empowering Your Artifact
+        40651, // druide    - The Seed of Ages
+        40276, // chaman    - The Maelstrom Beckons
+        39722, // paladin   - Forging New Strength
+        39192, // guerrier  - The Forge of Odyn
+    };
+    for (uint32 questId : firstArtifactPowerQuests)
+        if (_player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
+            _player->CompleteQuest(questId);
 }
 
 void WorldSession::HandleArtifactSetAppearance(WorldPackets::Artifact::ArtifactSetAppearance& artifactSetAppearance)
