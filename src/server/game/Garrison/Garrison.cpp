@@ -318,7 +318,11 @@ void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
         stmt->setUInt8(index++, _garrisonType);
         stmt->setUInt32(index++, mission.PacketInfo.MissionRecID);
         stmt->setUInt32(index++, mission.PacketInfo.OfferTime);
-        stmt->setUInt32(index++, mission.PacketInfo.StartTime != time_t(2254525440) ? mission.PacketInfo.StartTime: 0);
+        // Mission offerte mais pas lancee : StartTime vaut une valeur sentinelle -- 2254525440 au
+        // chargement, mais 2288912640 par defaut dans GarrisonMission (AddMission). Seule la
+        // premiere etait reconnue : la seconde partait telle quelle en base, « Out of range value
+        // for column startTime » (erreur SQL MySQL 1264, 30/09/2026, premiere mission de domaine).
+        stmt->setUInt32(index++, (mission.PacketInfo.StartTime == time_t(2254525440) || mission.PacketInfo.StartTime == time_t(2288912640)) ? 0 : uint32(mission.PacketInfo.StartTime));
         stmt->setUInt32(index++, mission.PacketInfo.MissionState);
         trans->Append(stmt);
 
