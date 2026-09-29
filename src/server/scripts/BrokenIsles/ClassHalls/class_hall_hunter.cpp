@@ -147,6 +147,10 @@ public:
         if (choiceID != PLAYER_CHOICE_HUNTER_ARTIFACT_SELECTION)
             return;
 
+        // RemoveRewardedQuest(40618) retire : il rendait « Armes de legende » de nouveau
+        // disponible a chaque choix, y compris pour la deuxieme et la troisieme arme.
+        // Le credit des quetes 44043/44366 est donne par artifact_choice_universal,
+        // qui seul sait si l arme choisie est nouvelle.
         // Le choix de l arme ne change PLUS la specialisation : le script d origine
         // forcait ActivateTalentGroup(), ce qui basculait le joueur sur un jeu de
         // talents vide et retirait son equipement. Les autres classes ne le font pas.
@@ -154,22 +158,22 @@ public:
         {
             case PLAYER_CHOICE_Hunter_Shooting:
             {
-                player->RemoveRewardedQuest(40618);
-                player->KilledMonsterCredit(KILL_CREDIT_HUNTER_ARTIFACT_CHOSEN);
+                if (player->GetQuestStatus(40618) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(KILL_CREDIT_HUNTER_ARTIFACT_CHOSEN);
 
                 break;
             }   
             case PLAYER_CHOICE_Hunter_Beast_Mastery:
             {
-                player->RemoveRewardedQuest(40618);
-                player->KilledMonsterCredit(KILL_CREDIT_HUNTER_ARTIFACT_CHOSEN);
+                if (player->GetQuestStatus(40618) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(KILL_CREDIT_HUNTER_ARTIFACT_CHOSEN);
 
                 break;
             }   
             case PLAYER_CHOICE_Hunter_Survival:
             {
-                player->RemoveRewardedQuest(40618);
-                player->KilledMonsterCredit(KILL_CREDIT_HUNTER_ARTIFACT_CHOSEN);
+                if (player->GetQuestStatus(40618) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(KILL_CREDIT_HUNTER_ARTIFACT_CHOSEN);
 
                 break;
             } 
@@ -226,8 +230,63 @@ public:
     }
 };
 
+// Emmarel Shadewarden au Pavillon (107317, 107973) : « Perpetuer la legende » (44043) et
+// « Une derniere aventure » (44366) demandent de choisir une nouvelle arme, mais aucun
+// PNJ ne proposait le choix (ni chez nous ni chez LegionCore) : on rouvre la fenetre 240.
+class npc_emmarel_artifact_next : public CreatureScript
+{
+public:
+    npc_emmarel_artifact_next() : CreatureScript("npc_emmarel_artifact_next") { }
+
+    static bool HasPendingChoice(Player* player)
+    {
+        return player->GetQuestStatus(44043) == QUEST_STATUS_INCOMPLETE
+            || player->GetQuestStatus(44366) == QUEST_STATUS_INCOMPLETE;
+    }
+
+    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == 44043 || quest->GetQuestId() == 44366)
+            player->CastSpell(player, SPELL_PLAYERCHOICE, true);
+        return false;
+    }
+
+    // reprise du SmartAI LegionCore de 107973 (un PNJ n a qu une IA) :
+    // a la remise de 42659 « In Defense of Dalaran », le joueur lance 216477
+    bool OnQuestReward(Player* player, Creature* /*creature*/, Quest const* quest, uint32 /*opt*/) override
+    {
+        if (quest->GetQuestId() == 42659)
+            player->CastSpell(player, 216477, true);
+        return false;
+    }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (HasPendingChoice(player))
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je voudrais choisir une autre arme prodigieuse.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+
+        SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* /*creature*/, uint32 /*sender*/, uint32 action) override
+    {
+        ClearGossipMenuFor(player);
+        if (action == GOSSIP_ACTION_INFO_DEF + 1)
+        {
+            CloseGossipMenuFor(player); // AVANT le sort : la fermeture efface le choix autorise
+            player->CastSpell(player, SPELL_PLAYERCHOICE, true);
+        }
+        return true;
+    }
+};
+
 void AddSC_class_hall_hunter()
 {
+    new npc_emmarel_artifact_next();
     RegisterCreatureAI(npc_snowfeather_100786);
     RegisterCreatureAI(npc_grif_wildheart_100810);
     RegisterCreatureAI(npc_apata_highmountain_99986);

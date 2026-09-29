@@ -88,6 +88,16 @@ public:
             player->AddQuest(quest, nullptr);
             player->CompleteQuest(questId);
             player->RewardQuest(quest, 0, player, true);
+
+            // Chasseur : « Perpetuer la legende » (44043) et « Une derniere aventure » (44366)
+            // se valident par le choix d une NOUVELLE arme (on n arrive ici que si elle l est).
+            if (player->getClass() == CLASS_HUNTER)
+            {
+                if (player->GetQuestStatus(44043) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(112362);
+                else if (player->GetQuestStatus(44366) == QUEST_STATUS_INCOMPLETE)
+                    player->KilledMonsterCredit(113746);
+            }
         }
     }
 };
