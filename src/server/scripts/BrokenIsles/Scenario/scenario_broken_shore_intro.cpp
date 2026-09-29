@@ -1548,6 +1548,27 @@ struct scenario_broken_shore_intro : public InstanceScript
         bool horde = (team == TEAM_HORDE);
         scheduler.Schedule(Seconds(10), [this, horde](TaskContext /*context*/)
         {
+            // =====================================================
+            // CONGE_DE_L_ESCORTE
+            //
+            // SIGNALE EN JEU : « les mercenaires m'ont suivi hors du
+            // scenario, ils ne sont pas detaches ».
+            //
+            // Les quatre combattants sont OFFERTS a l'entree : ils
+            // appartiennent au scenario, pas au joueur. Rien ne les
+            // congediait a la sortie, et comme le teleport final passe
+            // par DoOnPlayers -- bots compris -- ils ressortaient avec
+            // lui et restaient en groupe indefiniment.
+            //
+            // On ne renvoie que ce que le jeu a offert : un joueur qui
+            // avait loue ses propres mercenaires avant d'entrer les
+            // garde, le scenario n'ayant complete que ce qui manquait.
+            // =====================================================
+            DoOnVraisJoueurs([](Player* player)
+            {
+                sMercenaryMgr->DismissFreeEscort(player->GetGUID());
+            });
+
             Position const& out = horde ? ExitHorde : ExitAlliance;
             uint32 mapId = horde ? 1 : 1220;
             DoOnPlayers([&out, mapId](Player* player)

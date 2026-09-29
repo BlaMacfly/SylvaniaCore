@@ -91,7 +91,8 @@ struct MercenaryContract
 {
     MercenaryContract() : accountId(0), role(0), stage(MERC_STAGE_SUMMONING), waitSeconds(0),
         pendingRelease(false), summonPending(false), summonAttempts(0),
-        summonCheckTimer(0), absenceSeconds(0), hasPortal(false), portalMap(0) { }
+        summonCheckTimer(0), absenceSeconds(0), hasPortal(false), portalMap(0),
+        freeEscort(false) { }
 
     uint32     accountId;       // compte bot reserve
     ObjectGuid ownerGuid;       // joueur qui a paye
@@ -125,6 +126,12 @@ struct MercenaryContract
     bool       hasPortal;
     uint32     portalMap;
     Position   portalPos;
+
+    // Recrutement OFFERT par le jeu -- l escorte d un scenario -- par
+    // opposition a un mercenaire loue par le joueur. Seuls les premiers
+    // sont congedies quand le scenario s acheve ; les seconds ont ete
+    // payes, ils restent.
+    bool       freeEscort;
 };
 
 class TC_GAME_API MercenaryMgr
@@ -176,6 +183,10 @@ class TC_GAME_API MercenaryMgr
         // aucune de ces routes ne rembourse, c est la regle du systeme.
         void DismissOne(ObjectGuid botGuid);
         void DismissAll(ObjectGuid ownerGuid);
+
+        // Ne congedie que l escorte offerte par le jeu ; les mercenaires
+        // loues par le joueur sont conserves.
+        void DismissFreeEscort(ObjectGuid ownerGuid);
 
         // Hooks du module (GroupScript / PlayerScript).
         void OnPlayerLeftGroup(ObjectGuid guid);

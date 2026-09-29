@@ -451,6 +451,7 @@ MercenaryResult MercenaryMgr::Summon(Player* owner, uint8 role, Creature* portal
     contract.accountId = accountId;
     contract.ownerGuid = owner->GetGUID();
     contract.role = role;
+    contract.freeEscort = freeOfCharge;
     contract.stage = MERC_STAGE_SUMMONING;
     if (portal)
     {
@@ -533,6 +534,32 @@ void MercenaryMgr::DismissOne(ObjectGuid botGuid)
         ReleaseBot(contract);
         return;
     }
+}
+
+// SIGNALE EN JEU : « les mercenaires m ont suivi hors du scenario, ils ne
+// sont pas detaches ». L escorte offerte a l entree appartient au scenario,
+// pas au joueur : elle doit repartir avec lui. On ne peut pas tout renvoyer
+// pour autant -- celui qui avait loue ses propres mercenaires avant d entrer
+// les garde, le scenario n ayant complete que ce qui manquait.
+void MercenaryMgr::DismissFreeEscort(ObjectGuid ownerGuid)
+{
+    if (m_releasing)
+        return;
+
+    std::vector<MercenaryContract> released;
+    for (std::vector<MercenaryContract>::iterator it = m_contracts.begin(); it != m_contracts.end(); )
+    {
+        if (it->ownerGuid != ownerGuid || !it->freeEscort)
+        {
+            ++it;
+            continue;
+        }
+        released.push_back(*it);
+        it = m_contracts.erase(it);
+    }
+
+    for (MercenaryContract const& contract : released)
+        ReleaseBot(contract);
 }
 
 void MercenaryMgr::DismissAll(ObjectGuid ownerGuid)
