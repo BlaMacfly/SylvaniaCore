@@ -104,25 +104,6 @@ enum LocaleConstant : uint8
     TOTAL_LOCALES
 };
 
-enum DiscordMessageChannel
-{
-    DISCORD_WORLD_A = 1,
-    DISCORD_WORLD_H = 2,
-    DISCORD_TICKET  = 3
-};
-
-struct DiscordMessage
-{
-    DiscordMessageChannel channel;
-    std::string message;
-
-    // Channel Specific
-    std::string characterName;
-    bool isGm;
-};
-
-TC_COMMON_API extern LockedQueue<DiscordMessage*> DiscordMessageQueue;
-
 const uint8 OLD_TOTAL_LOCALES = 9; /// @todo convert in simple system
 #define DEFAULT_LOCALE LOCALE_enUS
 

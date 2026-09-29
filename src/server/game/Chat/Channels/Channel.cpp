@@ -180,23 +180,6 @@ void Channel::CleanOldChannelsInDB()
     }
 }
 
-std::string Channel::GetLowerName() const
-{
-    std::string lowername = _channelName;
-    std::transform(lowername.begin(), lowername.end(), lowername.begin(), ::tolower);
-    return lowername;
-}
-
-bool Channel::IsWorld() const
-{
-    if (GetLowerName() == "world" ||
-        GetLowerName() == "world_es" ||
-        GetLowerName() == "world_fr")
-        return true;
-
-    return false;
-}
-
 void Channel::JoinChannel(Player* player, std::string const& pass)
 {
     ObjectGuid const& guid = player->GetGUID();

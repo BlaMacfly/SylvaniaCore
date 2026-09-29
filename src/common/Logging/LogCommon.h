@@ -36,8 +36,7 @@ enum AppenderType : uint8
     APPENDER_NONE,
     APPENDER_CONSOLE,
     APPENDER_FILE,
-    APPENDER_DB,
-    APPENDER_GRAYLOG
+    APPENDER_DB
 };
 
 enum AppenderFlags
