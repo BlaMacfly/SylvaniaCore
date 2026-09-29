@@ -71,6 +71,13 @@ enum eDuelEnums
     SPELL_DUEL_FLAG = 52991,
 
     QUEST_42782 = 42782,
+    // QUETE_DES_DEUX_CAMPS
+    //
+    // « Fin prets » existe en deux exemplaires -- 42782 a Hurlevent,
+    // 44281 au Blocus de Dranosh ar -- avec des objectifs IDENTIQUES :
+    // memes quatre credits. Cette entree etait declaree de longue date
+    // mais aucune condition ne la testait : cote Horde, parler a une
+    // recrue ne creditait rien.
     QUEST_44281 = 44281,
     FACTION_HOSTILE = 2068,
     SPELL_CAST_GOB = 215387,
@@ -114,7 +121,7 @@ public:
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
-        if ((player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE ||
+        if (((player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_44281) == QUEST_STATUS_INCOMPLETE) ||
             player->GetQuestStatus(QUEST_44281) == QUEST_STATUS_INCOMPLETE)
             && creature->IsFullHealth())
         {
@@ -288,7 +295,7 @@ public:
     bool OnGossipHello(Player* player, GameObject* go) override
     {
         go->UseDoorOrButton();
-        if (player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE)
+        if ((player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_44281) == QUEST_STATUS_INCOMPLETE))
         {
             player->CastSpell(player, SPELL_CAST_GOB, true);
             return true;
@@ -305,7 +312,7 @@ public:
     bool OnGossipHello(Player* player, GameObject* go) override
     {
         go->UseDoorOrButton();
-        if (player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE)
+        if ((player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_44281) == QUEST_STATUS_INCOMPLETE))
         {
             player->CastSpell(player, SPELL_CAST_GOB_D, true);
             return true;
@@ -322,7 +329,7 @@ public:
     bool OnGossipHello(Player* player, GameObject* go) override
     {
         go->UseDoorOrButton();
-        if (player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE)
+        if ((player->GetQuestStatus(QUEST_42782) == QUEST_STATUS_INCOMPLETE || player->GetQuestStatus(QUEST_44281) == QUEST_STATUS_INCOMPLETE))
         {
             player->CastSpell(player, SPELL_CAST_GOB_F, true);
             return true;
@@ -468,10 +475,84 @@ public:
     bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
     {
         player->PlayerTalkClass->ClearMenus();
+        player->PlayerTalkClass->SendCloseGossip();
 
-        //214608
-        player->KilledMonsterCredit(creature->GetEntry());
-        player->CastSpell(player, 225147, false); //scene
+        // =============================================================
+        // SylvaniaCore : le capitaine Russo embarque vraiment.
+        //
+        // SIGNALÉ EN JEU : « son gossip marche et déclenche la
+        // cinématique de départ mais ne téléporte pas le joueur dans le
+        // scénario ». Le script créditait l'objectif, lançait la scène
+        // 225147, et s'arrêtait là : la Horde restait sur le quai.
+        //
+        // Son pendant Alliance, npc_captain_angelica_108920, ne joue
+        // aucune scène : il délie le joueur de ses anciennes copies puis
+        // le téléporte sur le pont du navire. On fait pareil ici, avec
+        // la destination Horde officielle.
+        //
+        // Le sort 225152 -- voisin immédiat de la scène 225147 -- porte
+        // cette destination dans `spell_target_position` : carte 1460,
+        // (519.26, 1880.1, 10.99), ligne marquée VerifiedBuild 26365.
+        // C'est de la donnée Blizzard, pas une estimation. Le décor le
+        // confirme : Vol'jin, Thrall et les chasseurs de têtes
+        // Sombrelance se tiennent à une cinquantaine de mètres de là.
+        // =============================================================
+        float const PONT_DU_NAVIRE_X = 519.26f;
+        float const PONT_DU_NAVIRE_Y = 1880.10f;
+        float const PONT_DU_NAVIRE_Z = 10.99f;
+
+        QuestStatus const etat = player->GetQuestStatus(40518);
+        if (etat == QUEST_STATUS_INCOMPLETE || etat == QUEST_STATUS_COMPLETE ||
+            etat == QUEST_STATUS_REWARDED)
+        {
+            if (etat == QUEST_STATUS_INCOMPLETE)
+                player->KilledMonsterCredit(creature->GetEntry());
+
+            // =========================================================
+            // LIAISON_PERIMEE et LIAISON_DE_GROUPE
+            //
+            // Voir le commentaire détaillé sur Angelica : un scénario ne
+            // doit pas garder de sauvegarde d'une session à l'autre,
+            // sinon le joueur retombe dans une copie déjà terminée et
+            // voit la phase finale s'afficher d'emblée. `InstanceMap::Add`
+            // consulte DEUX liaisons -- celle du joueur et celle de son
+            // groupe -- et c'est la seconde qui l'emporte : on efface
+            // donc les deux.
+            // =========================================================
+            for (uint8 d = 0; d < MAX_DIFFICULTY; ++d)
+            {
+                auto binds = player->GetBoundInstances(Difficulty(d));
+                if (binds == player->m_boundInstances.end())
+                    continue;
+
+                for (auto itr = binds->second.begin(); itr != binds->second.end();)
+                {
+                    if (itr->first == 1460 && itr->first != player->GetMapId())
+                        player->UnbindInstance(itr, binds);
+                    else
+                        ++itr;
+                }
+            }
+
+            if (Group* groupe = player->GetGroup())
+            {
+                for (uint8 d = 0; d < MAX_DIFFICULTY; ++d)
+                {
+                    auto binds = groupe->GetBoundInstances(Difficulty(d));
+                    if (binds == groupe->GetBoundInstanceEnd())
+                        continue;
+
+                    if (binds->second.find(1460) != binds->second.end())
+                        groupe->UnbindInstance(1460, uint8(d));
+                }
+            }
+
+            player->TeleportTo(1460, PONT_DU_NAVIRE_X, PONT_DU_NAVIRE_Y,
+                                     PONT_DU_NAVIRE_Z, 0.1f);
+        }
+        else
+            ChatHandler(player->GetSession()).PSendSysMessage(
+                "Prenez d'abord la quête « La bataille du rivage Brisé ».");
 
         return true;
     };
