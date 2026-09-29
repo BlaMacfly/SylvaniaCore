@@ -311,6 +311,7 @@ def bt_text(bid, fallback, male=True):
     return fallback or ""
 
 menus_needed = set()
+emitted_al = set()  # listes d'actions deja ecrites (une meme liste peut servir a plusieurs PNJ)
 for e in sorted(npc_ids):
     lt, dt = lc_t.get(e), dc_t.get(e)
     if not lt or not dt:
@@ -358,9 +359,10 @@ for e in sorted(npc_ids):
             sets.append("AIName='SmartAI'")
             existing_al = {int(r["e"]) for r in q(DC, "SELECT DISTINCT entryorguid e FROM smart_scripts WHERE source_type=9 AND entryorguid IN (%s)" % ids(al))} if al else set()
             for row in out:
-                if row["source_type"] == 9 and row["entryorguid"] in existing_al:
+                if row["source_type"] == 9 and (row["entryorguid"] in existing_al or row["entryorguid"] in emitted_al):
                     continue
                 sql.append(ins("smart_scripts", row))
+            emitted_al |= {row["entryorguid"] for row in out if row["source_type"] == 9}
     elif lt["AIName"] == "SmartAI" and dt["ScriptName"]:
         L("PNJ %d : script C++ chez nous (%s), SmartAI LC non porte" % (e, dt["ScriptName"]))
     if e not in dc_text:
