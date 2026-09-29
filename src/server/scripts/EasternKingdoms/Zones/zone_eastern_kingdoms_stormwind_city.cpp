@@ -497,9 +497,14 @@ public:
         // confirme : Vol'jin, Thrall et les chasseurs de têtes
         // Sombrelance se tiennent à une cinquantaine de mètres de là.
         // =============================================================
-        float const PONT_DU_NAVIRE_X = 519.26f;
-        float const PONT_DU_NAVIRE_Y = 1880.10f;
-        float const PONT_DU_NAVIRE_Z = 10.99f;
+        //
+        // CORRECTION : releve en jeu par l'utilisateur, plus precis que la
+        // donnee du sort. Celle-ci, (519.26, 1880.1, 10.99), deposait le
+        // joueur quatorze metres trop au nord et trois metres trop haut --
+        // a cote du pont, pas dessus.
+        float const PONT_DU_NAVIRE_X = 521.978210f;
+        float const PONT_DU_NAVIRE_Y = 1866.553345f;
+        float const PONT_DU_NAVIRE_Z = 7.560408f;
 
         QuestStatus const etat = player->GetQuestStatus(40518);
         if (etat == QUEST_STATUS_INCOMPLETE || etat == QUEST_STATUS_COMPLETE ||
@@ -548,7 +553,7 @@ public:
             }
 
             player->TeleportTo(1460, PONT_DU_NAVIRE_X, PONT_DU_NAVIRE_Y,
-                                     PONT_DU_NAVIRE_Z, 0.1f);
+                                     PONT_DU_NAVIRE_Z, 6.261450f);
         }
         else
             ChatHandler(player->GetSession()).PSendSysMessage(
