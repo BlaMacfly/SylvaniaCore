@@ -33,6 +33,8 @@
 #include "MotionMaster.h"
 #include "CreatureAI.h"
 #include "SpellHistory.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 
 BotGroupAI* BotGroupAI::debugGroupAI = NULL;
 bool BotGroupAI::PVE_MAX_DUNGEON = false;
@@ -2455,7 +2457,8 @@ void BotGroupAI::SearchCreatureListFromRange(Unit* center, NearCreatureVec& near
 	NearCreatureList nearCreature;
 	Trinity::AllWorldObjectsInRange checker(center, range);
 	Trinity::CreatureListSearcher<Trinity::AllWorldObjectsInRange> searcher(center, nearCreature, checker);
-	//center->VisitNearbyGridObject(range, searcher);
+	// SylvaniaCore : la visite de grille etait commentee et jamais remplacee (VisitNearbyGridObject n existe plus dans ce core). La liste ressortait donc TOUJOURS vide.
+	Cell::VisitGridObjects(center, searcher, range);
 	for (Creature* pCreature : nearCreature)
 	{
 		if (!pCreature->IsAlive() || !pCreature->IsVisible() || pCreature->getLevel() <= 1 ||

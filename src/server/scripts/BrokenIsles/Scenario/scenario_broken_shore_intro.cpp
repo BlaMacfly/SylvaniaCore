@@ -226,9 +226,33 @@ FactionAnchors const AllianceAnchors =
     { 1572.4f, 1719.1f, 77.4f, 5.30f },
 };
 
+// =====================================================================
+// SIGNALE EN JEU : « cote Horde ca reste en p1 sans jamais declencher
+// la p2 ». L'etape 1 s'acheve quand un vrai joueur se trouve a moins de
+// 90 metres de `beach` -- et l'ancre Horde etait posee sur personne.
+//
+// MESURE. Les deux corps de troupe sont nets sur la carte 1460 :
+// l'Alliance se masse vers (485, 2055) -- gardes gilneens, canonniers
+// de Forgefer, mages du Kirin Tor -- et la Horde vers (584, 1904) --
+// chasseurs de tetes Sombrelance, chamans du Cercle terrestre,
+// artificiers Gangrepotion, Vol'jin en (568, 1887).
+//
+// L'ancre Horde, elle, etait a (525.4, 1967.5) : entre les deux camps,
+// a 85 metres des siens. Le joueur debarque en (519.26, 1880.1), soit
+// 87.6 metres de cette ancre -- dans le cercle, mais de justesse ; des
+// qu'il marchait vers Vol'jin il en sortait (91 metres) et n'y rentrait
+// plus jamais. Cote Alliance le meme calcul donne 52 metres, largement
+// dedans : d'ou une faction qui passe et l'autre qui reste bloquee.
+//
+// On repose donc l'ancre a mi-chemin du point de debarquement officiel
+// et du centre mesure des troupes hordeuses : 34 metres de chacun des
+// deux, le pont du navire comme le camp restant tres largement dans le
+// cercle. `beach` ne sert qu'a ce test de proximite, rien d'autre sur
+// la carte n'en depend.
+// =====================================================================
 FactionAnchors const HordeAnchors =
 {
-    { 525.4f, 1967.5f, 0.9f, 5.90f },
+    { 551.6f, 1892.0f, 1.0f, 5.90f },
     { 570.0f, 1955.0f, 1.5f, 3.00f },
     { 982.1f, 1847.4f, 21.6f, 5.90f },
     { 865.6f, 1841.3f, 54.1f, 0.90f },

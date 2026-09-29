@@ -17,6 +17,8 @@
 
 #include "BotFieldClassAI.h"
 #include "Totem.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 
 void FieldShamanAI::UpdateTalentType()
 {
@@ -371,7 +373,8 @@ bool FieldShamanAI::ExistTotemByType(PlayerTotemType totemType, float range)
 	std::list<Creature*> results;
 	Trinity::AllWorldObjectsInRange checker(me, range);
 	Trinity::CreatureListSearcher<Trinity::AllWorldObjectsInRange> searcher(me, results, checker);
-	//me->VisitNearbyGridObject(range, searcher);
+	// SylvaniaCore : la visite de grille etait commentee et jamais remplacee (VisitNearbyGridObject n existe plus dans ce core). La liste ressortait donc TOUJOURS vide.
+	Cell::VisitGridObjects(me, searcher, range);
 
 	uint32 slotType = SUMMON_SLOT_TOTEM;
 	switch (totemType)

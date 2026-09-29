@@ -23,6 +23,8 @@
 #include "SpellHistory.h"
 #include "Item.h"
 #include "Bag.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 
 void BotMageAI::InitializeSpells()
 {
@@ -1002,7 +1004,8 @@ uint32 BotMageAI::TryCastSummonRiteSpell()
 	std::list<GameObject*> goResults;
 	Trinity::GameObjectInRangeCheck checkerGO(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), BOTAI_SEARCH_RANGE);
 	Trinity::GameObjectListSearcher<Trinity::GameObjectInRangeCheck> searcherGO(me, goResults, checkerGO);
-	//me->VisitNearbyGridObject(BOTAI_SEARCH_RANGE, searcherGO);
+	// SylvaniaCore : la visite de grille etait commentee et jamais remplacee (VisitNearbyGridObject n existe plus dans ce core). La liste ressortait donc TOUJOURS vide.
+	Cell::VisitGridObjects(me, searcherGO, BOTAI_SEARCH_RANGE);
 	for (GameObject* go : goResults)
 	{
 		if (go->GetSpellId() == MageIDLE_SummonRite)

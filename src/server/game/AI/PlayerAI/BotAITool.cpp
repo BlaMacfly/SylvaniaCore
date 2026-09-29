@@ -34,6 +34,8 @@
 #include "MotionMaster.h"
 #include <cmath>
 #include "TradePackets.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 
 float BotUtility::BattlegroundScoreRate = 1.0f;
 float BotUtility::DungeonBotDamageModify = 1.0f;
@@ -1635,7 +1637,8 @@ bool BotAIFastAid::CanFastAidByTarget(Player* target)
 	NearCreatureList nearCreature;
 	Trinity::AllWorldObjectsInRange checker(target, BOTAI_RANGESPELL_DISTANCE);
 	Trinity::CreatureListSearcher<Trinity::AllWorldObjectsInRange> searcher(target, nearCreature, checker);
-	//target->VisitNearbyGridObject(BOTAI_RANGESPELL_DISTANCE, searcher);
+	// SylvaniaCore : la visite de grille etait commentee et jamais remplacee (VisitNearbyGridObject n existe plus dans ce core). La liste ressortait donc TOUJOURS vide.
+	Cell::VisitGridObjects(target, searcher, BOTAI_RANGESPELL_DISTANCE);
 	for (Creature* pCreature : nearCreature)
 	{
 		if (pCreature->IsTotem())
@@ -1734,7 +1737,8 @@ Creature* BotAIFindNearLoot::FindLootCreature(float range)
     std::list<Creature*> nearCreature;
     Trinity::AllWorldObjectsInRange checker(me, range);
     Trinity::CreatureListSearcher<Trinity::AllWorldObjectsInRange> searcher(me, nearCreature, checker);
-    //Cell::VisitAllObjects(me, searcher, range);
+    // SylvaniaCore : la visite de grille etait commentee et jamais remplacee (VisitNearbyGridObject n existe plus dans ce core). La liste ressortait donc TOUJOURS vide.
+    Cell::VisitAllObjects(me, searcher, range);
 
     float nearDistance = 9999;
     Creature* pNearCreature = NULL;
@@ -2375,7 +2379,8 @@ void BotAIFlee::SearchCreatureListFromRange(Position centerPos, std::list<Creatu
 	std::list<Creature*> nearCreature;
 	Trinity::AllWorldObjectsInRange checker(me, BOTAI_RANGESPELL_DISTANCE + range);
 	Trinity::CreatureListSearcher<Trinity::AllWorldObjectsInRange> searcher(me, nearCreature, checker);
-	//me->VisitNearbyGridObject(range, searcher);
+	// SylvaniaCore : la visite de grille etait commentee et jamais remplacee (VisitNearbyGridObject n existe plus dans ce core). La liste ressortait donc TOUJOURS vide.
+	Cell::VisitGridObjects(me, searcher, BOTAI_RANGESPELL_DISTANCE + range);
 	for (Creature* pCreature : nearCreature)
 	{
 		if (pCreature->IsPet() || pCreature->IsTotem() || pCreature->getLevel() <= 1)

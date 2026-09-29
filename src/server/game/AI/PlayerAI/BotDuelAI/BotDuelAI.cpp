@@ -28,6 +28,8 @@
 #include "BotDuelClassAI.h"
 #include "MotionMaster.h"
 #include "SpellHistory.h"
+#include "CellImpl.h"
+#include "GridNotifiersImpl.h"
 
 BotDuelAI* BotDuelAI::CreateBotDuelAIByPlayerClass(Player* player)
 {
@@ -259,7 +261,8 @@ NearObjectList BotDuelAI::SearchGameObject(float range)
 	Position pos = me->GetPosition();
 	Trinity::GameObjectInRangeCheck checker(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), range);
 	Trinity::GameObjectListSearcher<Trinity::GameObjectInRangeCheck> searcher(me, results, checker);
-	//me->VisitNearbyGridObject(range, searcher);
+	// SylvaniaCore : la visite de grille etait commentee et jamais remplacee (VisitNearbyGridObject n existe plus dans ce core). La liste ressortait donc TOUJOURS vide.
+	Cell::VisitGridObjects(me, searcher, range);
 	return results;
 }
 
