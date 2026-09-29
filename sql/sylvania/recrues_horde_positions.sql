@@ -43,3 +43,6 @@ UPDATE `creature` SET `position_x`=1410.438, `position_y`=-4755.580, `position_z
 UPDATE `creature` SET `position_x`=1419.438, `position_y`=-4762.119, `position_z`=28.645, `orientation`=1.2566 WHERE `id`=113549;
 UPDATE `creature` SET `position_x`=1430.562, `position_y`=-4762.119, `position_z`=30.523, `orientation`=1.8850 WHERE `id`=113550;
 UPDATE `creature` SET `position_x`=1439.562, `position_y`=-4755.580, `position_z`=33.591, `orientation`=2.5133 WHERE `id`=113551;
+
+-- Drapeau de dialogue : sans lui, aucune recrue n est cliquable.
+UPDATE `creature_template` SET `npcflag` = `npcflag` | 1 WHERE `entry` BETWEEN 113539 AND 113551;
