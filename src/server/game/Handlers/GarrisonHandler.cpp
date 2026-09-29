@@ -112,7 +112,20 @@ void WorldSession::HandleGarrisonOpenMissionNpc(WorldPackets::Garrison::Garrison
     {
         // quetes deja en cours avant ce correctif : leur mission n avait jamais ete posee
         _player->AddQuestGarrisonMissions();
-        SendPacket(WorldPackets::Garrison::ShowAdventureMap(garrisonOpenMissionNpcClient.NpcGUID).Write());
+
+        // La table de commandement d un domaine de classe (ex. « Scouting Map » 102669 du
+        // Pavillon du Traqueur, que la quete 42523 fait utiliser pour lancer une mission)
+        // ouvre la fenetre des MISSIONS. Le core envoyait SMSG_SHOW_ADVENTURE_MAP, la carte
+        // de choix de zone : une carte s affichait sans rien de cliquable (Blez, 30/09/2026).
+        TC_LOG_INFO("network", "HandleGarrisonOpenMissionNpc: %s npc %u type demande %d (%u missions)",
+            _player->GetName().c_str(), garrisonOpenMissionNpcClient.NpcGUID.GetEntry(),
+            garrisonOpenMissionNpcClient.GarrTypeID, uint32(garrison->GetMissions().size()));
+
+        WorldPackets::Garrison::GarrisonOpenMissionNpc garrisonOpenMissionNpc;
+        garrisonOpenMissionNpc.garrType = GARRISON_TYPE_CLASS_HALL;
+        for (auto const& p : garrison->GetMissions())
+            garrisonOpenMissionNpc.Missions.push_back(p.first);
+        SendPacket(garrisonOpenMissionNpc.Write());
     }
     else
     {
