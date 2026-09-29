@@ -377,6 +377,25 @@ for e in sorted(npc_ids):
     if sets:
         sql.append("UPDATE creature_template SET %s WHERE entry=%d;" % (", ".join(sets), e))
 
+# clics de sort : notre core n'ajoute PAS UNIT_NPC_FLAG_SPELLCLICK tout seul (il ne fait que le retirer)
+click_ids = npc_ids | set(entries_spawned["creature"])
+lc_click = q(LC, "SELECT npc_entry,spell_id,cast_flags,user_type FROM npc_spellclick_spells WHERE npc_entry IN (%s)" % ids(click_ids))
+dc_click = {int(r["npc_entry"]) for r in q(DC, "SELECT DISTINCT npc_entry FROM npc_spellclick_spells WHERE npc_entry IN (%s)" % ids(click_ids))}
+names = {int(r["entry"]): r["name"] for r in q(DC, "SELECT entry,name FROM creature_template WHERE entry IN (%s)" % ids(click_ids))}
+sql.append("\n-- 4b. Clics de sort")
+flag_ids = set()
+for r in lc_click:
+    e = int(r["npc_entry"])
+    if (names.get(e) or "").startswith("Invisible"):  # siege de vehicule, pas un PNJ a cliquer
+        continue
+    if e not in dc_click:
+        sql.append("INSERT IGNORE INTO npc_spellclick_spells (npc_entry,spell_id,cast_flags,user_type) VALUES (%d,%s,%s,%s);" % (e, r["spell_id"], r["cast_flags"], r["user_type"]))
+    flag_ids.add(e)
+for r in q(DC, "SELECT DISTINCT s.npc_entry e FROM npc_spellclick_spells s JOIN creature_template t ON t.entry=s.npc_entry WHERE s.npc_entry IN (%s) AND t.name NOT LIKE 'Invisible%%'" % ids(click_ids)):
+    flag_ids.add(int(r["e"]))
+if flag_ids:
+    sql.append("UPDATE creature_template SET npcflag = npcflag | 16777216 WHERE entry IN (%s) AND (npcflag & 16777216) = 0;" % ids(flag_ids))
+
 # menus de gossip (et sous-menus)
 todo, seen = set(menus_needed), set()
 have_menu = {int(r["MenuId"]) for r in q(DC, "SELECT DISTINCT MenuId FROM gossip_menu")}
