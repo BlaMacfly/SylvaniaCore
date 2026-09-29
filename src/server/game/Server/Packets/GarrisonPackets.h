@@ -488,11 +488,12 @@ namespace WorldPackets
 
             WorldPacket const* Write() override;
 
-            uint32 garrType = 3;
-            uint32 result = 0;
-            std::vector<uint32 /* dbID */> Missions;
-            bool   unk4 = false;
-            bool   preventXmlOpenMissionEvent = false;
+            // Format 7.x (WowPacketParser, V7_0_3_22248) : GUID du PNJ + type de sujet
+            // (GarrisonFollowerType : 1 fief, 2 chantier naval, 4 domaine de classe). Le core
+            // ecrivait l ancien format 6.x (type, resultat, missions, bits) : le client lisait
+            // n importe quoi et affichait la carte du FIEF depuis la table du domaine (Blez, 30/09).
+            ObjectGuid NpcGUID;
+            int32 FollowerType = 0;
         };
 
         class GarrisonAddMissionResult final : public ServerPacket

@@ -391,16 +391,8 @@ void WorldPackets::Garrison::GarrisonOpenMissionNpcClient::Read()
 
 WorldPacket const* WorldPackets::Garrison::GarrisonOpenMissionNpc::Write()
 {
-    _worldPacket << int32(garrType);
-    _worldPacket << int32(result);
-    _worldPacket << uint32(Missions.size());
-
-    for (auto const& missionId : Missions)
-        _worldPacket << int32(missionId);
-
-    _worldPacket.WriteBit(unk4);
-    _worldPacket.WriteBit(preventXmlOpenMissionEvent);
-    _worldPacket.FlushBits();
+    _worldPacket << NpcGUID;
+    _worldPacket << int32(FollowerType);
 
     return &_worldPacket;
 }

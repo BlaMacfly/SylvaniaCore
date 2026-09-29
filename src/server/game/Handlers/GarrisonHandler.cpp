@@ -117,24 +117,18 @@ void WorldSession::HandleGarrisonOpenMissionNpc(WorldPackets::Garrison::Garrison
         // Pavillon du Traqueur, que la quete 42523 fait utiliser pour lancer une mission)
         // ouvre la fenetre des MISSIONS. Le core envoyait SMSG_SHOW_ADVENTURE_MAP, la carte
         // de choix de zone : une carte s affichait sans rien de cliquable (Blez, 30/09/2026).
-        TC_LOG_INFO("network", "HandleGarrisonOpenMissionNpc: %s npc %u type demande %d (%u missions)",
-            _player->GetName().c_str(), garrisonOpenMissionNpcClient.NpcGUID.GetEntry(),
-            garrisonOpenMissionNpcClient.GarrTypeID, uint32(garrison->GetMissions().size()));
-
+        // Le champ lu « GarrTypeID » est en realite le type de sujet demande par le client
+        // (4 pour un domaine de classe) : on le renvoie tel quel.
         WorldPackets::Garrison::GarrisonOpenMissionNpc garrisonOpenMissionNpc;
-        garrisonOpenMissionNpc.garrType = GARRISON_TYPE_CLASS_HALL;
-        for (auto const& p : garrison->GetMissions())
-            garrisonOpenMissionNpc.Missions.push_back(p.first);
+        garrisonOpenMissionNpc.NpcGUID = garrisonOpenMissionNpcClient.NpcGUID;
+        garrisonOpenMissionNpc.FollowerType = garrisonOpenMissionNpcClient.GarrTypeID ? garrisonOpenMissionNpcClient.GarrTypeID : int32(FOLLOWER_TYPE_CLASS_HALL);
         SendPacket(garrisonOpenMissionNpc.Write());
     }
     else
     {
         WorldPackets::Garrison::GarrisonOpenMissionNpc garrisonOpenMissionNpc;
-        garrisonOpenMissionNpc.garrType = GARRISON_TYPE_GARRISON;
-        for (auto const& p : garrison->GetMissions())
-        {
-            garrisonOpenMissionNpc.Missions.push_back(p.first);
-        }
+        garrisonOpenMissionNpc.NpcGUID = garrisonOpenMissionNpcClient.NpcGUID;
+        garrisonOpenMissionNpc.FollowerType = int32(FOLLOWER_TYPE_GARRISON);
         SendPacket(garrisonOpenMissionNpc.Write());
     }
 }
