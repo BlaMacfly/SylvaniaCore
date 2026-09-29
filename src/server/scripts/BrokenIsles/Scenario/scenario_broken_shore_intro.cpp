@@ -285,6 +285,38 @@ struct scenario_broken_shore_intro : public InstanceScript
     uint32 LeaderEntry() const { return team == TEAM_HORDE ? NPC_VOLJIN : NPC_KING_VARIAN; }
     uint32 TroopEntry() const { return team == TEAM_HORDE ? NPC_HORDE_GRUNT : NPC_ALLIANCE_SOLDIER; }
 
+    // =================================================================
+    // ROLES_DE_FACTION_INVERSES
+    //
+    // SIGNALE EN JEU : « la p4 c'est pas bon ».
+    //
+    // L'etape 4 de l'Alliance s'intitule « Find Varian » ; celle de la
+    // Horde, relevee dans ScenarioStep.db2 du build 7.3.5.26972, porte
+    // un autre titre : « Locate Sylvanas and Baine ». Le script traitait
+    // pourtant Vol'jin comme l'equivalent de Varian.
+    //
+    // MESURE sur la carte 1460. Les quatre chefs de chaque camp sont
+    // poses en miroir exact :
+    //
+    //            sur la plage                  a la cite
+    //   ALLI  Jaina (491,2047)            Varian (1120,2484)
+    //         Genn  (487,2052)
+    //   HORDE Vol'jin (568,1887)          Sylvanas (1000,1881)
+    //         Thrall  (572,1882)          Baine    ( 992,1874)
+    //
+    // Cote Horde les deux roles etaient intervertis : Sylvanas, qui
+    // attend a la cite comme Varian, etait envoyee escorter le joueur,
+    // et Vol'jin, poste sur la plage comme Jaina et Genn, servait de
+    // cible a « rejoindre ». Le joueur marchait donc quatre cents
+    // metres vers la cite pendant que le test de proximite guettait un
+    // Vol'jin reste DERRIERE lui : l'etape ne pouvait pas s'achever.
+    //
+    // On remet chacun a sa place. Vol'jin et Thrall escortent depuis la
+    // plage ; Sylvanas, entouree de Baine, est celle que l'on rejoint.
+    // =================================================================
+    ObjectGuid EscorteChef() const   { return (team == TEAM_HORDE) ? placedVoljinGUID : jainaGUID; }
+    ObjectGuid EscorteSecond() const { return (team == TEAM_HORDE) ? thrallGUID       : gennGUID; }
+
     void OnPlayerEnter(Player* player) override
     {
         InstanceScript::OnPlayerEnter(player);
@@ -440,7 +472,7 @@ struct scenario_broken_shore_intro : public InstanceScript
     // copie invoquee par le script.
     Creature* FindLeader() const
     {
-        ObjectGuid const pose = (team == TEAM_HORDE) ? placedVoljinGUID : placedVarianGUID;
+        ObjectGuid const pose = (team == TEAM_HORDE) ? sylvanasGUID : placedVarianGUID;
         if (Creature* leader = instance->GetCreature(pose))
             return leader;
         return instance->GetCreature(leaderGUID);
@@ -529,7 +561,7 @@ struct scenario_broken_shore_intro : public InstanceScript
         // est ailleurs -- c'est tout l'objet de l'etape « Trouver
         // Varian » d'aller le chercher.
         // =============================================================
-        leaderGUID = (team == TEAM_HORDE) ? placedVoljinGUID : placedVarianGUID;
+        leaderGUID = (team == TEAM_HORDE) ? sylvanasGUID : placedVarianGUID;
 
         if (Creature* orateur = instance->GetCreature(team == TEAM_HORDE ? placedVoljinGUID : gennGUID))
             orateur->AI()->Talk(0);
@@ -941,7 +973,7 @@ struct scenario_broken_shore_intro : public InstanceScript
 
                 // La replique de fin de phase n'a de sens que si celui
                 // qui la prononce est la. Il l'est desormais.
-                if (Creature* second = instance->GetCreature(team == TEAM_HORDE ? sylvanasGUID : jainaGUID))
+                if (Creature* second = instance->GetCreature(EscorteChef()))
                     second->AI()->Talk(0);
                 StartPortal();
             }
@@ -1028,8 +1060,8 @@ struct scenario_broken_shore_intro : public InstanceScript
 
         ObjectGuid const chefs[2] =
         {
-            (team == TEAM_HORDE) ? sylvanasGUID : jainaGUID,
-            (team == TEAM_HORDE) ? thrallGUID   : gennGUID
+            EscorteChef(),
+            EscorteSecond()
         };
 
         for (uint8 i = 0; i < 2; ++i)
@@ -1086,8 +1118,8 @@ struct scenario_broken_shore_intro : public InstanceScript
             {
                 ObjectGuid const chefs[2] =
                 {
-                    (team == TEAM_HORDE) ? sylvanasGUID : jainaGUID,
-                    (team == TEAM_HORDE) ? thrallGUID   : gennGUID
+                    EscorteChef(),
+                    EscorteSecond()
                 };
 
                 for (uint8 i = 0; i < 2; ++i)
@@ -1134,8 +1166,8 @@ struct scenario_broken_shore_intro : public InstanceScript
     {
         ObjectGuid const chefs[2] =
         {
-            (team == TEAM_HORDE) ? sylvanasGUID : jainaGUID,
-            (team == TEAM_HORDE) ? thrallGUID   : gennGUID
+            EscorteChef(),
+            EscorteSecond()
         };
 
         for (uint8 i = 0; i < 2; ++i)
@@ -1151,8 +1183,8 @@ struct scenario_broken_shore_intro : public InstanceScript
     // temps de respiration. Groupes 20 a 23, poses en base.
     void DireEtapeEscorte(uint8 etape)
     {
-        ObjectGuid const chefGuid   = (team == TEAM_HORDE) ? sylvanasGUID : jainaGUID;
-        ObjectGuid const secondGuid = (team == TEAM_HORDE) ? thrallGUID   : gennGUID;
+        ObjectGuid const chefGuid   = EscorteChef();
+        ObjectGuid const secondGuid = EscorteSecond();
 
         // { groupe du chef, groupe du second, delai de la reponse }
         // -1 : personne ne parle pour ce role a ce palier.
