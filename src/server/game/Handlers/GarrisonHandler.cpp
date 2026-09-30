@@ -154,6 +154,7 @@ void WorldSession::HandleGarrisonRequestScoutingMap(WorldPackets::Garrison::Garr
 
 void WorldSession::HandleGarrisonStartMission(WorldPackets::Garrison::GarrisonStartMission& startMission)
 {
+    TC_LOG_ERROR("network", "[missions] lancement : %s, mission %u", _player->GetName().c_str(), uint32(startMission.MissionID));
     if (!_player->GetNPCIfCanInteractWith(startMission.NpcGUID, UNIT_NPC_FLAG_GARRISON_MISSION_NPC))
         return;
 
@@ -170,6 +171,7 @@ void WorldSession::HandleGarrisonStartMission(WorldPackets::Garrison::GarrisonSt
 
 void WorldSession::HandleGarrisonCompleteMission(WorldPackets::Garrison::GarrisonCompleteMission& completeMission)
 {
+    TC_LOG_ERROR("network", "[missions] fin : %s, mission %u", _player->GetName().c_str(), uint32(completeMission.MissionID));
     if (!_player->GetNPCIfCanInteractWith(completeMission.NpcGUID, UNIT_NPC_FLAG_GARRISON_MISSION_NPC))
         return;
 
@@ -186,6 +188,7 @@ void WorldSession::HandleGarrisonCompleteMission(WorldPackets::Garrison::Garriso
 
 void WorldSession::HandleGarrisonMissionBonusRoll(WorldPackets::Garrison::GarrisonMissionBonusRoll& missionBonusRoll)
 {
+    TC_LOG_ERROR("network", "[missions] coffre : %s, mission %u", _player->GetName().c_str(), uint32(missionBonusRoll.MissionID));
     if (!_player->GetNPCIfCanInteractWith(missionBonusRoll.NpcGUID, UNIT_NPC_FLAG_GARRISON_MISSION_NPC))
         return;
 

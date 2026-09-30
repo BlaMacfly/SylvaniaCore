@@ -734,6 +734,9 @@ Garrison::Mission* Garrison::GetMissionByID(uint32 ID)
 
 void Garrison::DeleteMission(uint64 dbId)
 {
+    auto itr = _missions.find(dbId);
+    if (itr != _missions.end())
+        _missionIds.erase(itr->second.PacketInfo.MissionRecID); // sinon AddMission la refusait a vie
     _missions.erase(dbId);
 }
 
@@ -1030,6 +1033,7 @@ void Garrison::SendStartMissionResult(bool success, Mission* mission /*= nullptr
     else
     {
         garrisonStartMissionResult.Result = GarrisonMission::Result::Fail;
+        TC_LOG_ERROR("network", "[missions] lancement REFUSE pour %s (mission absente, ressources, ou champion occupe/inactif)", _owner->GetName().c_str());
     }
 
     _owner->SendDirectMessage(garrisonStartMissionResult.Write());
@@ -1055,6 +1059,12 @@ void Garrison::CompleteMission(uint32 garrMissionId)
 
         success = roll_chance_i(mission->PacketInfo.SuccessChance);
         mission->PacketInfo.MissionState = success ? GarrisonMission::State::Completed : GarrisonMission::State::Reward2Claimed;
+
+        // Echec : pas de coffre a ouvrir, donc pas de CalculateMissonBonusRoll -- les champions
+        // restaient bloques sur la mission. On les libere ici.
+        if (!success)
+            for (Follower* follower : GetMissionFollowers(missionEntry->ID))
+                follower->PacketInfo.CurrentMissionID = 0;
 
         // Rien ne mettait ce critere a jour : les etapes « mission » des campagnes de
         // domaine (ex. chasseur 42523/42525/42384/42402) etaient impossibles a valider.
@@ -1084,6 +1094,12 @@ void Garrison::CalculateMissonBonusRoll(uint32 garrMissionId)
         withOvermaxReward = roll_chance_i(mission->PacketInfo.SuccessChance - 100);
 
     RewardMission(mission, withOvermaxReward);
+
+    // Les champions n etaient liberes que si une recompense contenait de l XP de champion
+    // (jamais le cas chez nous) : ils restaient « en mission » a vie et plus aucune
+    // mission ne pouvait etre lancee (Blez, 30/09/2026).
+    for (Follower* follower : GetMissionFollowers(missionEntry->ID))
+        follower->PacketInfo.CurrentMissionID = 0;
 
     WorldPackets::Garrison::GarrisonMissionBonusRollResult garrisonMissionBonusRollResult;
     garrisonMissionBonusRollResult.Mission = mission->PacketInfo;
