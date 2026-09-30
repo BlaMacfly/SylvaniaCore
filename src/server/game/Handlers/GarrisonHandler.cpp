@@ -85,8 +85,15 @@ void WorldSession::HandleGarrisonGetBuildingLandmarks(WorldPackets::Garrison::Ga
 
 void WorldSession::HandleGarrisonOpenMissionNpc(WorldPackets::Garrison::GarrisonOpenMissionNpcClient& garrisonOpenMissionNpcClient)
 {
+    // Trace au niveau ERROR : le logger « network » n ecrit rien en dessous (Logger.root=5).
+    TC_LOG_ERROR("network", "[table de missions] %s clique le PNJ %u, type de sujet demande %d",
+        _player->GetName().c_str(), garrisonOpenMissionNpcClient.NpcGUID.GetEntry(), garrisonOpenMissionNpcClient.GarrTypeID);
+
     if (!_player->GetNPCIfCanInteractWith(garrisonOpenMissionNpcClient.NpcGUID, UNIT_NPC_FLAG_GARRISON_MISSION_NPC))
+    {
+        TC_LOG_ERROR("network", "[table de missions] refuse : PNJ hors de portee ou sans drapeau de missions");
         return;
+    }
 
     GarrisonType garType = GARRISON_TYPE_CLASS_HALL; // Todo : differenciate depending of NPC
     switch (garrisonOpenMissionNpcClient.NpcGUID.GetEntry())
@@ -106,7 +113,10 @@ void WorldSession::HandleGarrisonOpenMissionNpc(WorldPackets::Garrison::Garrison
     Garrison const* garrison = _player->GetGarrison(garType);
 
     if (!garrison)
+    {
+        TC_LOG_ERROR("network", "[table de missions] refuse : pas de garnison de type %u", uint32(garType));
         return;
+    }
 
     if (garType == GARRISON_TYPE_CLASS_HALL)
     {
@@ -121,7 +131,8 @@ void WorldSession::HandleGarrisonOpenMissionNpc(WorldPackets::Garrison::Garrison
         // (4 pour un domaine de classe) : on le renvoie tel quel.
         WorldPackets::Garrison::GarrisonOpenMissionNpc garrisonOpenMissionNpc;
         garrisonOpenMissionNpc.NpcGUID = garrisonOpenMissionNpcClient.NpcGUID;
-        garrisonOpenMissionNpc.FollowerType = garrisonOpenMissionNpcClient.GarrTypeID ? garrisonOpenMissionNpcClient.GarrTypeID : int32(FOLLOWER_TYPE_CLASS_HALL);
+        // Type IMPOSE : renvoyer celui du client pouvait rouvrir la fenetre du fief (Blez, 30/09 19:13)
+        garrisonOpenMissionNpc.FollowerType = int32(FOLLOWER_TYPE_CLASS_HALL);
         SendPacket(garrisonOpenMissionNpc.Write());
     }
     else
