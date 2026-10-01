@@ -480,6 +480,15 @@ WorldPacket const* WorldPackets::Garrison::GarrisonCompleteMissionResult::Write(
     _worldPacket << Result;
     _worldPacket << MissionData;
     _worldPacket << MissionRecID;
+    // Depuis 7.2, la liste des champions de la mission precede le bit Succeeded
+    // (WowPacketParser V7_0_3). Sans elle, le client lisait de travers et ne
+    // pouvait pas ouvrir le coffre de recompense (Blez, mission 929, 01/10/2026).
+    _worldPacket << uint32(Followers.size());
+    for (GarrMissionFollowerData const& follower : Followers)
+    {
+        _worldPacket << uint64(follower.FollowerDbID);
+        _worldPacket << uint32(follower.unk32);
+    }
     _worldPacket.WriteBit(Succeeded);
     _worldPacket.FlushBits();
 

@@ -1052,6 +1052,15 @@ void Garrison::CompleteMission(uint32 garrMissionId)
     bool canComplete = mission->PacketInfo.StartTime + mission->PacketInfo.MissionDuration < time(nullptr);
     bool success = false;
 
+    // champions releves AVANT une eventuelle liberation (echec), pour le paquet de resultat
+    std::vector<WorldPackets::Garrison::GarrMissionFollowerData> resultFollowers;
+    for (Follower* follower : GetMissionFollowers(missionEntry->ID))
+    {
+        WorldPackets::Garrison::GarrMissionFollowerData data;
+        data.FollowerDbID = follower->PacketInfo.DbID;
+        resultFollowers.push_back(data);
+    }
+
     if (canComplete)
     {
         if (GetMissionFollowers(missionEntry->ID).empty())
@@ -1075,6 +1084,8 @@ void Garrison::CompleteMission(uint32 garrMissionId)
     WorldPackets::Garrison::GarrisonCompleteMissionResult garrisonCompleteMissionResult;
     garrisonCompleteMissionResult.Result = canComplete ? GarrisonMission::Result::Success : GarrisonMission::Result::Fail;
     garrisonCompleteMissionResult.MissionData = mission->PacketInfo;
+    garrisonCompleteMissionResult.MissionRecID = missionEntry->ID;
+    garrisonCompleteMissionResult.Followers = resultFollowers;
     garrisonCompleteMissionResult.Succeeded = success;
     _owner->SendDirectMessage(garrisonCompleteMissionResult.Write());
 }

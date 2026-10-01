@@ -584,6 +584,7 @@ namespace WorldPackets
             GarrisonMission MissionData;
             uint32 Result = 0;
             uint32 MissionRecID = 0;
+            std::vector<GarrMissionFollowerData> Followers; // depuis 7.2 (WowPacketParser)
             bool Succeeded = false;
         };
 
