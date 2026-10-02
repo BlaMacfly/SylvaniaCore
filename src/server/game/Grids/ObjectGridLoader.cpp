@@ -216,6 +216,9 @@ void ObjectGridUnloader::Visit(GridRefManager<T> &m)
         //Example: Flame Leviathan Turret 33139 is summoned when a creature is deleted
         /// @todo Check if that script has the correct logic. Do we really need to summons something before deleting?
         obj->CleanupsBeforeDelete();
+        // un objet actif non verrouillant (GameObject, AreaTrigger...) peut etre detruit ici : ne pas le laisser dans m_activeNonPlayers
+        if (Map* map = obj->FindMap())
+            map->PurgeFromActive(obj);
         ///- object will get delinked from the manager when deleted
         delete obj;
     }

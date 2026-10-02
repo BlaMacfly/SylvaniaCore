@@ -467,6 +467,8 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         // must called with RemoveFromWorld
         template<class T>
         void RemoveFromActive(T* obj);
+        // Retire un objet detruit hors de RemoveFromMap (dechargement de grille) : sans effet s'il n'y est pas
+        void PurgeFromActive(WorldObject* obj) { RemoveFromActiveHelper(obj); }
 
         template<class T> void SwitchGridContainers(T* obj, bool on);
         CreatureGroupHolderType CreatureGroupHolder;

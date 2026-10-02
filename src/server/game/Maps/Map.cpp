@@ -1003,6 +1003,8 @@ void Map::RemoveFromMap(T *obj, bool remove)
     obj->RemoveFromWorld();
     if (obj->isActiveObject())
         RemoveFromActive(obj);
+    else
+        RemoveFromActiveHelper(obj); // setActive(false) ne retire que les creatures : ne jamais laisser de pointeur pendant
 
     obj->UpdateObjectVisibility(true);
     obj->RemoveFromGrid();
@@ -3411,7 +3413,10 @@ void Map::AddToActive(DynamicObject* d)
 }
 
 template<class T>
-void Map::RemoveFromActive(T* /*obj*/) { }
+void Map::RemoveFromActive(T* obj)
+{
+    RemoveFromActiveHelper(obj);
+}
 
 template <>
 void Map::RemoveFromActive(Creature* c)
