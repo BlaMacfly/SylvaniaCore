@@ -67,6 +67,24 @@ struct GarrAbilities
 
 typedef std::map<GarrisonType, std::unique_ptr<Garrison>> PlayerGarrisonMap;
 
+// Talent de domaine de classe (table garrison_class_hall_talent, issue de GarrTalent.db2)
+struct ClassHallTalentInfo
+{
+    uint32 ID = 0;
+    uint8 ClassID = 0;
+    uint8 Tier = 0;
+    uint32 ResearchDurationSecs = 0;
+    uint32 ResearchCost = 0;
+    uint32 ResearchCostCurrencyID = 0;
+    uint32 ResearchGoldCost = 0;
+    uint32 PerkSpellID = 0;
+    uint32 PlayerConditionID = 0;
+    uint32 RespecCost = 0;
+    uint32 RespecCostCurrencyID = 0;
+    uint32 RespecDurationSecs = 0;
+    uint32 RespecGoldCost = 0;
+};
+
 class TC_GAME_API GarrisonMgr
 {
 public:
@@ -90,10 +108,13 @@ public:
     std::list<GarrAbilityEntry const*> GetClassSpecAbilities(GarrFollowerEntry const* follower, uint32 faction) const;
 
     uint32 GetMissionSuccessChance(Garrison* garrison, uint32 missionId);
+    ClassHallTalentInfo const* GetClassHallTalent(uint32 talentId) const;
+    void LoadClassHallTalents();
     uint32 GetClassByMissionType(uint32 missionType);
     uint32 GetFactionByMissionType(uint32 missionType);
 
 private:
+    std::unordered_map<uint32, ClassHallTalentInfo> _classHallTalents;
     void InitializeDbIdSequences();
     void LoadPlotFinalizeGOInfo();
     void LoadFollowerClassSpecAbilities();

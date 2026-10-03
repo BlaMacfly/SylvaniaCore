@@ -32,8 +32,46 @@ GarrisonMgr& GarrisonMgr::Instance()
     return instance;
 }
 
+void GarrisonMgr::LoadClassHallTalents()
+{
+    _classHallTalents.clear();
+    QueryResult result = WorldDatabase.Query("SELECT ID, ClassID, Tier, ResearchDurationSecs, ResearchCost, ResearchCostCurrencyID, ResearchGoldCost, PerkSpellID, PlayerConditionID, RespecCost, RespecCostCurrencyID, RespecDurationSecs, RespecGoldCost FROM garrison_class_hall_talent");
+    if (!result)
+    {
+        TC_LOG_ERROR("server.loading", ">> Loaded 0 class hall talents. DB table `garrison_class_hall_talent` is empty.");
+        return;
+    }
+    do
+    {
+        Field* f = result->Fetch();
+        ClassHallTalentInfo& t = _classHallTalents[f[0].GetUInt32()];
+        t.ID = f[0].GetUInt32();
+        t.ClassID = f[1].GetUInt8();
+        t.Tier = f[2].GetUInt8();
+        t.ResearchDurationSecs = f[3].GetUInt32();
+        t.ResearchCost = f[4].GetUInt32();
+        t.ResearchCostCurrencyID = f[5].GetUInt32();
+        t.ResearchGoldCost = f[6].GetUInt32();
+        t.PerkSpellID = f[7].GetUInt32();
+        t.PlayerConditionID = f[8].GetUInt32();
+        t.RespecCost = f[9].GetUInt32();
+        t.RespecCostCurrencyID = f[10].GetUInt32();
+        t.RespecDurationSecs = f[11].GetUInt32();
+        t.RespecGoldCost = f[12].GetUInt32();
+    } while (result->NextRow());
+    TC_LOG_INFO("server.loading", ">> Loaded %u class hall talents.", uint32(_classHallTalents.size()));
+}
+
+ClassHallTalentInfo const* GarrisonMgr::GetClassHallTalent(uint32 talentId) const
+{
+    auto itr = _classHallTalents.find(talentId);
+    return itr != _classHallTalents.end() ? &itr->second : nullptr;
+}
+
 void GarrisonMgr::Initialize()
 {
+    LoadClassHallTalents();
+
     for (GarrSiteLevelPlotInstEntry const* siteLevelPlotInst : sGarrSiteLevelPlotInstStore)
         _garrisonPlotInstBySiteLevel[siteLevelPlotInst->GarrSiteLevelID].push_back(siteLevelPlotInst);
 

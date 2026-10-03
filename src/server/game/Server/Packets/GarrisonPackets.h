@@ -765,7 +765,8 @@ namespace WorldPackets
         class GarrisonResearchTalentResult final : public ServerPacket
         {
         public:
-            GarrisonResearchTalentResult() : ServerPacket(SMSG_GARRISON_FOLLOWER_CATEGORIES, 4) { }
+            // partait sous SMSG_GARRISON_FOLLOWER_CATEGORIES : le client ne la reconnaissait jamais
+            GarrisonResearchTalentResult() : ServerPacket(SMSG_GARRISON_RESEARCH_TALENT, 20) { }
             uint32 Result = 0;
             uint32 GarrTypeId = 0;
             uint32 GarrTalentID = 0;

@@ -23,6 +23,7 @@
 #include "GarrisonAI.h"
 #include "GameObject.h"
 #include "GarrisonMgr.h"
+#include "ConditionMgr.h"
 #include "Log.h"
 #include "Map.h"
 #include "MapManager.h"
@@ -77,6 +78,121 @@ void Garrison::Update(uint32 const diff)
     {
         _timers[GUPDATE_WORKORDERS].Reset();
         UpdateWorkOrders();
+    }
+
+    _talentCheckTimer += diff;
+    if (_talentCheckTimer >= 5 * IN_MILLISECONDS)
+    {
+        _talentCheckTimer = 0;
+        UpdateTalents(false);
+    }
+}
+
+// Talents du domaine de classe. Etat : 0 en recherche, 1 pret, 2 reattribution (comme LegionCore).
+// Le client calcule lui-meme la fin de la recherche (heure de debut + duree de GarrTalent.db2) ;
+// le serveur marque le talent pret a l echeance et applique son effet (PerkSpellID).
+enum ClassHallTalentFlags
+{
+    CLASS_HALL_TALENT_IN_RESEARCH = 0,
+    CLASS_HALL_TALENT_READY       = 1,
+    CLASS_HALL_TALENT_CHANGE      = 2
+};
+
+bool Garrison::StartTalentResearch(uint32 talentId)
+{
+    WorldPackets::Garrison::GarrisonResearchTalentResult result;
+    result.GarrTypeId = GetType();
+    result.GarrTalentID = talentId;
+
+    auto fail = [&](GarrisonError error)
+    {
+        result.Result = uint32(error);
+        result.StartTime = 0;
+        _owner->SendDirectMessage(result.Write());
+        TC_LOG_ERROR("network", "[talents] recherche %u REFUSEE pour %s (erreur %u)", talentId, _owner->GetName().c_str(), uint32(error));
+        return false;
+    };
+
+    ClassHallTalentInfo const* talent = sGarrisonMgr.GetClassHallTalent(talentId);
+    if (!IsClassHall() || !talent || talent->ClassID != _owner->getClass())
+        return fail(GARRISON_ERROR_INVALID_TALENT);
+
+    time_t now = time(nullptr);
+    for (auto const& t : _talents)
+        if (!(t.Flags & CLASS_HALL_TALENT_READY))
+            return fail(GARRISON_ERROR_ALREADY_RESEARCHING_TALENT);
+
+    if (talent->PlayerConditionID)
+        if (PlayerConditionEntry const* condition = sPlayerConditionStore.LookupEntry(talent->PlayerConditionID))
+            if (!ConditionMgr::IsPlayerMeetingCondition(_owner, condition))
+                return fail(GARRISON_ERROR_INVALID_TALENT);
+
+    // un seul talent par palier : en remplacer un, c est une reattribution (cout et duree propres)
+    auto sameTier = std::find_if(_talents.begin(), _talents.end(), [&](WorldPackets::Garrison::GarrisonTalent const& t)
+    {
+        ClassHallTalentInfo const* info = sGarrisonMgr.GetClassHallTalent(t.GarrTalentID);
+        return info && info->Tier == talent->Tier;
+    });
+    bool respec = sameTier != _talents.end();
+    if (respec && sameTier->GarrTalentID == int32(talentId))
+        return fail(GARRISON_ERROR_INVALID_TALENT);
+
+    uint32 currency = respec ? talent->RespecCostCurrencyID : talent->ResearchCostCurrencyID;
+    uint32 cost = respec ? talent->RespecCost : talent->ResearchCost;
+    uint64 gold = uint64(respec ? talent->RespecGoldCost : talent->ResearchGoldCost) * GOLD;
+    if (currency && cost && !_owner->HasCurrency(currency, cost))
+        return fail(GARRISON_ERROR_NOT_ENOUGH_CURRENCY);
+    if (gold && !_owner->HasEnoughMoney(gold))
+        return fail(GARRISON_ERROR_NOT_ENOUGH_GOLD);
+
+    if (currency && cost)
+        _owner->ModifyCurrency(currency, -int32(cost));
+    if (gold)
+        _owner->ModifyMoney(-int64(gold));
+
+    if (respec)
+        _talents.erase(sameTier);
+
+    WorldPackets::Garrison::GarrisonTalent t;
+    t.GarrTalentID = talentId;
+    t.ResearchStartTime = now;
+    t.Flags = respec ? CLASS_HALL_TALENT_CHANGE : CLASS_HALL_TALENT_IN_RESEARCH;
+    _talents.push_back(t);
+
+    result.Result = uint32(GARRISON_SUCCESS);
+    result.StartTime = uint32(now);
+    result.Unk1 = uint32(t.Flags);
+    _owner->SendDirectMessage(result.Write());
+    TC_LOG_ERROR("network", "[talents] %s commence la recherche %u (palier %u%s)", _owner->GetName().c_str(), talentId, talent->Tier, respec ? ", reattribution" : "");
+
+    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+    SaveToDB(trans);
+    CharacterDatabase.CommitTransaction(trans);
+    return true;
+}
+
+void Garrison::UpdateTalents(bool login)
+{
+    time_t now = time(nullptr);
+    for (auto& t : _talents)
+    {
+        ClassHallTalentInfo const* info = sGarrisonMgr.GetClassHallTalent(t.GarrTalentID);
+        if (!info)
+            continue;
+
+        if (!(t.Flags & CLASS_HALL_TALENT_READY))
+        {
+            uint32 duration = (t.Flags & CLASS_HALL_TALENT_CHANGE) ? info->RespecDurationSecs : info->ResearchDurationSecs;
+            if (now < t.ResearchStartTime + time_t(duration))
+                continue;
+            t.Flags |= CLASS_HALL_TALENT_READY;
+            TC_LOG_ERROR("network", "[talents] %s : recherche %u terminee", _owner->GetName().c_str(), t.GarrTalentID);
+        }
+        else if (!login)
+            continue;
+
+        if (info->PerkSpellID && !_owner->HasAura(info->PerkSpellID))
+            _owner->CastSpell(_owner, info->PerkSpellID, true);
     }
 }
 
@@ -264,12 +380,34 @@ bool Garrison::LoadFromDB()
         } while (workordersStmt->NextRow());
     }
 
+    _talents.clear();
+    if (IsClassHall())
+    {
+        if (QueryResult talents = CharacterDatabase.PQuery("SELECT garrTalentId, researchStartTime, flags FROM character_garrison_talents WHERE guid = " UI64FMTD, lowGuid))
+        {
+            do
+            {
+                Field* f = talents->Fetch();
+                WorldPackets::Garrison::GarrisonTalent t;
+                t.GarrTalentID = f[0].GetInt32();
+                t.ResearchStartTime = time_t(f[1].GetUInt32());
+                t.Flags = f[2].GetInt32();
+                _talents.push_back(t);
+            } while (talents->NextRow());
+        }
+        UpdateTalents(true);
+    }
+
     return true;
 }
 
 void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
 {
     DeleteFromDB(trans);
+
+    for (auto const& t : _talents)
+        trans->PAppend("INSERT INTO character_garrison_talents (guid, garrTalentId, researchStartTime, flags) VALUES (" UI64FMTD ", %u, %u, %u)",
+            _owner->GetGUID().GetCounter(), uint32(t.GarrTalentID), uint32(t.ResearchStartTime), uint32(t.Flags));
 
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CHARACTER_GARRISON);
     stmt->setUInt64(0, _owner->GetGUID().GetCounter());
@@ -372,6 +510,9 @@ void Garrison::DeleteFromDB(CharacterDatabaseTransaction& trans)
 
 void Garrison::DeleteFromDB(CharacterDatabaseTransaction& trans, ObjectGuid::LowType guid, GarrisonType garrType)
 {
+    if (garrType == GARRISON_TYPE_CLASS_HALL)
+        trans->PAppend("DELETE FROM character_garrison_talents WHERE guid = " UI64FMTD, guid);
+
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHARACTER_GARRISON);
     stmt->setUInt64(0, guid);
     stmt->setUInt8(1, garrType);

@@ -117,6 +117,11 @@ public:
          return count;
     }
     std::unordered_map<uint64 /*dbId*/, Garrison::Follower> const& GetFollowers() const { return _followers; }
+
+    // Talents du domaine de classe (ameliorations)
+    std::vector<WorldPackets::Garrison::GarrisonTalent> const& GetTalents() const { return _talents; }
+    bool StartTalentResearch(uint32 talentId);
+    void UpdateTalents(bool login);
     uint32 GetActiveFollowersCount() const;
     uint32 GetAverageFollowerILevel() const;
     uint32 GetMaxFollowerLevel() const;
@@ -193,6 +198,9 @@ protected:
 
     std::unordered_map<uint64 /*dbId*/, Garrison::WorkOrder> _workorders;
     std::unordered_set<uint32> _workorderIds;
+
+    std::vector<WorldPackets::Garrison::GarrisonTalent> _talents;
+    uint32 _talentCheckTimer = 0;
 };
 
 #endif

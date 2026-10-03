@@ -449,18 +449,15 @@ void WorldSession::HandleGarrisonGetShipmentInfo(WorldPackets::Garrison::Garriso
 
 void WorldSession::HandleGarrisonResearchTalent(WorldPackets::Garrison::GarrisonResearchTalent& researchTalent)
 {
-    printf("HandleGarrisonResearchTalent GarrTalentID=%d \n", researchTalent.GarrTalentID);
-    WorldPackets::Garrison::GarrisonResearchTalentResult result;
-    result.Result = uint32(GarrisonError::GARRISON_SUCCESS);
-    result.GarrTypeId = uint32(GarrisonType::GARRISON_TYPE_CLASS_HALL);
-    result.GarrTalentID = researchTalent.GarrTalentID;
-    result.StartTime = uint32(2254525440);
-    result.Unk1 = uint32(0);
-    SendPacket(result.Write());
+    // Ebauche remplacee (03/10/2026) : elle repondait toujours « succes » sans rien enregistrer,
+    // avec une heure de debut sentinelle et sous le mauvais opcode -- la recherche ne demarrait pas.
+    Garrison* classHall = _player->GetGarrison(GARRISON_TYPE_CLASS_HALL);
+    if (!classHall || !classHall->StartTalentResearch(researchTalent.GarrTalentID))
+        return;
 
     // « Tech It Up A Notch » et equivalents (12 classes) : objectif « Class hall upgrade chosen »
     // dont l arbre de criteres est VIDE dans les donnees du client -- impossible a valider.
-    // On le valide au choix d un talent du domaine. (La recherche elle-meme reste une ebauche.)
+    // On le valide au choix d un talent du domaine.
     static uint32 const upgradeQuests[] = { 41740, 42191, 42526, 42588, 42601, 42611, 42683, 42696, 42850, 43015, 43268, 43277 };
     for (uint32 questId : upgradeQuests)
     {

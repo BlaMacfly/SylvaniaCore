@@ -30061,6 +30061,9 @@ void Player::SendGarrisonInfo() const
         for (auto const& p : garrison.second->GetFollowers())
             garrisonInfo.Followers.push_back(&p.second.PacketInfo);
 
+        for (auto const& talent : garrison.second->GetTalents())
+            garrisonInfo.Talents.push_back(talent);
+
         for (auto const& p : garrison.second->GetMissions())
         {
             garrisonInfo.Missions.push_back(&p.second.PacketInfo);
