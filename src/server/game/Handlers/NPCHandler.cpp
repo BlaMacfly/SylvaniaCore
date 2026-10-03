@@ -348,6 +348,23 @@ void WorldSession::HandleGossipHelloOpcode(WorldPackets::NPC::Hello& packet)
         }
     }
 
+    // PNJ d ameliorations du domaine de classe (ex. Survivaliste Bahn 108050) : ouvrir la
+    // fenetre des talents du domaine. Rien ne l envoyait jamais (Blez, 03/10/2026).
+    // Seulement s il n a aucune quete a proposer ou a reprendre au joueur : certains de ces PNJ
+    // sont aussi donneurs/receveurs (Winstone Wolfe rend « What Winstone Suggests »).
+    if (unit->HasFlag64(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_CLASS_HALLS_TALENT) && _player->GetGarrison(GARRISON_TYPE_CLASS_HALL))
+    {
+        _player->PlayerTalkClass->ClearMenus();
+        _player->PrepareQuestMenu(unit->GetGUID());
+        if (_player->PlayerTalkClass->GetQuestMenu().Empty())
+        {
+            _player->TalkedToCreature(unit->GetEntry(), unit->GetGUID());
+            _player->GetGarrisonOpenTalentNpc(unit->GetGUID());
+            unit->AI()->sGossipHello(_player);
+            return;
+        }
+    }
+
     if (!sScriptMgr->OnGossipHello(_player, unit))
     {
         _player->TalkedToCreature(unit->GetEntry(), unit->GetGUID());

@@ -457,6 +457,24 @@ void WorldSession::HandleGarrisonResearchTalent(WorldPackets::Garrison::Garrison
     result.StartTime = uint32(2254525440);
     result.Unk1 = uint32(0);
     SendPacket(result.Write());
+
+    // « Tech It Up A Notch » et equivalents (12 classes) : objectif « Class hall upgrade chosen »
+    // dont l arbre de criteres est VIDE dans les donnees du client -- impossible a valider.
+    // On le valide au choix d un talent du domaine. (La recherche elle-meme reste une ebauche.)
+    static uint32 const upgradeQuests[] = { 41740, 42191, 42526, 42588, 42601, 42611, 42683, 42696, 42850, 43015, 43268, 43277 };
+    for (uint32 questId : upgradeQuests)
+    {
+        if (_player->GetQuestStatus(questId) != QUEST_STATUS_INCOMPLETE)
+            continue;
+        Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
+        if (!quest)
+            continue;
+        for (QuestObjective const& obj : quest->Objectives)
+            if (obj.Type == QUEST_OBJECTIVE_CRITERIA_TREE && obj.Description == "Class hall upgrade chosen")
+                _player->SetQuestObjectiveData(obj, 1);
+        if (_player->CanCompleteQuest(questId))
+            _player->CompleteQuest(questId);
+    }
 }
 
 void WorldSession::HandleGarrisonRequestClassSpecCategoryInfo(WorldPackets::Garrison::GarrisonRequestClassSpecCategoryInfo& requestClassSpecCategoryInfo)
