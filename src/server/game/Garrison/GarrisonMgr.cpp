@@ -68,9 +68,40 @@ ClassHallTalentInfo const* GarrisonMgr::GetClassHallTalent(uint32 talentId) cons
     return itr != _classHallTalents.end() ? &itr->second : nullptr;
 }
 
+void GarrisonMgr::LoadMissionRewards()
+{
+    _missionRewards.clear();
+    QueryResult result = WorldDatabase.Query("SELECT MissionID, RewardXP, RewardItemID, ItemAmount, CurrencyID, CurrencyValue, BonusAbilityID, KillCredit FROM garrison_mission_reward");
+    if (!result)
+    {
+        TC_LOG_ERROR("server.loading", ">> Loaded 0 mission rewards. DB table `garrison_mission_reward` is empty.");
+        return;
+    }
+    do
+    {
+        Field* f = result->Fetch();
+        GarrisonMissionRewardInfo& r = _missionRewards[f[0].GetUInt32()];
+        r.FollowerXP = f[1].GetUInt32();
+        r.ItemID = f[2].GetUInt32();
+        r.ItemQuantity = f[3].GetUInt32();
+        r.CurrencyID = f[4].GetUInt32();
+        r.CurrencyQuantity = f[5].GetUInt32();
+        r.BonusAbilityID = f[6].GetUInt32();
+        r.KillCredit = f[7].GetUInt32();
+    } while (result->NextRow());
+    TC_LOG_INFO("server.loading", ">> Loaded %u mission rewards.", uint32(_missionRewards.size()));
+}
+
+GarrisonMissionRewardInfo const* GarrisonMgr::GetMissionReward(uint32 missionId) const
+{
+    auto itr = _missionRewards.find(missionId);
+    return itr != _missionRewards.end() ? &itr->second : nullptr;
+}
+
 void GarrisonMgr::Initialize()
 {
     LoadClassHallTalents();
+    LoadMissionRewards();
 
     for (GarrSiteLevelPlotInstEntry const* siteLevelPlotInst : sGarrSiteLevelPlotInstStore)
         _garrisonPlotInstBySiteLevel[siteLevelPlotInst->GarrSiteLevelID].push_back(siteLevelPlotInst);

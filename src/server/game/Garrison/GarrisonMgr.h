@@ -85,6 +85,18 @@ struct ClassHallTalentInfo
     uint32 RespecGoldCost = 0;
 };
 
+// Recompense d une mission (table garrison_mission_reward, export de mission_reward.db2 par LegionCore)
+struct GarrisonMissionRewardInfo
+{
+    uint32 FollowerXP = 0;
+    uint32 ItemID = 0;
+    uint32 ItemQuantity = 0;
+    uint32 CurrencyID = 0;
+    uint32 CurrencyQuantity = 0;
+    uint32 BonusAbilityID = 0;
+    uint32 KillCredit = 0;
+};
+
 class TC_GAME_API GarrisonMgr
 {
 public:
@@ -110,11 +122,14 @@ public:
     uint32 GetMissionSuccessChance(Garrison* garrison, uint32 missionId);
     ClassHallTalentInfo const* GetClassHallTalent(uint32 talentId) const;
     void LoadClassHallTalents();
+    GarrisonMissionRewardInfo const* GetMissionReward(uint32 missionId) const;
+    void LoadMissionRewards();
     uint32 GetClassByMissionType(uint32 missionType);
     uint32 GetFactionByMissionType(uint32 missionType);
 
 private:
     std::unordered_map<uint32, ClassHallTalentInfo> _classHallTalents;
+    std::unordered_map<uint32, GarrisonMissionRewardInfo> _missionRewards;
     void InitializeDbIdSequences();
     void LoadPlotFinalizeGOInfo();
     void LoadFollowerClassSpecAbilities();

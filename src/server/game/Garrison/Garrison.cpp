@@ -787,6 +787,20 @@ void Garrison::AddMission(uint32 garrMissionId)
     reward.FollowerXP = 0;
     reward.BonusAbilityID = 0;
     reward.Unknown = 1118739;
+    // Vraies recompenses (garrison_mission_reward) ; sinon l ancien bricolage ci-dessous, qui
+    // donnait toujours la meme chose (Blez, 04/10/2026 : « toujours le meme butin »).
+    if (GarrisonMissionRewardInfo const* real = sGarrisonMgr.GetMissionReward(garrMissionId))
+    {
+        reward.ItemID = real->ItemID;
+        reward.ItemQuantity = real->ItemQuantity;
+        reward.CurrencyID = real->CurrencyID;
+        reward.CurrencyQuantity = real->CurrencyQuantity;
+        reward.FollowerXP = real->FollowerXP;
+        reward.BonusAbilityID = real->BonusAbilityID;
+        mission.Rewards.push_back(reward);
+        goto rewardsDone;
+    }
+    {
     std::vector<GarrssionMissionReward> fRewards = sObjectMgr->GetGarrssionMissionReward(garrMissionId);
     if (!fRewards.empty())
     {
@@ -835,6 +849,8 @@ void Garrison::AddMission(uint32 garrMissionId)
         }
     }
     mission.Rewards.push_back(reward);
+    }
+rewardsDone:
 
     WorldPackets::Garrison::GarrisonAddMissionResult garrisonAddMissionResult;
     garrisonAddMissionResult.GarrType       = GetType();
@@ -924,6 +940,13 @@ std::pair<std::vector<GarrMissionEntry const*>, std::vector<double>> Garrison::G
 
         if (missionEntry->GarrTypeID != GetType())
             continue;
+
+        // SubCategory2 = PlayerConditionID (classe, progression...) : jamais verifie, un chasseur
+        // se voyait proposer des missions de guerrier (Blez, 04/10/2026).
+        if (missionEntry->SubCategory2)
+            if (PlayerConditionEntry const* condition = sPlayerConditionStore.LookupEntry(missionEntry->SubCategory2))
+                if (!ConditionMgr::IsPlayerMeetingCondition(_owner, condition))
+                    continue;
 
         if (missionEntry->RequiredLevel > maxFollowerlevel)
             continue;
@@ -1132,7 +1155,11 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
     if (!mission)
         return SendStartMissionResult(false);
 
-    if (missionEntry->CurrencyCost && !_owner->HasCurrency(missionEntry->CurrencyID, missionEntry->CurrencyCost))
+    // Champs de GarrMissionEntry decales par rapport aux vrais (ordre LegionCore / WoWDBDefs) :
+    // SubCategory1 = MissionCost (20, 50, 100...), « CurrencyCost » = Flags (128 ou 0).
+    // Le core prelevait les drapeaux : 128 ressources pour une mission a 20 (Blez, 04/10/2026).
+    uint32 const missionCost = missionEntry->SubCategory1;
+    if (missionCost && !_owner->HasCurrency(missionEntry->CurrencyID, missionCost))
         return SendStartMissionResult(false); // GARRISON_ERROR_NOT_ENOUGH_CURRENCY
 
     mission->PacketInfo.TravelDuration = missionEntry->TravelTime;
@@ -1156,7 +1183,8 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
         follower->PacketInfo.CurrentMissionID = missionEntry->ID;
     }
 
-    _owner->ModifyCurrency(missionEntry->CurrencyID, -static_cast<int32>(missionEntry->CurrencyCost));
+    if (missionCost)
+        _owner->ModifyCurrency(missionEntry->CurrencyID, -static_cast<int32>(missionCost));
 
     SendStartMissionResult(true, mission, &Followers);
 }
@@ -1252,6 +1280,10 @@ void Garrison::CalculateMissonBonusRoll(uint32 garrMissionId)
     // mission ne pouvait etre lancee (Blez, 30/09/2026).
     for (Follower* follower : GetMissionFollowers(missionEntry->ID))
         follower->PacketInfo.CurrentMissionID = 0;
+
+    if (GarrisonMissionRewardInfo const* real = sGarrisonMgr.GetMissionReward(missionEntry->ID))
+        if (real->KillCredit)
+            _owner->KilledMonsterCredit(real->KillCredit);
 
     WorldPackets::Garrison::GarrisonMissionBonusRollResult garrisonMissionBonusRollResult;
     garrisonMissionBonusRollResult.Mission = mission->PacketInfo;
