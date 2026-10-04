@@ -841,10 +841,20 @@ void ObjectMgr::LoadScriptParams()
     TC_LOG_INFO("server.loading", ">> Loaded %u script params in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
+// Etat passager capte par les sniffs : en base, 0x8 fait traiter la creature comme controlee
+// par un joueur (corps jamais grise, couleur de reaction faussee).
+static constexpr uint32 UNIT_FLAGS_INTERDITS_EN_BASE = UNIT_FLAG_PVP_ATTACKABLE | UNIT_FLAG_RENAME;
+
 void ObjectMgr::CheckCreatureTemplate(CreatureTemplate const* cInfo)
 {
     if (!cInfo)
         return;
+
+    if (uint32 interdits = (cInfo->unit_flags & UNIT_FLAGS_INTERDITS_EN_BASE))
+    {
+        TC_LOG_ERROR("sql.sql", "Table `creature_template` lists creature (Entry: %u) with disallowed `unit_flags` %u, removing incorrect flag.", cInfo->Entry, interdits);
+        const_cast<CreatureTemplate*>(cInfo)->unit_flags &= ~UNIT_FLAGS_INTERDITS_EN_BASE;
+    }
 
     bool ok = true;                                     // bool to allow continue outside this loop
     for (uint32 diff = 0; diff < MAX_CREATURE_DIFFICULTIES && ok; ++diff)
@@ -2147,6 +2157,11 @@ void ObjectMgr::LoadCreatures()
         uint32 PoolId       = fields[18].GetUInt32();
         data.npcflag        = fields[19].GetUInt64();
         data.unit_flags     = fields[20].GetUInt32();
+        if (uint32 interdits = (data.unit_flags & UNIT_FLAGS_INTERDITS_EN_BASE))
+        {
+            TC_LOG_ERROR("sql.sql", "Table `creature` has creature (GUID: " UI64FMTD " Entry: %u) with disallowed `unit_flags` %u, removing incorrect flag.", guid, data.id, interdits);
+            data.unit_flags &= ~UNIT_FLAGS_INTERDITS_EN_BASE;
+        }
         data.unit_flags2    = fields[21].GetUInt32();
         data.unit_flags3    = fields[22].GetUInt32();
         data.dynamicflags   = fields[23].GetUInt32();
