@@ -180,6 +180,14 @@ void WorldSession::HandleTransmogrifyItems(WorldPackets::Transmogrification::Tra
         transmogrified->SetNotRefundable(player);
         transmogrified->ClearSoulboundTradeable(player);
         transmogrified->SetState(ITEM_CHANGED, player);
+
+        // SONDE transmo (Blez, 04/10/2026 : apparences perdues au redemarrage) -- a retirer
+        TC_LOG_ERROR("network", "[sonde transmo] APPLIQUE %s objet %u (guid %u) slot %u apparence %u %s spe active %u -> all=%u s1=%u s2=%u s3=%u s4=%u",
+            player->GetName().c_str(), transmogrified->GetEntry(), uint32(transmogrified->GetGUID().GetCounter()), uint32(transmogrified->GetSlot()),
+            transmogPair.second, transmogrifyItems.CurrentSpecOnly ? "(spe en cours)" : "(toutes spes)", uint32(player->GetActiveTalentGroup()),
+            transmogrified->GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_ALL_SPECS), transmogrified->GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_1),
+            transmogrified->GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_2), transmogrified->GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_3),
+            transmogrified->GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_4));
     }
 
     for (auto& illusionPair : illusionItems)
