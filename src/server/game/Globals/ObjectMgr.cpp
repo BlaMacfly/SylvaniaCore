@@ -841,9 +841,10 @@ void ObjectMgr::LoadScriptParams()
     TC_LOG_INFO("server.loading", ">> Loaded %u script params in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
-// Etat passager capte par les sniffs : en base, 0x8 fait traiter la creature comme controlee
-// par un joueur (corps jamais grise, couleur de reaction faussee).
-static constexpr uint32 UNIT_FLAGS_INTERDITS_EN_BASE = UNIT_FLAG_PVP_ATTACKABLE | UNIT_FLAG_RENAME;
+// Etats passagers captes par les sniffs : en base, 0x8 fait traiter la creature comme controlee
+// par un joueur (corps jamais grise, couleur de reaction faussee) et SKINNABLE affiche
+// "Depecable" sur une bete vivante (le core le pose a la mort, cf. AllLootRemovedFromCorpse).
+static constexpr uint32 UNIT_FLAGS_INTERDITS_EN_BASE = UNIT_FLAG_PVP_ATTACKABLE | UNIT_FLAG_RENAME | UNIT_FLAG_SKINNABLE;
 
 void ObjectMgr::CheckCreatureTemplate(CreatureTemplate const* cInfo)
 {
