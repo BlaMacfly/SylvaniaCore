@@ -1275,6 +1275,13 @@ void Garrison::CalculateMissonBonusRoll(uint32 garrMissionId)
 
     RewardMission(mission, withOvermaxReward);
 
+    // XP de base de la mission (champ GarrMissionEntry « Flags » = BaseFollowerXP, champ 24 du
+    // fichier, nomme de travers chez nous) : jamais donnee, les champions restaient a 0 XP
+    // (Blez, 05/10/2026). Les recompenses n ont quasiment jamais d XP propre.
+    if (uint32 baseXP = missionEntry->Flags)
+        for (Follower* follower : GetMissionFollowers(missionEntry->ID))
+            follower->EarnXP(_owner, baseXP);
+
     // Les champions n etaient liberes que si une recompense contenait de l XP de champion
     // (jamais le cas chez nous) : ils restaient « en mission » a vie et plus aucune
     // mission ne pouvait etre lancee (Blez, 30/09/2026).
