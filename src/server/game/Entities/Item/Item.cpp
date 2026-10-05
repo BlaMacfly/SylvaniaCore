@@ -517,14 +517,6 @@ void Item::SaveToDB(CharacterDatabaseTransaction& trans)
             stmt->setUInt64(0, GetGUID().GetCounter());
             trans->Append(stmt);
 
-            // SONDE transmo -- a retirer
-            if (GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_ALL_SPECS) || GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_1) || GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_2)
-                || GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_3) || GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_4) || GetOwnerGUID().GetCounter() == 5)
-                TC_LOG_ERROR("network", "[sonde transmo] SAUVEGARDE objet %u (guid %u) proprietaire %u etat %u -> all=%u s1=%u s2=%u s3=%u s4=%u",
-                    GetEntry(), uint32(GetGUID().GetCounter()), uint32(GetOwnerGUID().GetCounter()), uint32(uState),
-                    GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_ALL_SPECS), GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_1),
-                    GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_2), GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_3),
-                    GetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_4));
             if (std::find_if(std::begin(transmogMods), std::end(transmogMods), [this](ItemModifier modifier) { return GetModifier(modifier) != 0; }) != std::end(transmogMods))
             {
                 stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_ITEM_INSTANCE_TRANSMOG);
@@ -765,11 +757,6 @@ bool Item::LoadFromDB(ObjectGuid::LowType guid, ObjectGuid ownerGuid, Field* fie
     SetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_3, fields[24].GetUInt32());
     SetModifier(ITEM_MODIFIER_TRANSMOG_APPEARANCE_SPEC_4, fields[25].GetUInt32());
 
-    // SONDE transmo -- a retirer
-    if (fields[21].GetUInt32() || fields[22].GetUInt32() || fields[23].GetUInt32() || fields[24].GetUInt32() || fields[25].GetUInt32() || ownerGuid.GetCounter() == 5)
-        TC_LOG_ERROR("network", "[sonde transmo] CHARGEMENT objet %u (guid %u) proprietaire %u -> all=%u s1=%u s2=%u s3=%u s4=%u",
-            entry, uint32(guid), uint32(ownerGuid.GetCounter()), fields[21].GetUInt32(), fields[22].GetUInt32(), fields[23].GetUInt32(),
-            fields[24].GetUInt32(), fields[25].GetUInt32());
     SetModifier(ITEM_MODIFIER_ENCHANT_ILLUSION_ALL_SPECS, fields[26].GetUInt32());
     SetModifier(ITEM_MODIFIER_ENCHANT_ILLUSION_SPEC_1, fields[27].GetUInt32());
     SetModifier(ITEM_MODIFIER_ENCHANT_ILLUSION_SPEC_2, fields[28].GetUInt32());
