@@ -50,7 +50,7 @@ cond_deja = q(f"SELECT 1 FROM dc_world.conditions WHERE SourceTypeOrReferenceId=
 
 esc = lambda x: x.replace('\\', '\\\\').replace("'", "\\'")
 L = [f"-- Assaut de la Legion, etape finale ({NOM}) : scenario {SCEN} sur la carte {MAP}, repris de LegionCore (lc_world_ref).",
-     f"-- {len(cre)} creatures, {len(gob)} objets (difficultes 1 et 12 : instance de scenario), {len(smart)} lignes SmartAI de combat,",
+     f"-- {len(cre)} creatures, {len(gob)} objets (difficulte 12 : scenario ; la 1 est refusee sur ces cartes), {len(smart)} lignes SmartAI de combat,",
      f"-- {len(clicks)} clics. Quete {QUETE} : donneur {DONNEUR} (une fois les points de la Legion repousses), receveur {RECEVEUR}.",
      f"-- Rollback : 2026_10_08_scenario_assaut_{NOM}_rollback.sql", "",
      f"INSERT INTO scenarios (map, difficulty, scenario_A, scenario_H, zoneid) VALUES ({MAP}, 0, {SCEN}, {SCEN}, {ZONE});", "",
@@ -59,12 +59,12 @@ L = [f"-- Assaut de la Legion, etape finale ({NOM}) : scenario {SCEN} sur la car
      "  unit_flags, unit_flags2, unit_flags3, dynamicflags, ScriptName, movementmode, VerifiedBuild) VALUES"]
 for i, r in enumerate(cre):
     cid, z, a, x, y, zz, o, rs, dist, mt, eq, name = r
-    L.append(f"({start_c+i}, {cid}, {MAP}, {z}, {a}, '1,12', 0, 0, 0, -1, 0, {eq}, {x}, {y}, {zz}, {o}, {rs}, {dist}, 0, 1, 0, {mt}, 0, 0, 0, 0, 0, '', 0, 0)"
+    L.append(f"({start_c+i}, {cid}, {MAP}, {z}, {a}, '12', 0, 0, 0, -1, 0, {eq}, {x}, {y}, {zz}, {o}, {rs}, {dist}, 0, 1, 0, {mt}, 0, 0, 0, 0, 0, '', 0, 0)"
              + (',' if i < len(cre) - 1 else ';') + f" -- {name}")
 if gob:
     L += ["", "INSERT INTO gameobject (guid, id, map, zoneId, areaId, spawnDifficulties, phaseUseFlags, PhaseId, PhaseGroup, terrainSwapMap,",
           "  position_x, position_y, position_z, orientation, rotation0, rotation1, rotation2, rotation3, spawntimesecs, animprogress, state, isActive, ScriptName, VerifiedBuild) VALUES"]
-    L.append(',\n'.join(f"({start_g+i}, {r[0]}, {MAP}, {r[1]}, {r[2]}, '1,12', 0, 0, 0, -1, {', '.join(r[3:11])}, {r[11]}, {r[12]}, {r[13]}, 0, '', 0)"
+    L.append(',\n'.join(f"({start_g+i}, {r[0]}, {MAP}, {r[1]}, {r[2]}, '12', 0, 0, 0, -1, {', '.join(r[3:11])}, {r[11]}, {r[12]}, {r[13]}, 0, '', 0)"
                         for i, r in enumerate(gob)) + ';')
 L.append("")
 for e, sn in SCRIPTS.items():
