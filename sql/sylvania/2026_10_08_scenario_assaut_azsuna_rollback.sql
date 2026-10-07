@@ -1,0 +1,22 @@
+-- Annule 2026_10_08_scenario_assaut_azsuna.sql
+DELETE FROM scenarios WHERE map=1705;
+DELETE FROM creature WHERE guid BETWEEN 290319954 AND 290320123;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 118975;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119002;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119453;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119454;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119456;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119459;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119466;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119483;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119515;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119516;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119517;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119524;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119633;
+UPDATE creature_template SET AIName = '', ScriptName = '' WHERE entry = 119648;
+DELETE FROM smart_scripts WHERE source_type=0 AND entryorguid IN (118975,119466,119515,119516,119517,119524,119648);
+DELETE FROM npc_spellclick_spells WHERE npc_entry IN (119454,119456,119459,119483,119494);
+DELETE FROM creature_queststarter WHERE id=119002 AND quest=46199;
+DELETE FROM creature_questender WHERE id=88115 AND quest=46199;
+DELETE FROM conditions WHERE SourceTypeOrReferenceId=19 AND SourceEntry=46199;
