@@ -92,6 +92,12 @@ public:
 
     uint32 WorldLegionInvasionZoneID = 0;
 
+    // Assauts de la Legion : quetes de la zone envahie (QuestInfoID 139/142)
+    static bool IsInvasionQuest(Quest const* quest);
+    bool IsInvasionQuestOutOfInvasion(uint32 questId);
+    void FillInvasionQuests(uint32 questInfoId, uint32 wanted);
+    static uint32 GetInvasionPointCredit(uint32 zoneId);
+
 private:
     WorldQuestTemplateMap _worldQuestTemplates;
     WorldQuestTemplateMap _emissaryWorldQuestTemplates;

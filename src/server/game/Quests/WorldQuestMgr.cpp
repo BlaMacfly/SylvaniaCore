@@ -149,7 +149,7 @@ void WorldQuestMgr::Update()
 {
     for (auto itr = _activeWorldQuests.begin(); itr != _activeWorldQuests.end();)
     {
-        if (itr->second->GetRemainingTime() <= 0)
+        if (itr->second->GetRemainingTime() <= 0 || IsInvasionQuestOutOfInvasion(itr->first))
         {
             DisableQuest(itr->second, false);
             itr = _activeWorldQuests.erase(itr);
@@ -191,12 +191,19 @@ void WorldQuestMgr::Update()
                 }
             }
 
+            // Quetes de l assaut : elles n existent que pendant l assaut de leur zone (07/10/2026)
+            if (selectQuest && IsQuestActive(selectQuest))
+            {
+                FillInvasionQuests(QUEST_INFO_WORLD_QUEST_LEGION_INVASION, 4);
+                FillInvasionQuests(QUEST_INFO_WORLD_QUEST_LEGION_INVASION_ELITE, 2);
+            }
+
             WorldQuestTemplateMap inactiveWorldQuestTemplates;
             for (auto it : _worldQuestTemplates)
             {
                 if (!IsQuestActive(it.first)) // Do not add already active quests
                     if (!it.second->GetQuest()->IsEmissaryQuest()) /// do not add emissay quest as world quest during roll
-                        if (!it.second->GetQuest()->IsLegionInvasion()) // une seule invasion, choisie ci-dessus
+                        if (!it.second->GetQuest()->IsLegionInvasion() && !IsInvasionQuest(it.second->GetQuest())) // invasions : ci-dessus
                             inactiveWorldQuestTemplates[it.first] = it.second;
             }
 
@@ -294,9 +301,60 @@ void WorldQuestMgr::DisableQuest(ActiveWorldQuest* activeWorldQuest, bool delete
         CharacterDatabase.PExecute("DELETE FROM character_queststatus_objectives_criteria_progress WHERE criteriaId = %u", objective.ObjectID);
     }
 
-    delete activeWorldQuest;
+    // On retire de la liste AVANT de liberer : l ancien code relisait QuestId dans la memoire liberee
     if (deleteFromMap)
         _activeWorldQuests.erase(activeWorldQuest->QuestId);
+    delete activeWorldQuest;
+}
+
+bool WorldQuestMgr::IsInvasionQuest(Quest const* quest)
+{
+    return quest && (quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGION_INVASION
+        || quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGION_INVASION_ELITE);
+}
+
+bool WorldQuestMgr::IsInvasionQuestOutOfInvasion(uint32 questId)
+{
+    Quest const* quest = sObjectMgr->GetQuestTemplate(questId);
+    return IsInvasionQuest(quest) && uint32(quest->GetZoneOrSort()) != WorldLegionInvasionZoneID;
+}
+
+void WorldQuestMgr::FillInvasionQuests(uint32 questInfoId, uint32 wanted)
+{
+    std::vector<WorldQuestTemplate*> candidates;
+    uint32 active = 0;
+    for (auto const& it : _worldQuestTemplates)
+    {
+        Quest const* quest = it.second->GetQuest();
+        if (!quest || quest->GetQuestInfoID() != questInfoId || uint32(quest->GetZoneOrSort()) != WorldLegionInvasionZoneID)
+            continue;
+        if (IsQuestActive(it.first))
+            ++active;
+        else
+            candidates.push_back(it.second);
+    }
+
+    Trinity::Containers::RandomShuffle(candidates);
+    for (WorldQuestTemplate* worldQuestTemplate : candidates)
+    {
+        if (active >= wanted)
+            break;
+        ActivateQuest(worldQuestTemplate);
+        ++active;
+    }
+}
+
+uint32 WorldQuestMgr::GetInvasionPointCredit(uint32 zoneId)
+{
+    // objectif « Points de la Legion repousses » (x4) des quetes 45812/45838/45839/45840
+    switch (zoneId)
+    {
+        case 7558: return 121404; // Val'sharah
+        case 7334: return 121405; // Azsuna
+        case 7503: return 121406; // Haut-Roc
+        case 7541: return 121407; // Tornheim
+        default:   return 0;
+    }
 }
 
 ActiveWorldQuest const* WorldQuestMgr::GetQuestActive(uint32 questId)
@@ -315,6 +373,12 @@ bool WorldQuestMgr::IsQuestActive(uint32 questId)
 
 void WorldQuestMgr::RewardQuestForPlayer(Player* player, uint32 questId)
 {
+    // Ni LegionCore ni le reste du core n alimentaient ce compteur : l assaut restait bloque a 0/4
+    if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
+        if (quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGION_INVASION && uint32(quest->GetZoneOrSort()) == WorldLegionInvasionZoneID)
+            if (uint32 credit = GetInvasionPointCredit(WorldLegionInvasionZoneID))
+                player->KilledMonsterCredit(credit);
+
     ActiveWorldQuest const* activeWorldQuest = sWorldQuestMgr->GetQuestActive(questId);
     if (!activeWorldQuest)
         return;
