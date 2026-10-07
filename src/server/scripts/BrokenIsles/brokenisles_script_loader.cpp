@@ -221,6 +221,7 @@ void AddSC_scenario_monk_serenitys_end();
 void AddSC_scenario_broken_shore_intro();
 void AddSC_scenario_assaut_rivage_brise();
 void AddSC_scenario_invasion_azsuna();
+void AddSC_scenario_invasion_zones();
 void AddSC_scenario_artifact_runner();
 
 // The name of this function should match:
@@ -424,5 +425,6 @@ void AddBrokenIslesScripts()
     AddSC_scenario_broken_shore_intro();
     AddSC_scenario_assaut_rivage_brise();
     AddSC_scenario_invasion_azsuna();
+    AddSC_scenario_invasion_zones();
     AddSC_scenario_artifact_runner();
 }

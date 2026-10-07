@@ -471,6 +471,11 @@ struct ChefAssaut
 static ChefAssaut const ChefsAssaut[] =
 {
     { 119002, 46199, 119013, 45838, 118944, MAP_INVASION_AZSUNA, { 865.93f, 5986.82f, 140.56f, 1.30f } }, // Azsuna, WSL 5917
+    { 118183, 45856, 118194, 45812, 118237, 1704, { 3109.09f, 7731.93f, 6.08f, 2.15f } },    // Val'sharah (Jarod), WSL 5885
+    { 119676, 46182, 119676, 45840, 0,      1706, { 4111.02f, 4299.73f, 768.13f, 1.65f } },  // Haut-Roc (Lasan), WSL 5945
+    // Tornheim : la Val'kyr d'Odyn (118778, donneuse chez LegionCore) n'est posee nulle part, meme chez LC ;
+    // c'est Vethir, que la quete principale fait « rejoindre », qui lance l'assaut et donne son credit.
+    { 116868, 46110, 118778, 45839, 116868, 1707, { 2564.96f, 1023.75f, 217.14f, 0.79f } },  // Tornheim (Vethir), WSL 5913
 };
 
 static ChefAssaut const* TrouverChef(uint32 npc)
@@ -484,6 +489,20 @@ static ChefAssaut const* TrouverChef(uint32 npc)
 struct npc_invasion_chef_assaut : public ScriptedAI
 {
     npc_invasion_chef_assaut(Creature* creature) : ScriptedAI(creature) { }
+
+    // Farondis a son menu en base (20846) ; les autres chefs n'en ont pas : on construit le leur ici
+    void sGossipHello(Player* player) override
+    {
+        if (me->GetCreatureTemplate()->GossipMenuId)
+            return;
+
+        ChefAssaut const* chef = TrouverChef(me->GetEntry());
+        ClearGossipMenuFor(player);
+        player->PrepareQuestMenu(me->GetGUID());
+        if (chef && player->GetQuestStatus(chef->QueteScenario) == QUEST_STATUS_INCOMPLETE && sWorldQuestMgr->IsQuestActive(chef->QueteAssaut))
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je suis prêt : lancez l'assaut décisif.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+        SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, me->GetGUID());
+    }
 
     void sQuestAccept(Player* player, Quest const* quest) override
     {

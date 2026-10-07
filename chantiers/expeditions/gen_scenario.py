@@ -35,9 +35,12 @@ smart_lc = q(f"""SELECT entryorguid, id, link, event_type, event_phase_mask, eve
                  FROM lc_world_ref.smart_scripts WHERE source_type=0 AND entryorguid IN ({I}) ORDER BY entryorguid, id""")
 deja_smart = {r[0] for r in q(f"SELECT DISTINCT entryorguid FROM dc_world.smart_scripts WHERE source_type=0 AND entryorguid IN ({I})")}
 smart = [r for r in smart_lc if r[0] not in deja_smart and r[0] not in SCRIPTS]
+# actions et evenements LegionCore non verifies chez nous (dont l'action maison 205) : on ne garde que
+# « lancer un sort (11) sur soi ou la cible, sur un evenement de mise a jour (0 ou 60) », sans lien
+ecartees = [r for r in smart if not (r[3] in ('0', '60') and r[11] == '11' and r[18] in ('1', '2') and r[2] == '0')]
+smart = [r for r in smart if r not in ecartees]
 smart_ids = sorted({r[0] for r in smart}, key=int)
-# actions et evenements LegionCore inconnus chez nous : on n'importe que lancer un sort (11) sur soi ou la cible, sur un evenement de mise a jour (0 ou 60)
-assert all(r[3] in ('0', '60') and r[11] == '11' and r[18] in ('1', '2') for r in smart), 'evenement ou action SmartAI non verifie'
+print('SmartAI ecartees :', [(r[0], r[1], 'ev', r[3], 'act', r[11]) for r in ecartees])
 
 clicks = q(f"SELECT npc_entry, spell_id, cast_flags, user_type FROM lc_world_ref.npc_spellclick_spells WHERE npc_entry IN ({I})")
 deja_click = {r[0] for r in q(f"SELECT DISTINCT npc_entry FROM dc_world.npc_spellclick_spells WHERE npc_entry IN ({I})")}
