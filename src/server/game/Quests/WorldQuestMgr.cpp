@@ -164,7 +164,9 @@ void WorldQuestMgr::Update()
 
         if (questDiff > 0)
         {
-            static uint32 WorldLegionInvasionZoneID = 0;
+            // Plus de variable statique locale du meme nom : elle masquait le membre, que lit
+            // HandleRequestAreaPoiUpdate. Apres un redemarrage sans invasion en cours, le membre
+            // restait a 0 et la carte n affichait plus aucun assaut (07/10/2026).
             std::set<uint32> invasionZones = { 7558, 7541, 7503, 7334 }; // Val'sharah, Stormheim, Highmountain, Azsuna
 
             if (!WorldLegionInvasionZoneID)
@@ -194,7 +196,8 @@ void WorldQuestMgr::Update()
             {
                 if (!IsQuestActive(it.first)) // Do not add already active quests
                     if (!it.second->GetQuest()->IsEmissaryQuest()) /// do not add emissay quest as world quest during roll
-                        inactiveWorldQuestTemplates[it.first] = it.second;
+                        if (!it.second->GetQuest()->IsLegionInvasion()) // une seule invasion, choisie ci-dessus
+                            inactiveWorldQuestTemplates[it.first] = it.second;
             }
 
             while (questDiff && inactiveWorldQuestTemplates.size())
@@ -254,6 +257,10 @@ void WorldQuestMgr::DisableQuest(ActiveWorldQuest* activeWorldQuest, bool delete
     // Can't disable non active world quests
     if (!IsQuestActive(activeWorldQuest->QuestId))
         return;
+
+    // Fin de l invasion : une nouvelle zone sera tiree au prochain remplissage
+    if (quest->IsLegionInvasion() && WorldLegionInvasionZoneID == uint32(quest->GetZoneOrSort()))
+        WorldLegionInvasionZoneID = 0;
 
     // Remove to connected quest status/rewarded and criteria for the next world quest fill
     SessionMap const& smap = sWorld->GetAllSessions();
