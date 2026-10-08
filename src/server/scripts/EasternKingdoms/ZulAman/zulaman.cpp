@@ -250,10 +250,9 @@ class spell_banging_the_gong : public SpellScriptLoader
         }
 };
 
-// Tanzar, Harkor, Ashli et Kraz : les captifs liberes par la course contre la
-// montre. Ils sont invoques par l'instance a la mort de leur boss ; leur seule
-// raison d'etre est de remettre le coffre de recompense quand on leur parle.
-// Rien ne les scriptait, donc meme invoques ils n'auraient rien donne.
+// Hazlek, Bakkalzu, Norkani et Kasha : les otages de la course contre la montre.
+// L'instance ne leur ouvre le dialogue qu'une fois sauves (boss tue dans les
+// temps) ; leur raison d'etre est alors de remettre leur coffre.
 class npc_zulaman_hostage : public CreatureScript
 {
 public:
@@ -261,15 +260,10 @@ public:
 
     enum Hostages
     {
-        NPC_TANZAR      = 23790,
-        NPC_HARKOR      = 23999,
-        NPC_ASHLI       = 24001,
-        NPC_KRAZ        = 24024,
-
-        GO_HAZLEKS_TRUNK        = 186648,   // Tanzar
-        GO_BAKKALZUS_SATCHEL    = 187021,   // Harkor
-        GO_KASHAS_BAG           = 186672,   // Ashli
-        GO_NORKANIS_PACKAGE     = 186667,   // Kraz
+        GO_HAZLEKS_TRUNK        = 186648,
+        GO_BAKKALZUS_SATCHEL    = 187021,
+        GO_KASHAS_BAG           = 186672,
+        GO_NORKANIS_PACKAGE     = 186667,
 
         ACTION_FREE_HOSTAGE     = GOSSIP_ACTION_INFO_DEF + 1
     };
@@ -278,11 +272,11 @@ public:
     {
         switch (entry)
         {
-            case NPC_TANZAR: return GO_HAZLEKS_TRUNK;
-            case NPC_HARKOR: return GO_BAKKALZUS_SATCHEL;
-            case NPC_ASHLI:  return GO_KASHAS_BAG;
-            case NPC_KRAZ:   return GO_NORKANIS_PACKAGE;
-            default:         return 0;
+            case NPC_HAZLEK:   return GO_HAZLEKS_TRUNK;
+            case NPC_BAKKALZU: return GO_BAKKALZUS_SATCHEL;
+            case NPC_NORKANI:  return GO_NORKANIS_PACKAGE;
+            case NPC_KASHA:    return GO_KASHAS_BAG;
+            default:           return 0;
         }
     }
 
@@ -309,6 +303,9 @@ public:
         if (uint32 chest = ChestForHostage(creature->GetEntry()))
             creature->SummonGameObject(chest, creature->GetPositionX() - 2.0f, creature->GetPositionY(),
                 creature->GetPositionZ(), 0.0f, QuaternionData(), WEEK);
+
+        if (InstanceScript* instance = creature->GetInstanceScript())
+            instance->SetData(DATA_HOSTAGE_FREED, creature->GetEntry());
 
         return true;
     }

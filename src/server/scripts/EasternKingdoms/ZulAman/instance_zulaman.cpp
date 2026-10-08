@@ -25,26 +25,15 @@
 #include "WorldStatePackets.h"
 #include "zulaman.h"
 
-// Les quatre captifs liberes par la course contre la montre. Chacun apparait la
-// ou son boss vient de tomber et remet un coffre de recompense quand on lui parle.
-struct HostageInfoEntry
-{
-    uint32 Npc;
-    float X, Y, Z, O;
-};
-
-static HostageInfoEntry const HostageInfo[4] =
-{
-    { 23790, -57.0f, 1343.0f, 40.77f, 3.2f },   // Tanzar   - ours       (Nalorakk)
-    { 23999, 400.0f, 1414.0f, 74.36f, 3.3f },   // Harkor   - aigle      (Akil'zon)
-    { 24001, -35.0f, 1134.0f, 18.71f, 1.9f },   // Ashli    - dragonhalc (Jan'alai)
-    { 24024, 413.0f, 1117.0f,  6.32f, 3.1f }    // Kraz     - lynx       (Halazzi)
-};
-
-// Les otages de la version Cataclysm sont poses en base, chacun avec son propre
-// cadavre en flammes a quelques metres. Ce cadavre ne doit se voir qu'une fois le
-// delai depasse, et seulement si le boss gardien est encore en vie : sinon les
-// joueurs voient l'otage bruler des l'entree, chrono en cours.
+// Les otages de la course contre la montre sont ceux de la version Cataclysm,
+// poses en base pres de leur boss gardien, chacun avec son cadavre en flammes a
+// quelques metres. Boss tue dans les temps : l'otage est sauve et remet son coffre
+// quand on lui parle. Delai depasse : les otages non sauves disparaissent et leur
+// cadavre apparait. Le cadavre ne doit jamais se voir avant, sinon les joueurs
+// voient l'otage bruler des l'entree, chrono en cours.
+//
+// Les captifs de l'epoque Burning Crusade (Tanzar, Harkor, Ashli, Kraz) qu'on
+// invoquait a la mort du boss faisaient doublon avec eux : ils ne le sont plus.
 struct HostageFateEntry
 {
     uint32 Boss;
@@ -54,10 +43,10 @@ struct HostageFateEntry
 
 static HostageFateEntry const HostageFate[4] =
 {
-    { DATA_NALORAKK, 52939, 52940 },    // Hazlek
-    { DATA_AKILZON,  52941, 52942 },    // Bakkalzu
-    { DATA_JANALAI,  52943, 52944 },    // Norkani
-    { DATA_HALAZZI,  52945, 52946 }     // Kasha
+    { DATA_NALORAKK, NPC_HAZLEK,   NPC_HAZLEK_CORPSE   },
+    { DATA_AKILZON,  NPC_BAKKALZU, NPC_BAKKALZU_CORPSE },
+    { DATA_JANALAI,  NPC_NORKANI,  NPC_NORKANI_CORPSE  },
+    { DATA_HALAZZI,  NPC_KASHA,    NPC_KASHA_CORPSE    }
 };
 
 class instance_zulaman : public InstanceMapScript
@@ -75,6 +64,8 @@ class instance_zulaman : public InstanceMapScript
                 SpeedRunTimer           = 16;
                 ZulAmanState            = NOT_STARTED;
                 ZulAmanBossCount        = 0;
+                HostagesSaved           = 0;
+                HostagesFreed           = 0;
             }
 
             void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override
@@ -117,7 +108,7 @@ class instance_zulaman : public InstanceMapScript
                             if (creature->GetEntry() == HostageFate[i].Hostage)
                             {
                                 HostageGUIDs[i] = creature->GetGUID();
-                                creature->SetVisible(!IsHostageLost(i));
+                                ApplyHostageState(creature, i);
                             }
                             else if (creature->GetEntry() == HostageFate[i].Corpse)
                             {
@@ -131,22 +122,35 @@ class instance_zulaman : public InstanceMapScript
 
             bool IsHostageLost(uint8 i) const
             {
-                return ZulAmanState == FAIL && GetBossState(HostageFate[i].Boss) != DONE;
+                return ZulAmanState == FAIL && !(HostagesSaved & (1 << i));
+            }
+
+            // Toujours intouchable ; on ne peut lui parler qu'une fois sauve, et une seule
+            // fois : le coffre ne doit pas se redonner apres un redemarrage.
+            void ApplyHostageState(Creature* hostage, uint8 i)
+            {
+                hostage->SetVisible(!IsHostageLost(i));
+                hostage->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
+
+                if ((HostagesSaved & (1 << i)) && !(HostagesFreed & (1 << i)))
+                    hostage->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                else
+                    hostage->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            }
+
+            void RefreshHostage(uint8 i)
+            {
+                if (Creature* hostage = instance->GetCreature(HostageGUIDs[i]))
+                    ApplyHostageState(hostage, i);
+                if (Creature* corpse = instance->GetCreature(HostageCorpseGUIDs[i]))
+                    corpse->SetVisible(IsHostageLost(i));
             }
 
             // Delai depasse : les otages des boss encore en vie sont perdus.
             void BurnLostHostages()
             {
                 for (uint8 i = 0; i < 4; ++i)
-                {
-                    if (!IsHostageLost(i))
-                        continue;
-
-                    if (Creature* hostage = instance->GetCreature(HostageGUIDs[i]))
-                        hostage->SetVisible(false);
-                    if (Creature* corpse = instance->GetCreature(HostageCorpseGUIDs[i]))
-                        corpse->SetVisible(true);
-                }
+                    RefreshHostage(i);
             }
 
             void OnGameObjectCreate(GameObject* go) override
@@ -208,28 +212,6 @@ class instance_zulaman : public InstanceMapScript
                 return ObjectGuid::Empty;
             }
 
-            // Rien n'invoquait les captifs : la course contre la montre se deroulait
-            // jusqu'au bout sans que personne n'apparaisse, donc sans recompense.
-            void SummonHostage(uint8 num)
-            {
-                if (ZulAmanState != IN_PROGRESS)
-                    return;
-
-                Map::PlayerList const& playerList = instance->GetPlayers();
-                if (playerList.isEmpty())
-                    return;
-
-                if (Player* player = playerList.begin()->GetSource())
-                {
-                    HostageInfoEntry const& hostageInfo = HostageInfo[num];
-                    if (Creature* hostage = player->SummonCreature(hostageInfo.Npc, hostageInfo.X, hostageInfo.Y, hostageInfo.Z, hostageInfo.O, TEMPSUMMON_DEAD_DESPAWN))
-                    {
-                        hostage->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE);
-                        hostage->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
-                    }
-                }
-            }
-
             void SetData(uint32 type, uint32 data) override
             {
                 switch (type)
@@ -247,6 +229,17 @@ class instance_zulaman : public InstanceMapScript
                         }
                         break;
                     }
+                    case DATA_HOSTAGE_FREED:
+                        for (uint8 i = 0; i < 4; ++i)
+                        {
+                            if (HostageFate[i].Hostage != data)
+                                continue;
+
+                            HostagesFreed |= 1 << i;
+                            RefreshHostage(i);
+                            SaveToDB();
+                        }
+                        break;
                     default:
                         break;
                 }
@@ -270,6 +263,9 @@ class instance_zulaman : public InstanceMapScript
                 if (!InstanceScript::SetBossState(type, state))
                     return false;
 
+                // A evaluer avant le decompte : le quatrieme boss clot la course.
+                bool const killedInTime = state == DONE && ZulAmanState == IN_PROGRESS && SpeedRunTimer;
+
                 if (state == DONE)
                 {
                     if (ZulAmanState == IN_PROGRESS && SpeedRunTimer)
@@ -290,29 +286,17 @@ class instance_zulaman : public InstanceMapScript
                     }
                 }
 
-                switch (type)
+                if (killedInTime)
                 {
-                    case DATA_AKILZON:
-                        if (state == DONE)
-                            SummonHostage(1);
-                        break;
-                    case DATA_NALORAKK:
-                        if (state == DONE)
-                            SummonHostage(0);
-                        break;
-                    case DATA_JANALAI:
-                        if (state == DONE)
-                            SummonHostage(2);
-                        break;
-                    case DATA_HALAZZI:
-                        if (state == DONE)
-                            SummonHostage(3);
-                        break;
-                    case DATA_HEXLORD:
-                    case DATA_DAAKARA:
-                        break;
-                    default:
-                        break;
+                    for (uint8 i = 0; i < 4; ++i)
+                    {
+                        if (HostageFate[i].Boss != type)
+                            continue;
+
+                        HostagesSaved |= 1 << i;
+                        RefreshHostage(i);
+                        SaveToDB();
+                    }
                 }
 
                 return true;
@@ -369,7 +353,9 @@ class instance_zulaman : public InstanceMapScript
             {
                 data << ZulAmanState  << ' '
                      << SpeedRunTimer << ' '
-                     << ZulAmanBossCount;
+                     << ZulAmanBossCount << ' '
+                     << HostagesSaved << ' '
+                     << HostagesFreed;
             }
 
             void ReadSaveDataMore(std::istringstream& data) override
@@ -377,6 +363,8 @@ class instance_zulaman : public InstanceMapScript
                 data >> ZulAmanState;
                 data >> SpeedRunTimer;
                 data >> ZulAmanBossCount;
+                data >> HostagesSaved;      // absents des sauvegardes anterieures : restent a 0
+                data >> HostagesFreed;
 
                 if (ZulAmanState == IN_PROGRESS && SpeedRunTimer && SpeedRunTimer <= 15)
                 {
@@ -403,6 +391,8 @@ class instance_zulaman : public InstanceMapScript
             uint32 SpeedRunTimer;
             uint32 ZulAmanState;
             uint32 ZulAmanBossCount;
+            uint32 HostagesSaved;           // bit i : otage HostageFate[i] sauve dans les temps
+            uint32 HostagesFreed;           // bit i : otage HostageFate[i] a deja remis son coffre
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override

@@ -41,7 +41,8 @@ enum ZADataTypes
     DATA_MASSIVE_GATE,
 
     // SetData
-    DATA_ZULAMAN_STATE
+    DATA_ZULAMAN_STATE,
+    DATA_HOSTAGE_FREED          // donnee : entree de l'otage qui vient de remettre son coffre
 };
 
 enum ZACreatureIds
@@ -54,7 +55,17 @@ enum ZACreatureIds
     NPC_DAAKARA                 = 23863,
 
     NPC_VOLJIN                  = 52924,
-    NPC_HEXLORD_TRIGGER         = 24363
+    NPC_HEXLORD_TRIGGER         = 24363,
+
+    // Otages de la course contre la montre (version Cataclysm) et leur cadavre
+    NPC_HAZLEK                  = 52939,
+    NPC_HAZLEK_CORPSE           = 52940,
+    NPC_BAKKALZU                = 52941,
+    NPC_BAKKALZU_CORPSE         = 52942,
+    NPC_NORKANI                 = 52943,
+    NPC_NORKANI_CORPSE          = 52944,
+    NPC_KASHA                   = 52945,
+    NPC_KASHA_CORPSE            = 52946
 };
 
 enum ZAGameObjectIds
