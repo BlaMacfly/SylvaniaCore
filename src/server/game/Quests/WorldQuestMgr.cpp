@@ -375,7 +375,8 @@ void WorldQuestMgr::RewardQuestForPlayer(Player* player, uint32 questId)
 {
     // Ni LegionCore ni le reste du core n alimentaient ce compteur : l assaut restait bloque a 0/4
     if (Quest const* quest = sObjectMgr->GetQuestTemplate(questId))
-        if (quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGION_INVASION && uint32(quest->GetZoneOrSort()) == WorldLegionInvasionZoneID)
+        // les commandants d elite (142) comptent aussi : Haut-Roc n a que 3 quetes d assaut ordinaires jouables (08/10/2026)
+        if (IsInvasionQuest(quest) && uint32(quest->GetZoneOrSort()) == WorldLegionInvasionZoneID)
             if (uint32 credit = GetInvasionPointCredit(WorldLegionInvasionZoneID))
                 player->KilledMonsterCredit(credit);
 

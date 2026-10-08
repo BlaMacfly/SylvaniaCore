@@ -500,7 +500,7 @@ struct npc_invasion_chef_assaut : public ScriptedAI
         ClearGossipMenuFor(player);
         player->PrepareQuestMenu(me->GetGUID());
         if (chef && player->GetQuestStatus(chef->QueteScenario) == QUEST_STATUS_INCOMPLETE && sWorldQuestMgr->IsQuestActive(chef->QueteAssaut))
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je suis prêt : lancez l'assaut décisif.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Je suis $gprêt:prête; : lancez l'assaut décisif.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
         SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, me->GetGUID());
     }
 
