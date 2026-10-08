@@ -91,7 +91,8 @@ enum WaveCreatures
 };
 
 // Le chemin de la rampe. Les paliers ou il s'arrete pour lancer une vague sont
-// 0, 1, 5 et 8 ; les autres points ne sont que des etapes de trajet.
+// 0, 1, 5 et 8 ; il finit en 7, en haut du dernier escalier. Les autres points ne
+// sont que des etapes de trajet.
 static float const NalorakkWay[9][3] =
 {
     {  18.569f, 1414.512f, 11.42f },    // palier 1
@@ -100,9 +101,9 @@ static float const NalorakkWay[9][3] =
     { -69.908f, 1419.721f, 27.31f },
     { -79.929f, 1395.958f, 27.31f },
     { -80.072f, 1374.555f, 40.87f },    // palier 3
-    { -80.072f, 1314.398f, 40.87f },
-    { -80.072f, 1295.775f, 48.60f },
-    { -80.072f, 1362.000f, 40.87f }     // palier 4
+    { -80.072f, 1314.398f, 40.87f },    // pied du dernier escalier
+    { -80.072f, 1295.775f, 48.60f },    // position finale (notre apparition en base, et l'arrivee chez AzerothCore)
+    { -80.072f, 1362.000f, 40.87f }     // palier 4 : nos trolls de la 4e vague attendent ici, plus bas qu'AzerothCore
 };
 
 class boss_nalorakk : public CreatureScript
@@ -115,7 +116,7 @@ class boss_nalorakk : public CreatureScript
         {
             boss_nalorakkAI(Creature* creature) : BossAI(creature, DATA_NALORAKK),
                 _bearForm(false), _waveEvent(true), _waveInProgress(false), _inMove(false),
-                _wave(0), _currentPoint(0), _targetPoint(0), _checkTimer(0), _moveTimeout(0) { }
+                _finalClimb(false), _wave(0), _currentPoint(0), _routeStep(0), _checkTimer(0), _moveTimeout(0) { }
 
             void Reset() override
             {
@@ -130,9 +131,11 @@ class boss_nalorakk : public CreatureScript
                 // repli rendrait le boss intouchable pour de bon.
                 _waveInProgress = false;
                 _inMove = false;
+                _finalClimb = false;
                 _wave = 0;
                 _currentPoint = 0;
-                _targetPoint = 0;
+                _route.clear();
+                _routeStep = 0;
                 _checkTimer = 0;
                 _moveTimeout = 0;
                 _waveGuids.clear();
@@ -198,10 +201,12 @@ class boss_nalorakk : public CreatureScript
                         member->AI()->AttackStart(target);
                     }
 
-                // La quatrieme vague est la derniere : il descend dans l'arene.
+                // La quatrieme vague part du palier ou elle attend ; le boss monte ensuite le
+                // dernier escalier et ne devient attaquable qu'arrive en haut.
                 if (_wave == 3)
                 {
-                    EndWaveEvent();
+                    _finalClimb = true;
+                    StartRoute({ 6, 7 });
                     return;
                 }
 
@@ -246,7 +251,10 @@ class boss_nalorakk : public CreatureScript
                 if (who->GetTypeId() != TYPEID_PLAYER || !me->IsHostileTo(who) || !who->IsAlive())
                     return;
 
-                if (me->IsWithinDistInMap(who, 8.0f))
+                // Pendant la montee finale, les joueurs aux prises avec la 4e vague sont au
+                // contact sur son passage : le filet de securite l'arreterait sur le palier.
+                // Son arrivee est de toute facon garantie par le chrono de deplacement.
+                if (!_finalClimb && me->IsWithinDistInMap(who, 8.0f))
                 {
                     EndWaveEvent();
                     return;
@@ -265,26 +273,28 @@ class boss_nalorakk : public CreatureScript
                 Talk(SAY_MAKE_WAY);
 
                 _waveInProgress = false;
-                _inMove = true;
                 ++_wave;
 
                 switch (_wave)
                 {
-                    case 1: _targetPoint = 1; break;
-                    case 2: _targetPoint = 5; break;
-                    case 3: _targetPoint = 8; break;
-                    default: _targetPoint = _currentPoint; break;
+                    case 1: StartRoute({ 1 }); break;
+                    case 2: StartRoute({ 2, 3, 4, 5 }); break;
+                    case 3: StartRoute({ 8 }); break;
+                    default: break;
                 }
-
-                AdvanceOnePoint();
             }
 
-            void AdvanceOnePoint()
+            void StartRoute(std::vector<uint32> route)
             {
-                uint32 next = (_currentPoint < 7 && _targetPoint != 8) ? _currentPoint + 1
-                            : (_targetPoint == 8 ? 8 : _targetPoint);
+                _route = std::move(route);
+                _routeStep = 0;
+                _inMove = true;
+                MoveAlongRoute();
+            }
 
-                _currentPoint = next;
+            void MoveAlongRoute()
+            {
+                _currentPoint = _route[_routeStep];
                 _moveTimeout = 20000;
                 me->GetMotionMaster()->MovePoint(_currentPoint, NalorakkWay[_currentPoint][0], NalorakkWay[_currentPoint][1], NalorakkWay[_currentPoint][2]);
             }
@@ -295,14 +305,17 @@ class boss_nalorakk : public CreatureScript
             {
                 _moveTimeout = 0;
 
-                if (_currentPoint == _targetPoint)
+                if (++_routeStep < _route.size())
                 {
-                    _inMove = false;
-                    me->SetFacingTo(float(M_PI) * 0.5f);
+                    MoveAlongRoute();
                     return;
                 }
 
-                AdvanceOnePoint();
+                _inMove = false;
+                me->SetFacingTo(float(M_PI) * 0.5f);
+
+                if (_finalClimb)
+                    EndWaveEvent();
             }
 
             void MovementInform(uint32 type, uint32 id) override
@@ -469,9 +482,11 @@ class boss_nalorakk : public CreatureScript
             bool _waveEvent;
             bool _waveInProgress;
             bool _inMove;
+            bool _finalClimb;
             uint32 _wave;
             uint32 _currentPoint;
-            uint32 _targetPoint;
+            std::vector<uint32> _route;
+            size_t _routeStep;
             uint32 _checkTimer;
             uint32 _moveTimeout;
             std::vector<ObjectGuid> _waveGuids;

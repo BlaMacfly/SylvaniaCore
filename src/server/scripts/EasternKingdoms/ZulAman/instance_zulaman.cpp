@@ -41,6 +41,25 @@ static HostageInfoEntry const HostageInfo[4] =
     { 24024, 413.0f, 1117.0f,  6.32f, 3.1f }    // Kraz     - lynx       (Halazzi)
 };
 
+// Les otages de la version Cataclysm sont poses en base, chacun avec son propre
+// cadavre en flammes a quelques metres. Ce cadavre ne doit se voir qu'une fois le
+// delai depasse, et seulement si le boss gardien est encore en vie : sinon les
+// joueurs voient l'otage bruler des l'entree, chrono en cours.
+struct HostageFateEntry
+{
+    uint32 Boss;
+    uint32 Hostage;
+    uint32 Corpse;
+};
+
+static HostageFateEntry const HostageFate[4] =
+{
+    { DATA_NALORAKK, 52939, 52940 },    // Hazlek
+    { DATA_AKILZON,  52941, 52942 },    // Bakkalzu
+    { DATA_JANALAI,  52943, 52944 },    // Norkani
+    { DATA_HALAZZI,  52945, 52946 }     // Kasha
+};
+
 class instance_zulaman : public InstanceMapScript
 {
     public:
@@ -93,7 +112,40 @@ class instance_zulaman : public InstanceMapScript
                         HexLordTriggerGUID = creature->GetGUID();
                         break;
                     default:
+                        for (uint8 i = 0; i < 4; ++i)
+                        {
+                            if (creature->GetEntry() == HostageFate[i].Hostage)
+                            {
+                                HostageGUIDs[i] = creature->GetGUID();
+                                creature->SetVisible(!IsHostageLost(i));
+                            }
+                            else if (creature->GetEntry() == HostageFate[i].Corpse)
+                            {
+                                HostageCorpseGUIDs[i] = creature->GetGUID();
+                                creature->SetVisible(IsHostageLost(i));
+                            }
+                        }
                         break;
+                }
+            }
+
+            bool IsHostageLost(uint8 i) const
+            {
+                return ZulAmanState == FAIL && GetBossState(HostageFate[i].Boss) != DONE;
+            }
+
+            // Delai depasse : les otages des boss encore en vie sont perdus.
+            void BurnLostHostages()
+            {
+                for (uint8 i = 0; i < 4; ++i)
+                {
+                    if (!IsHostageLost(i))
+                        continue;
+
+                    if (Creature* hostage = instance->GetCreature(HostageGUIDs[i]))
+                        hostage->SetVisible(false);
+                    if (Creature* corpse = instance->GetCreature(HostageCorpseGUIDs[i]))
+                        corpse->SetVisible(true);
                 }
             }
 
@@ -303,6 +355,8 @@ class instance_zulaman : public InstanceMapScript
                                 DoUpdateWorldState(WORLD_STATE_ZULAMAN_TIMER_ENABLED, 0);
                                 events.CancelEvent(EVENT_UPDATE_ZULAMAN_TIMER);
                                 ZulAmanState = FAIL;
+                                SaveToDB();
+                                BurnLostHostages();
                             }
                             break;
                         default:
@@ -344,6 +398,8 @@ class instance_zulaman : public InstanceMapScript
             ObjectGuid HexLordTriggerGUID;
             ObjectGuid StrangeGongGUID;
             ObjectGuid MasiveGateGUID;
+            ObjectGuid HostageGUIDs[4];
+            ObjectGuid HostageCorpseGUIDs[4];
             uint32 SpeedRunTimer;
             uint32 ZulAmanState;
             uint32 ZulAmanBossCount;
