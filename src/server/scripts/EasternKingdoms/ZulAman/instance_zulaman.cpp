@@ -49,6 +49,26 @@ static HostageFateEntry const HostageFate[4] =
     { DATA_HALAZZI,  NPC_KASHA,    NPC_KASHA_CORPSE    }
 };
 
+// Aucune porte n'etait declaree : la sortie du temple du lynx restait fermee apres
+// Halazzi, et l'entree du Seigneur des malefices pour toujours (Malacrass et Daakara
+// inaccessibles). Regles reprises de TrinityCore master. L'entree du Seigneur des
+// malefices figure cinq fois : elle ne s'ouvre qu'une fois les quatre boss
+// d'animaux tombes, et se ferme pendant son propre combat.
+static DoorData const doorData[] =
+{
+    { GO_HEXLORD_ENTRANCE,     DATA_NALORAKK, DOOR_TYPE_PASSAGE },
+    { GO_HEXLORD_ENTRANCE,     DATA_AKILZON,  DOOR_TYPE_PASSAGE },
+    { GO_HEXLORD_ENTRANCE,     DATA_JANALAI,  DOOR_TYPE_PASSAGE },
+    { GO_HEXLORD_ENTRANCE,     DATA_HALAZZI,  DOOR_TYPE_PASSAGE },
+    { GO_HEXLORD_ENTRANCE,     DATA_HEXLORD,  DOOR_TYPE_ROOM    },
+    { GO_DOOR_AKILZON,         DATA_AKILZON,  DOOR_TYPE_ROOM    },
+    { GO_LYNX_TEMPLE_ENTRANCE, DATA_HALAZZI,  DOOR_TYPE_ROOM    },
+    { GO_LYNX_TEMPLE_EXIT,     DATA_HALAZZI,  DOOR_TYPE_PASSAGE },
+    { GO_WOODEN_DOOR,          DATA_HEXLORD,  DOOR_TYPE_PASSAGE },
+    { GO_DOOR_DAAKARA,         DATA_DAAKARA,  DOOR_TYPE_ROOM    },
+    { 0,                       0,             DOOR_TYPE_ROOM    }   // fin
+};
+
 class instance_zulaman : public InstanceMapScript
 {
     public:
@@ -60,6 +80,7 @@ class instance_zulaman : public InstanceMapScript
             {
                 SetHeaders(DataHeader);
                 SetBossNumber(EncounterCount);
+                LoadDoorData(doorData);
 
                 SpeedRunTimer           = 16;
                 ZulAmanState            = NOT_STARTED;
@@ -166,6 +187,14 @@ class instance_zulaman : public InstanceMapScript
                         if (ZulAmanState != NOT_STARTED)
                             go->SetGoState(GO_STATE_ACTIVE);
                         break;
+                    case GO_LYNX_TEMPLE_EXIT:
+                    case GO_LYNX_TEMPLE_ENTRANCE:
+                    case GO_HEXLORD_ENTRANCE:
+                    case GO_WOODEN_DOOR:
+                    case GO_DOOR_AKILZON:
+                    case GO_DOOR_DAAKARA:
+                        AddDoor(go, true);
+                        break;
                     default:
                         break;
                 }
@@ -176,6 +205,12 @@ class instance_zulaman : public InstanceMapScript
                 switch (go->GetEntry())
                 {
                     case GO_MASSIVE_GATE:
+                    case GO_LYNX_TEMPLE_EXIT:
+                    case GO_LYNX_TEMPLE_ENTRANCE:
+                    case GO_HEXLORD_ENTRANCE:
+                    case GO_WOODEN_DOOR:
+                    case GO_DOOR_AKILZON:
+                    case GO_DOOR_DAAKARA:
                         AddDoor(go, false);
                         break;
                     default:

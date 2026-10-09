@@ -300,9 +300,13 @@ public:
 
         creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
+        // En base, ces coffres sont verrouilles (malle de Hazlek) ou insaisissables
+        // (les trois autres) : c'est leur etat tant que l'otage est captif. Comme chez
+        // AzerothCore, on les rend ouvrables a la liberation.
         if (uint32 chest = ChestForHostage(creature->GetEntry()))
-            creature->SummonGameObject(chest, creature->GetPositionX() - 2.0f, creature->GetPositionY(),
-                creature->GetPositionZ(), 0.0f, QuaternionData(), WEEK);
+            if (GameObject* go = creature->SummonGameObject(chest, creature->GetPositionX() - 2.0f, creature->GetPositionY(),
+                creature->GetPositionZ(), 0.0f, QuaternionData(), WEEK))
+                go->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_LOCKED | GO_FLAG_NOT_SELECTABLE);
 
         if (InstanceScript* instance = creature->GetInstanceScript())
             instance->SetData(DATA_HOSTAGE_FREED, creature->GetEntry());

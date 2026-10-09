@@ -72,6 +72,13 @@ enum ZAGameObjectIds
 {
     GO_STRANGE_GONG             = 187359,
     GO_MASSIVE_GATE             = 186728,
+
+    GO_LYNX_TEMPLE_EXIT         = 186303,
+    GO_LYNX_TEMPLE_ENTRANCE     = 186304,
+    GO_HEXLORD_ENTRANCE         = 186305,
+    GO_WOODEN_DOOR              = 186306,
+    GO_DOOR_AKILZON             = 186858,
+    GO_DOOR_DAAKARA             = 186859
 };
 
 enum ZAEvents
