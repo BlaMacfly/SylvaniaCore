@@ -3458,6 +3458,24 @@ AuctionHouseBot.ItemsPerCycle.Normal = 20
 AuctionHouseBot.BuyPrice.Seller = 1
 
 #
+#    AuctionHouseBot.PriceTable.Enabled
+#       Description: Le vendeur ne propose que les objets de la table `ahbot_price` (base world),
+#                    au prix de marche qui y est releve, au lieu de tirer au hasard dans tous les
+#                    objets et de deduire le prix du prix marchand. Si la table est vide, retour
+#                    au comportement classique.
+#       Default:     0 - (Desactive)
+#                    1 - (Active)
+
+AuctionHouseBot.PriceTable.Enabled = 0
+
+#
+#    AuctionHouseBot.PriceTable.Ratio
+#       Description: Pourcentage applique aux prix de la table (100 = prix releves tels quels).
+#       Default:     100
+
+AuctionHouseBot.PriceTable.Ratio = 100
+
+#
 #    AuctionHouseBot.BidPrice.*
 #       Description: These values determine the range that the Bid Price will fall into, as a percentage of the Buy Price
 #       Default:     0.6 - (Min)

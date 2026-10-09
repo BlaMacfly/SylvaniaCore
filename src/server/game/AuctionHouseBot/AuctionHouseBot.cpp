@@ -158,6 +158,9 @@ void AuctionBotConfig::GetConfigFromFile()
 
     SetConfig(CONFIG_AHBOT_BUYPRICE_SELLER, "AuctionHouseBot.BuyPrice.Seller", true);
 
+    SetConfig(CONFIG_AHBOT_PRICE_TABLE_ENABLED, "AuctionHouseBot.PriceTable.Enabled", false);
+    SetConfigMinMax(CONFIG_AHBOT_PRICE_TABLE_RATIO, "AuctionHouseBot.PriceTable.Ratio", 100, 1, 10000);
+
     SetConfig(CONFIG_AHBOT_ITEMS_PER_CYCLE_BOOST, "AuctionHouseBot.ItemsPerCycle.Boost", 1000);
     SetConfig(CONFIG_AHBOT_ITEMS_PER_CYCLE_NORMAL, "AuctionHouseBot.ItemsPerCycle.Normal", 20);
 

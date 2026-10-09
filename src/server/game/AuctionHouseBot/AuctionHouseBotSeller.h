@@ -21,6 +21,8 @@
 #include "Define.h"
 #include "ItemTemplate.h"
 #include "AuctionHouseBot.h"
+#include <unordered_map>
+#include <unordered_set>
 
 struct ItemToSell
 {
@@ -137,6 +139,20 @@ private:
     SellerConfiguration _houseConfig[MAX_AUCTION_HOUSE_TYPE];
 
     ItemPool _itemPool[MAX_AUCTION_QUALITY][MAX_ITEM_CLASS];
+
+    struct PriceInfo
+    {
+        uint64 Price = 0;       // prix de marche par unite, en cuivre
+        uint64 Deviation = 0;   // ecart type du prix, en cuivre
+        float SoldPerDay = 0.0f;
+    };
+    std::unordered_map<uint32, PriceInfo> _priceTable;
+
+    bool LoadPriceTable();
+    uint32 FillPoolFromPriceTable(std::unordered_set<uint32> const& excludeItems);
+    uint32 FillPoolFromTemplates(std::unordered_set<uint32> const& includeItems, std::unordered_set<uint32> const& excludeItems);
+    bool SetPricesFromTable(ItemTemplate const* itemProto, uint32& buyp, uint32& bidp, uint32 stackCount) const;
+    uint32 GetStackSizeFromTable(ItemTemplate const* itemProto) const;
 
     void LoadSellerValues(SellerConfiguration& config);
     uint32 SetStat(SellerConfiguration& config);

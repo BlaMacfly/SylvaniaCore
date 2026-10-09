@@ -24,6 +24,8 @@
 #include "Containers.h"
 #include "ObjectMgr.h"
 #include "Random.h"
+#include <cmath>
+#include <limits>
 #include <sstream>
 
 AuctionBotSeller::AuctionBotSeller()
@@ -39,8 +41,6 @@ AuctionBotSeller::~AuctionBotSeller()
 
 bool AuctionBotSeller::Initialize()
 {
-    std::unordered_set<uint32> npcItems;
-    std::unordered_set<uint32> lootItems;
     std::unordered_set<uint32> includeItems;
     std::unordered_set<uint32> excludeItems;
 
@@ -62,6 +62,169 @@ bool AuctionBotSeller::Initialize()
 
     TC_LOG_DEBUG("ahbot", "Forced Inclusion " SZFMTD " items", includeItems.size());
     TC_LOG_DEBUG("ahbot", "Forced Exclusion " SZFMTD " items", excludeItems.size());
+
+    uint32 itemsAdded = 0;
+
+    // Table de prix : quand elle est active et remplie, le vendeur ne propose que les objets
+    // qu'elle liste (objets reellement echanges a l'HV), a leur prix de marche releve.
+    if (sAuctionBotConfig->GetConfig(CONFIG_AHBOT_PRICE_TABLE_ENABLED) && LoadPriceTable())
+        itemsAdded = FillPoolFromPriceTable(excludeItems);
+    else
+        itemsAdded = FillPoolFromTemplates(includeItems, excludeItems);
+
+    if (!itemsAdded)
+    {
+        TC_LOG_ERROR("ahbot", "AuctionHouseBot seller not have items, disabled.");
+        sAuctionBotConfig->SetConfig(CONFIG_AHBOT_ALLIANCE_ITEM_AMOUNT_RATIO, 0);
+        sAuctionBotConfig->SetConfig(CONFIG_AHBOT_HORDE_ITEM_AMOUNT_RATIO, 0);
+        sAuctionBotConfig->SetConfig(CONFIG_AHBOT_NEUTRAL_ITEM_AMOUNT_RATIO, 0);
+        return false;
+    }
+
+    TC_LOG_DEBUG("ahbot", "AuctionHouseBot seller will use %u items to fill auction house (according your config choices)", itemsAdded);
+
+    LoadConfig();
+
+    if (sLog->ShouldLog("ahbot", LOG_LEVEL_DEBUG))
+    {
+        sLog->outMessage("ahbot", LOG_LEVEL_DEBUG, "Items loaded \tGray\tWhite\tGreen\tBlue\tPurple\tOrange\tYellow");
+        for (uint32 i = 0; i < MAX_ITEM_CLASS; ++i)
+            sLog->outMessage("ahbot", LOG_LEVEL_DEBUG, "\t\t%u\t%u\t%u\t%u\t%u\t%u\t%u",
+            (uint32)_itemPool[0][i].size(), (uint32)_itemPool[1][i].size(), (uint32)_itemPool[2][i].size(),
+                (uint32)_itemPool[3][i].size(), (uint32)_itemPool[4][i].size(), (uint32)_itemPool[5][i].size(),
+                (uint32)_itemPool[6][i].size());
+    }
+
+    TC_LOG_DEBUG("ahbot", "AHBot seller configuration data loaded and initialized");
+    return true;
+}
+
+// Charge `ahbot_price` (base world) : prix de marche par unite, ecart type et ventes par jour
+// relevees sur les HV europeens de Legion. Renvoie false si la table est vide ou absente.
+bool AuctionBotSeller::LoadPriceTable()
+{
+    _priceTable.clear();
+
+    QueryResult result = WorldDatabase.Query("SELECT `entry`, `price`, `deviation`, `soldPerDay` FROM `ahbot_price` WHERE `price` > 0");
+    if (!result)
+    {
+        TC_LOG_ERROR("ahbot", "AHBot: table de prix activee mais `ahbot_price` est vide ou absente, retour au filtrage classique.");
+        return false;
+    }
+
+    do
+    {
+        Field* fields = result->Fetch();
+        PriceInfo& info = _priceTable[fields[0].GetUInt32()];
+        info.Price = fields[1].GetUInt64();
+        info.Deviation = fields[2].GetUInt64();
+        info.SoldPerDay = fields[3].GetFloat();
+    } while (result->NextRow());
+
+    TC_LOG_INFO("ahbot", "AHBot: table de prix chargee, " SZFMTD " objets.", _priceTable.size());
+    return true;
+}
+
+// Remplit les reserves du vendeur avec les objets de la table de prix. Un objet tres vendu
+// apparait plusieurs fois dans sa reserve pour etre tire plus souvent (poids logarithmique,
+// 1 a 10 copies), comme sur un vrai HV ou les composants courants dominent.
+uint32 AuctionBotSeller::FillPoolFromPriceTable(std::unordered_set<uint32> const& excludeItems)
+{
+    uint32 itemsAdded = 0;
+
+    for (auto const& itr : _priceTable)
+    {
+        uint32 itemId = itr.first;
+        if (excludeItems.count(itemId))
+            continue;
+
+        ItemTemplate const* prototype = sObjectMgr->GetItemTemplate(itemId);
+        if (!prototype)
+        {
+            TC_LOG_ERROR("ahbot", "AHBot: objet %u de `ahbot_price` inconnu du serveur, ignore.", itemId);
+            continue;
+        }
+
+        if (prototype->GetQuality() >= MAX_AUCTION_QUALITY || prototype->GetClass() >= MAX_ITEM_CLASS)
+            continue;
+
+        // Un objet lie quand ramasse ne peut pas etre mis aux encheres par un joueur.
+        if (prototype->GetBonding() == BIND_ON_ACQUIRE || prototype->GetBonding() == BIND_QUEST)
+            continue;
+
+        uint32 copies = std::min<uint32>(10, std::max<uint32>(1, uint32(std::log2(1.0f + itr.second.SoldPerDay) + 0.5f)));
+        for (uint32 i = 0; i < copies; ++i)
+            _itemPool[prototype->GetQuality()][prototype->GetClass()].push_back(itemId);
+
+        ++itemsAdded;
+    }
+
+    return itemsAdded;
+}
+
+// Prix d'un objet de la table : tirage autour du prix de marche (somme de deux tirages
+// uniformes, donc concentre au centre), borne a +-25 % et jamais sous le prix marchand,
+// sinon un joueur acheterait pour revendre au PNJ.
+bool AuctionBotSeller::SetPricesFromTable(ItemTemplate const* itemProto, uint32& buyp, uint32& bidp, uint32 stackCount) const
+{
+    auto itr = _priceTable.find(itemProto->GetId());
+    if (itr == _priceTable.end())
+        return false;
+
+    double unit = double(itr->second.Price) * sAuctionBotConfig->GetConfig(CONFIG_AHBOT_PRICE_TABLE_RATIO) / 100.0;
+    double spread = std::min(double(itr->second.Deviation), unit * 0.25);
+    unit += (frand(-1.0f, 1.0f) + frand(-1.0f, 1.0f)) * 0.5 * spread;
+    unit = std::max(unit, double(itemProto->GetSellPrice()) * 1.1);
+
+    double buyout = std::max(1.0, unit * stackCount);
+    buyp = uint32(std::min(buyout, double(std::numeric_limits<uint32>::max())));
+
+    float bidPercentage = frand(sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MIN), sAuctionBotConfig->GetConfig(CONFIG_AHBOT_BIDPRICE_MAX));
+    bidp = std::max<uint32>(1, uint32(bidPercentage * buyp));
+    return true;
+}
+
+// Taille de pile d'un objet de la table : les tailles que postent les joueurs (1, 5, 10, 20,
+// 50, 100, 200), les grosses piles reservees aux composants bon marche.
+uint32 AuctionBotSeller::GetStackSizeFromTable(ItemTemplate const* itemProto) const
+{
+    uint32 maxStack = itemProto->GetMaxStackSize();
+    if (maxStack <= 1)
+        return 1;
+
+    auto itr = _priceTable.find(itemProto->GetId());
+    uint64 unit = itr != _priceTable.end() ? itr->second.Price : 0;
+
+    static uint32 const sizes[] = { 1, 5, 10, 20, 50, 100, 200 };
+    static uint32 const cheapWeights[] = { 1, 1, 3, 4, 2, 2, 2 };     // moins de 1 po l'unite
+    static uint32 const commonWeights[] = { 2, 3, 4, 4, 1, 1, 1 };    // moins de 50 po
+    static uint32 const costlyWeights[] = { 6, 3, 1, 0, 0, 0, 0 };    // 50 po et plus
+    uint32 const* weights = unit < GOLD ? cheapWeights : (unit < 50 * GOLD ? commonWeights : costlyWeights);
+
+    uint32 total = 0;
+    for (uint32 i = 0; i < 7; ++i)
+        if (sizes[i] <= maxStack)
+            total += weights[i];
+    if (!total)
+        return 1;
+
+    uint32 roll = urand(1, total);
+    for (uint32 i = 0; i < 7; ++i)
+    {
+        if (sizes[i] > maxStack)
+            continue;
+        if (roll <= weights[i])
+            return sizes[i];
+        roll -= weights[i];
+    }
+    return 1;
+}
+
+uint32 AuctionBotSeller::FillPoolFromTemplates(std::unordered_set<uint32> const& includeItems, std::unordered_set<uint32> const& excludeItems)
+{
+    std::unordered_set<uint32> npcItems;
+    std::unordered_set<uint32> lootItems;
+    uint32 itemsAdded = 0;
 
     TC_LOG_DEBUG("ahbot", "Loading npc vendor items for filter..");
     CreatureTemplateContainer const* creatures = sObjectMgr->GetCreatureTemplates();
@@ -103,7 +266,6 @@ bool AuctionBotSeller::Initialize()
     TC_LOG_DEBUG("ahbot", "Loot filter has " SZFMTD " items", lootItems.size());
     TC_LOG_DEBUG("ahbot", "Sorting and cleaning items for AHBot seller...");
 
-    uint32 itemsAdded = 0;
 
     for (uint32 itemId = 0; itemId < sItemStore.GetNumRows(); ++itemId)
     {
@@ -340,31 +502,7 @@ bool AuctionBotSeller::Initialize()
         ++itemsAdded;
     }
 
-    if (!itemsAdded)
-    {
-        TC_LOG_ERROR("ahbot", "AuctionHouseBot seller not have items, disabled.");
-        sAuctionBotConfig->SetConfig(CONFIG_AHBOT_ALLIANCE_ITEM_AMOUNT_RATIO, 0);
-        sAuctionBotConfig->SetConfig(CONFIG_AHBOT_HORDE_ITEM_AMOUNT_RATIO, 0);
-        sAuctionBotConfig->SetConfig(CONFIG_AHBOT_NEUTRAL_ITEM_AMOUNT_RATIO, 0);
-        return false;
-    }
-
-    TC_LOG_DEBUG("ahbot", "AuctionHouseBot seller will use %u items to fill auction house (according your config choices)", itemsAdded);
-
-    LoadConfig();
-
-    if (sLog->ShouldLog("ahbot", LOG_LEVEL_DEBUG))
-    {
-        sLog->outMessage("ahbot", LOG_LEVEL_DEBUG, "Items loaded \tGray\tWhite\tGreen\tBlue\tPurple\tOrange\tYellow");
-        for (uint32 i = 0; i < MAX_ITEM_CLASS; ++i)
-            sLog->outMessage("ahbot", LOG_LEVEL_DEBUG, "\t\t%u\t%u\t%u\t%u\t%u\t%u\t%u",
-            (uint32)_itemPool[0][i].size(), (uint32)_itemPool[1][i].size(), (uint32)_itemPool[2][i].size(),
-                (uint32)_itemPool[3][i].size(), (uint32)_itemPool[4][i].size(), (uint32)_itemPool[5][i].size(),
-                (uint32)_itemPool[6][i].size());
-    }
-
-    TC_LOG_DEBUG("ahbot", "AHBot seller configuration data loaded and initialized");
-    return true;
+    return itemsAdded;
 }
 
 void AuctionBotSeller::LoadConfig()
@@ -876,13 +1014,14 @@ void AuctionBotSeller::AddNewAuctions(SellerConfiguration& config)
             continue;
         }
 
-        uint32 stackCount = GetStackSizeForItem(prototype, config);
+        bool const fromTable = _priceTable.count(itemId) > 0;
+        uint32 stackCount = fromTable ? GetStackSizeFromTable(prototype) : GetStackSizeForItem(prototype, config);
 
         Item* item = Item::CreateItem(itemId, stackCount);
         if (!item)
         {
             TC_LOG_ERROR("ahbot", "AHBot: Item::CreateItem() returned NULL for item %u (stack: %u)", itemId, stackCount);
-            return;
+            continue;
         }
 
         // Update the just created item so that if it needs random properties it has them.
@@ -893,7 +1032,8 @@ void AuctionBotSeller::AddNewAuctions(SellerConfiguration& config)
         uint32 bidPrice = 0;
 
         // Price of items are set here
-        SetPricesOfItem(prototype, config, buyoutPrice, bidPrice, stackCount);
+        if (!fromTable || !SetPricesFromTable(prototype, buyoutPrice, bidPrice, stackCount))
+            SetPricesOfItem(prototype, config, buyoutPrice, bidPrice, stackCount);
 
         // Deposit time
         uint32 etime = urand(1, 3);
@@ -930,8 +1070,6 @@ void AuctionBotSeller::AddNewAuctions(SellerConfiguration& config)
         sAuctionMgr->AddAItem(item);
         auctionHouse->AddAuction(auctionEntry);
         auctionEntry->SaveToDB(trans);
-
-        auctionHouse->AddAuction(auctionEntry);
 
         ++count;
     }
