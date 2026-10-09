@@ -106,6 +106,11 @@ static float const NalorakkWay[9][3] =
     { -80.072f, 1362.000f, 40.87f }     // palier 4 : nos trolls de la 4e vague attendent ici, plus bas qu'AzerothCore
 };
 
+// Protection de la montee. Le gabarit (donnees officielles) porte deja IMMUNE_TO_PC :
+// c'est l'etat du boss pendant l'evenement. Ne retirer que NOT_SELECTABLE et
+// NON_ATTACKABLE a l'arrivee le laissait immunise contre les joueurs pour de bon.
+static constexpr uint32 EVENT_PROTECTION_FLAGS = UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_IMMUNE_TO_PC;
+
 class boss_nalorakk : public CreatureScript
 {
     public:
@@ -124,8 +129,13 @@ class boss_nalorakk : public CreatureScript
                 _bearForm = false;
                 me->RemoveAurasDueToSpell(SPELL_SHAPE_OF_THE_BEAR);
 
+                // Evenement deja joue : un repop rend au boss les drapeaux de son gabarit,
+                // dont l'immunite aux joueurs de la montee ; il doit rester attaquable.
                 if (!_waveEvent)
+                {
+                    me->RemoveFlag(UNIT_FIELD_FLAGS, EVENT_PROTECTION_FLAGS);
                     return;
+                }
 
                 // Une fois l'evenement joue, il ne recommence pas : sans cela un simple
                 // repli rendrait le boss intouchable pour de bon.
@@ -140,7 +150,7 @@ class boss_nalorakk : public CreatureScript
                 _moveTimeout = 0;
                 _waveGuids.clear();
 
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
+                me->SetFlag(UNIT_FIELD_FLAGS, EVENT_PROTECTION_FLAGS);
                 me->SetSpeedRate(MOVE_RUN, 2.0f);
                 me->SetWalk(false);
 
@@ -236,7 +246,7 @@ class boss_nalorakk : public CreatureScript
                 _waveInProgress = false;
                 _inMove = false;
                 _waveGuids.clear();
-                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_NON_ATTACKABLE);
+                me->RemoveFlag(UNIT_FIELD_FLAGS, EVENT_PROTECTION_FLAGS);
                 me->SetHomePosition(me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(), me->GetOrientation());
             }
 
