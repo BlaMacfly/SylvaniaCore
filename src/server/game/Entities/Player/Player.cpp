@@ -28961,6 +28961,15 @@ void Player::_SaveTalents(CharacterDatabaseTransaction& trans)
 
 void Player::ActivateTalentGroup(ChrSpecializationEntry const* spec)
 {
+    // La specialisation d'une autre classe laisserait ses sorts dans le grimoire pour de bon :
+    // RemoveSpecializationSpells ne retire que ceux des specialisations de la classe du joueur.
+    if (spec->ClassID != int8(getClass()))
+    {
+        TC_LOG_ERROR("entities.player", "Player::ActivateTalentGroup: %s (classe %u) - specialisation %u d'une autre classe refusee.",
+            GetName().c_str(), uint32(getClass()), spec->ID);
+        return;
+    }
+
     if (GetActiveTalentGroup() == spec->OrderIndex)
         return;
 
