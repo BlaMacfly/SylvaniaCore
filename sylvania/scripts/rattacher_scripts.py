@@ -81,7 +81,7 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
             log.append("%s %s : %s" % (f, n, "ambigu %s" % sorted(hits) if hits else "aucune entree"))
 
 # Scripts de sorts et de zones de declenchement : seulement d'apres les commentaires de l'auteur.
-spell_rows, at_rows = set(), set()
+spell_rows, at_rows, areatrigger_ai = set(), set(), set()
 for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
     s = open(path, encoding="latin1").read()
     named = {}
@@ -98,6 +98,14 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
         kind, n = named[c]
         for e in re.findall(r"\d+", ids_txt):
             (spell_rows if kind == "spell" else at_rows).add((int(e), n))
+    # sorts parametres : new spell_x_aoe("nom_du_script", SPELL_...); // ids
+    for n, ids_txt in re.findall(r"^\s*new\s+\w+\(\s*\"(spell_\w+)\"[^;]*\)\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M):
+        for e in re.findall(r"\d+", ids_txt):
+            spell_rows.add((int(e), n))
+    # zones au sol : RegisterAreaTriggerAI(x); // sort qui cree la zone
+    for c, ids_txt in re.findall(r"^\s*RegisterAreaTriggerAI\((\w+)\)\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M):
+        for e in re.findall(r"\d+", ids_txt):
+            areatrigger_ai.add((int(e), c))
 have_spell = {(int(i), n) for i, n in q("SELECT spell_id,ScriptName FROM spell_script_names")}
 have_at = {int(i) for i, n in q("SELECT entry,ScriptName FROM areatrigger_scripts")}
 
@@ -109,6 +117,35 @@ for e, n in sorted(at_rows):
         log.append("zone de declenchement %d deja scriptee, %s non rattache" % (e, n))
         continue
     sql.append("INSERT IGNORE INTO `areatrigger_scripts` (entry, ScriptName) VALUES (%d, '%s');" % (e, n))
+if areatrigger_ai:
+    sys.path.insert(0, "/home/ubuntu")
+    from db2read import DB2
+    se = DB2("/home/ubuntu/server/data/dbc/enUS/SpellEffect.db2", "iiiiiififfiiiiffififfffffiiiii", [1] * 25 + [4, 2, 2, 2, 1], 0, 29)
+    owner = {}
+    for pid, idxs in se.parentMap.items():
+        for i in idxs:
+            owner[i] = pid
+    created = collections.defaultdict(set)  # sort -> modeles de zone crees (effet 179)
+    for r in range(se.recCount):
+        if se.getRaw(r, 1, 0, "i") == 179:
+            created[owner.get(r)].add(se.getRaw(r, 26, 0, "i"))
+    at_tpl = {int(i): n for i, n in q("SELECT Id,ScriptName FROM areatrigger_template")}
+    claims = collections.defaultdict(set)
+    for spell, c in areatrigger_ai:
+        if not created.get(spell):
+            log.append("zone %s : le sort %d ne cree aucune zone" % (c, spell))
+        for tid in created.get(spell, ()):
+            claims[tid].add(c)
+    for tid, cs in sorted(claims.items()):
+        if len(cs) > 1:
+            log.append("modele de zone %d revendique par %s" % (tid, sorted(cs)))
+        elif tid not in at_tpl:
+            log.append("modele de zone %d (%s) absent de areatrigger_template" % (tid, next(iter(cs))))
+        elif at_tpl[tid]:
+            if at_tpl[tid] != next(iter(cs)):
+                log.append("modele de zone %d deja rattache a %s" % (tid, at_tpl[tid]))
+        else:
+            sql.append("UPDATE `areatrigger_template` SET ScriptName='%s' WHERE Id=%d AND ScriptName='';" % (next(iter(cs)), tid))
 for (kind, e), cands in sorted(assign.items()):
     names = {c[0] for c in cands}
     if len(names) > 1:
