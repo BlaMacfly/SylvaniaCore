@@ -2184,21 +2184,9 @@ class npc_secured_stockpile_of_pandaren_spoils : public CreatureScript
                 if (!pInstance)
                     return;
 
-                switch (GetDifficulty())
-                {
-                    case DIFFICULTY_10_N:
-                        pInstance->DoRespawnGameObject(pInstance->GetObjectGuid(DATA_UNLOCKED_STOCKPILE_10), DAY);
-                        break;
-                    case DIFFICULTY_25_N:
-                        pInstance->DoRespawnGameObject(pInstance->GetObjectGuid(DATA_UNLOCKED_STOCKPILE_25), DAY);
-                        break;
-                    case DIFFICULTY_10_HC:
-                        pInstance->DoRespawnGameObject(pInstance->GetObjectGuid(DATA_UNLOCKED_STOCKPILE_10H), DAY);
-                        break;
-                    case DIFFICULTY_25_HC:
-                        pInstance->DoRespawnGameObject(pInstance->GetObjectGuid(DATA_UNLOCKED_STOCKPILE_25H), DAY);
-                        break;
-                }
+                // Meme cas qu'Immerseus : pas de coffre pose en base, difficultes MoP seulement.
+                me->SummonGameObject(GO_UNLOCKED_STOCKPILE_OF_PANDAREN_SPOILS_10, me->GetPositionX(), me->GetPositionY(),
+                    me->GetPositionZ(), me->GetOrientation(), QuaternionData(), DAY);
 
                 // Bonus loot roll there
                 //CreatureBonusLootProcessor bonusLoot(me);

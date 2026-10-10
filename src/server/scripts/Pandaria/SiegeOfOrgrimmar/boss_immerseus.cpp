@@ -667,21 +667,12 @@ class boss_immerseus : public CreatureScript
                 //instance->DoUpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_BE_SPELL_TARGET, SPELL_ACHIEVEMENT);
                 instance->DoModifyPlayerCurrencies(396, 4000);
 
-                switch (GetDifficulty())
-                {
-                    case DIFFICULTY_10_N:
-                        instance->DoRespawnGameObject(instance->GetObjectGuid(DATA_TEARS_OF_THE_VALE_10N), DAY);
-                        break;
-                    case DIFFICULTY_25_N:
-                        instance->DoRespawnGameObject(instance->GetObjectGuid(DATA_TEARS_OF_THE_VALE_25N), DAY);
-                        break;
-                    case DIFFICULTY_10_HC:
-                        instance->DoRespawnGameObject(instance->GetObjectGuid(DATA_TEARS_OF_THE_VALE_10H), DAY);
-                        break;
-                    case DIFFICULTY_25_HC:
-                        instance->DoRespawnGameObject(instance->GetObjectGuid(DATA_TEARS_OF_THE_VALE_25H), DAY);
-                        break;
-                }
+                // Immerseus ne meurt pas : son butin est le coffre des Larmes du Val. Le script ne
+                // connaissait que les difficultes 10/25 de MoP, aucun coffre n'est pose en base et
+                // la raid 7.x tourne en 14-17 : le coffre est invoque quelle que soit la difficulte,
+                // son butin (objets du Guide d'aventure) etant tire a l'ouverture selon celle-ci.
+                me->SummonGameObject(GO_TEARS_OF_THE_VALE_10N, me->GetPositionX(), me->GetPositionY(), me->GetPositionZ(),
+                    me->GetOrientation(), QuaternionData(), DAY);
             }
         };
 };
