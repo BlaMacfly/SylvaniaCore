@@ -2,9 +2,10 @@ import json,re,time,urllib.request,html,os,sys
 urls=json.load(open('items_urls.json'))
 import sys
 K,N=int(sys.argv[1]),int(sys.argv[2])
-out='prices_%d.tsv'%K
+out='prices_retry_%d.tsv'%K
 done=set()
-for fn in ['prices.tsv']+['prices_%d.tsv'%k for k in range(N)]:
+import glob
+for fn in glob.glob('prices*.tsv'):
     if os.path.exists(fn): done|={l.split('\t')[0] for l in open(fn)}
 f=open(out,'a')
 def money(cell):
@@ -45,5 +46,5 @@ for n,(iid,(ts,orig)) in enumerate(sorted(urls.items())):
     rm,rd=parse_cell(med[1]); lm,ld=parse_cell(med[0])
     clean=lambda x: re.sub(r'<[^>]+>|&nbsp','',x or '').strip()
     f.write("\t".join(map(str,[iid,'OK',name,ts,rm,rd,clean(posted[1]),clean(sold[1]),lm,clean(sold[0])]))+"\n"); f.flush()
-    time.sleep(1)
+    time.sleep(3)
 print('fini')
