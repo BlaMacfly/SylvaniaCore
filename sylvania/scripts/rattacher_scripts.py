@@ -80,7 +80,35 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
         else:
             log.append("%s %s : %s" % (f, n, "ambigu %s" % sorted(hits) if hits else "aucune entree"))
 
+# Scripts de sorts et de zones de declenchement : seulement d'apres les commentaires de l'auteur.
+spell_rows, at_rows = set(), set()
+for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
+    s = open(path, encoding="latin1").read()
+    named = {}
+    for c, n in re.findall(r"class\s+(\w+)\s*:\s*public\s+SpellScriptLoader\b.*?\1\s*\(\s*\)\s*:\s*SpellScriptLoader\(\"(\w+)\"\)", s, re.S):
+        named[c] = ("spell", n)
+    for c in re.findall(r"Register(?:Spell|Aura)Script\((\w+)\)", s):
+        named[c] = ("spell", c)
+    for c, n in re.findall(r"class\s+(\w+)\s*:\s*public\s+AreaTriggerScript\b.*?\1\s*\(\s*\)\s*:\s*AreaTriggerScript\(\"(\w+)\"\)", s, re.S):
+        named[c] = ("at", n)
+    for a, b, ids_txt in re.findall(r"^\s*(?:new\s+(\w+)\(\)|Register(?:Spell|Aura)Script\((\w+)\))\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M):
+        c = a or b
+        if c not in named:
+            continue
+        kind, n = named[c]
+        for e in re.findall(r"\d+", ids_txt):
+            (spell_rows if kind == "spell" else at_rows).add((int(e), n))
+have_spell = {(int(i), n) for i, n in q("SELECT spell_id,ScriptName FROM spell_script_names")}
+have_at = {int(i) for i, n in q("SELECT entry,ScriptName FROM areatrigger_scripts")}
+
 sql = ["-- Rattachement des scripts de %s (commentaires d'enregistrement, sinon enumerations)" % folder]
+for e, n in sorted(spell_rows - have_spell):
+    sql.append("INSERT IGNORE INTO `spell_script_names` (spell_id, ScriptName) VALUES (%d, '%s');" % (e, n))
+for e, n in sorted(at_rows):
+    if e in have_at:
+        log.append("zone de declenchement %d deja scriptee, %s non rattache" % (e, n))
+        continue
+    sql.append("INSERT IGNORE INTO `areatrigger_scripts` (entry, ScriptName) VALUES (%d, '%s');" % (e, n))
 for (kind, e), cands in sorted(assign.items()):
     names = {c[0] for c in cands}
     if len(names) > 1:
