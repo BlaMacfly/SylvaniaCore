@@ -7,6 +7,8 @@
 **Le core C++ du royaume [La Légion de Sylvania](https://legendesylvania.com)**
 Émulateur de serveur *World of Warcraft®* — Legion 7.3.5
 
+🇫🇷 **Français** · 🇬🇧 [English](./README.en.md)
+
 [![Wiki](https://img.shields.io/badge/Wiki-documentation-0b7285?style=flat&logo=github)](https://github.com/BlaMacfly/SylvaniaCore/wiki)
 [![Discord contributeurs](https://img.shields.io/badge/Discord-Espace%20contributeurs-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/qmQBXbuXkx)
 [![License: GPL v2](https://img.shields.io/badge/License-GPLv2-blue.svg)](./LICENSE)
