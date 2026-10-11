@@ -457,8 +457,10 @@ Player::~Player()
     for (uint8 i = 0; i < VOID_STORAGE_MAX_SLOT; ++i)
         delete _voidStorageItems[i];
 
-    for (uint8 i = 0; i < PlayerPetDataStore.size(); i++)
-        delete PlayerPetDataStore[i];
+    // SylvaniaCore : index uint8 -> au-dela de 255 familiers, la boucle repartait de 0 et
+    // liberait deux fois les memes entrees (plantage a la deconnexion des bots chasseurs).
+    for (PlayerPetData* playerPetData : PlayerPetDataStore)
+        delete playerPetData;
 
     _battlePets.clear();
     _oldPetBattleSpellToMerge.clear();
@@ -20210,6 +20212,7 @@ void Player::LoadPetsFromDB(PreparedQueryResult result)
         if (slot < PET_SLOT_FIRST || slot > PET_SLOT_LAST)
         {
             TC_LOG_ERROR("sql.sql", "Player::LoadPetsFromDB: bad slot %u for pet %u!", slot, petId);
+            delete playerPetData;
             continue;
         }
 
@@ -20368,7 +20371,7 @@ void Player::QuestObjectiveSatisfy(uint32 objectId, uint32 amount, QuestObjectiv
 
 void Player::DeleteFromPlayerPetDataStore(uint32 petNumber)
 {
-    for (uint8 i = 0; i < PlayerPetDataStore.size(); ++i)
+    for (size_t i = 0; i < PlayerPetDataStore.size(); ++i)
     {
         if (PlayerPetDataStore[i]->PetId == petNumber)
         {

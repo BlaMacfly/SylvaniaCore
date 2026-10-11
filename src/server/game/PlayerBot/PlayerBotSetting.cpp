@@ -18,6 +18,7 @@
 #include "PlayerBotSetting.h"
 #include "ObjectMgr.h"
 #include "Pet.h"
+#include "DatabaseEnv.h"
 #include "WorldSession.h"
 #include "PlayerBotSession.h"
 #include "OnlineMgr.h"
@@ -1435,6 +1436,19 @@ bool PlayerBotSetting::CheckHunterPet(Player* player)
 		return false;
 	if (player->GetPet() == NULL && beastCreatureEntrys.size() > 0)
 	{
+		// SylvaniaCore : chaque re-niveau sans familier present apprivoisait une nouvelle bete
+		// sans jamais supprimer les precedentes ; toutes etaient rechargees au login. Le bot
+		// n en garde plus qu une seule.
+		if (QueryResult oldPets = CharacterDatabase.PQuery("SELECT id FROM character_pet WHERE owner = " UI64FMTD, player->GetGUID().GetCounter()))
+		{
+			do
+			{
+				uint32 oldPetId = oldPets->Fetch()[0].GetUInt32();
+				Pet::DeleteFromDB(oldPetId);
+				player->DeleteFromPlayerPetDataStore(oldPetId);
+			} while (oldPets->NextRow());
+		}
+
 		uint32 rndEntry = urand(0, beastCreatureEntrys.size() - 1);
 		Pet* pet = player->CreateTamedPetFrom(beastCreatureEntrys[rndEntry], 1515);
 		if (pet)
