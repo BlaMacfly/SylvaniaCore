@@ -62,6 +62,13 @@ bool PlayerBotSession::HasBGSchedule()
 bool PlayerBotSession::Update(uint32 diff, PacketFilter& updater)
 {
 	bool updateResult = WorldSession::Update(diff, updater);
+	// SylvaniaCore : Map::Update rappelle aussi cette methode (MapSessionFilter), depuis les
+	// threads de carte. Les schedules deconnectent, teleportent et touchent les files BG :
+	// avec MapUpdate.Threads > 1, des bots se deconnectaient en parallele et corrompaient le
+	// tas (plantage dans ~Player a l entree de la Vallee d Alterac / l Ile des Conquetes,
+	// ou des dizaines de bots quittent la file d un coup). Thread du monde uniquement.
+	if (!updater.ProcessUnsafe())
+		return updateResult;
 	ProcessNoWorld(diff);
 	m_LastCastTime -= diff;
 	if (m_LastCastTime <= 0)
