@@ -1,5 +1,9 @@
 #include "siege_of_orgrimmar.hpp"
 
+// Tireurs poses sur la route apres Galakras : ils abattent tout joueur a 100 m (Sniped,
+// ~200 000 degats) tant que Galakras vit. Meme entree que l'enum de boss_galakras.cpp.
+static constexpr uint32 NPC_KORKRON_ELITE_SNIPER_ROUTE = 72261;
+
 Position npcAfterShaOfPridePos2[7] =
 {
     { 750.75f, 1131.48f, 356.08f, 1.73f}, // Jaina
@@ -329,6 +333,13 @@ struct instance_siege_of_orgrimmar : public InstanceScript
             break;
         case NPC_GALAKRAS:
             galakrasGuid = creature->GetGUID();
+            break;
+        case NPC_KORKRON_ELITE_SNIPER_ROUTE:
+            // Galakras deja vaincu (instance rechargee) : plus de tireurs sur la route
+            if (GetBossState(DATA_GALAKRAS) == DONE)
+                creature->DespawnOrUnsummon(1);
+            else
+                korkronSniperGUIDs.push_back(creature->GetGUID());
             break;
         case NPC_WARLORD_ZAELA:
             zaelaGuid = creature->GetGUID();
@@ -727,6 +738,14 @@ struct instance_siege_of_orgrimmar : public InstanceScript
         case DATA_GALAKRAS:
             //if (state == DONE)
             //    SetEntranceLocation(EntranceTransferLoc::PRE_GALAKRAS);
+            if (state == DONE)
+            {
+                // La route vers le Mastodonte de fer s'ouvre (comme chez pandaria_5.4.8)
+                for (ObjectGuid const& sniperGuid : korkronSniperGUIDs)
+                    if (Creature* sniper = instance->GetCreature(sniperGuid))
+                        sniper->DespawnOrUnsummon();
+                korkronSniperGUIDs.clear();
+            }
             break;
         case DATA_IRON_JUGGERNAUT:
             //if (state == DONE)
@@ -1406,6 +1425,7 @@ private:
     // Second part
     ObjectGuid galakrasGuid;
     ObjectGuid zaelaGuid;
+    std::vector<ObjectGuid> korkronSniperGUIDs;
     ObjectGuid ironJuggernautGuid;
     ObjectGuid korkronDarkShamansGuid[MAX_KORKRON_DARK_SHAMANS];
     ObjectGuid generalNazgrimGuid;
