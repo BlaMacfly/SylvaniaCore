@@ -1294,7 +1294,10 @@ void Battleground::AddOrSetPlayerToCorrectBgGroup(Player* player, uint32 team)
         }
     }
 	
-	if (!player->HasAura(197912))
+	// SylvaniaCore : appele aussi depuis Player::LoadFromDB (reconnexion dans un BG en cours),
+	// avant que le joueur ait une carte -> ASSERT m_currMap dans Spell::Spell. L aura est
+	// reappliquee par la boucle periodique du BG des que le joueur est dans le monde.
+	if (player->IsInWorld() && !player->HasAura(197912))
         player->CastSpell(player, 197912, true);
 }
 
