@@ -11616,6 +11616,15 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
     if (isLootRewardAllowed && creature && creature->GetLootRecipient())
         player = creature->GetLootRecipient();
 
+    // Boss du Guide d'aventure : sans recompense de kill, pas de butin du tout.
+    // Trace rare par construction (un boss par rencontre), pour diagnostiquer les
+    // signalements « aucun butin ».
+    if (creature && sObjectMgr->GetCreatureTemplateJournalId(creature->GetEntry()))
+        TC_LOG_INFO("server.loot", "Butin du Guide : %s (entree %u, carte %u, difficulte %u) tue par %s | degats joueurs suffisants=%u | beneficiaire=%s",
+            creature->GetName().c_str(), creature->GetEntry(), creature->GetMapId(), uint32(creature->GetMap()->GetDifficultyID()),
+            GetName().c_str(), uint32(creature->IsDamageEnoughForLootingAndReward() ? 1 : 0),
+            player ? player->GetName().c_str() : "aucun");
+
     // Exploit fix
     if (creature && creature->IsPet() && creature->GetOwnerGUID().IsPlayer())
         isXpRewardAllowed = isLootRewardAllowed = false;
@@ -11683,6 +11692,11 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
 
                 if (uint32 journalEncounterId = sObjectMgr->GetCreatureTemplateJournalId(creature->GetCreatureTemplate()->Entry))
                 {
+                    // Boss sans lootid : FillLoot n'a pas fixe le contexte de la difficulte et
+                    // Loot::AddItem poserait les objets sans leur bonus (niveau d'objet de base).
+                    bool contextFromMap = !loot->GetItemContext();
+                    uint8 itemContext = contextFromMap ? GetMap()->GetDifficultyLootItemContext() : loot->GetItemContext();
+
                     if (auto items = sDB2Manager.GetJournalItemsByEncounter(journalEncounterId))
                     {
                         uint8 mapDifficultyMask = GetMap()->GetEncounterDifficultyMask();
@@ -11690,14 +11704,30 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
                         std::vector<JournalEncounterItemEntry const*> potentialItems;
                         for (JournalEncounterItemEntry const* item : *items)
                             if (item->IsValidDifficultyMask(mapDifficultyMask) &&
-                                (sDB2Manager.HasItemContext(item->ItemID, loot->GetItemContext()) ||
+                                (sDB2Manager.HasItemContext(item->ItemID, itemContext) ||
                                  !sDB2Manager.HasItemContext(item->ItemID)))
                                 potentialItems.push_back(item);
 
                         Trinity::Containers::RandomResize(potentialItems, 2);
 
                         for (JournalEncounterItemEntry const* item : potentialItems)
+                        {
+                            size_t itemCount = loot->items.size();
                             loot->AddItem(LootStoreItem(item->ItemID, LOOT_ITEM_TYPE_ITEM, 0, 10, 0, LOOT_MODE_DEFAULT, 0, 1, 1));
+
+                            // Meme traitement que la branche _itemContext de Loot::AddItem
+                            if (contextFromMap && itemContext && loot->items.size() > itemCount)
+                            {
+                                LootItem& lootItem = loot->items.back();
+                                lootItem.context = itemContext;
+                                std::set<uint32> bonusListIDs = sDB2Manager.GetItemBonusTree(lootItem.itemid, itemContext);
+                                lootItem.BonusListIDs.insert(lootItem.BonusListIDs.end(), bonusListIDs.begin(), bonusListIDs.end());
+                                Item::GenerateItemBonus(lootItem.itemid, 0, lootItem.BonusListIDs);
+                            }
+                        }
+
+                        TC_LOG_INFO("server.loot", "Butin du Guide : %s (entree %u) rencontre %u, contexte %u, %u objet(s) sur le corps",
+                            creature->GetName().c_str(), creature->GetEntry(), journalEncounterId, uint32(itemContext), uint32(loot->items.size()));
                     }
                 }
 

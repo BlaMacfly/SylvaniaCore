@@ -928,7 +928,12 @@ struct instance_siege_of_orgrimmar : public InstanceScript
     std::string GetSaveData()
     {
         std::ostringstream saveStream;
-        saveStream << "S O O " /*<< ReadSaveDataBossStates()*/ << GetEventData();
+        // Load() lit d'abord les DATA_MAX_BOSS_DATA etats de boss : sans eux, les evenements
+        // etaient relus comme etats (zealDied=3 rendait Galakras vaincu) et les boss tues
+        // ressuscitaient au rechargement de l'instance.
+        saveStream << "S O O ";
+        WriteSaveDataBossStates(saveStream);
+        saveStream << GetEventData();
 
         return saveStream.str();
     }

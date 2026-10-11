@@ -1591,6 +1591,39 @@ struct spell_area_immerseus_seeping_sha : public AreaTriggerAI
             if (!target->HasAura(Spells::SPELL_SEEPING_SHA_DMG))
                 l_Immerseus->CastSpell(target, Spells::SPELL_SEEPING_SHA_DMG, true);
     }
+
+    // 143286 n'a pas de duree : sans ce retrait, les degats suivaient le joueur apres la
+    // flaque et apres la rencontre. Aussi appele pour chaque joueur present quand la zone
+    // disparait (fin de rencontre, evade, phase de division).
+    void OnUnitExit(Unit* target) override
+    {
+        target->RemoveAurasDueToSpell(Spells::SPELL_SEEPING_SHA_DMG, at->GetCasterGuid());
+    }
+};
+
+/// Seeping Sha (degats) - 143286
+/// Filet de securite : un joueur qui quitte la carte dans la flaque (deconnexion, pierre de
+/// foyer) n'en sort jamais pour la zone, et l'aura sauvegardee revenait a chaque connexion.
+/// Retiree des que la rencontre n'est plus en cours (ou qu'Immerseus n'est plus sur la carte).
+class spell_immerseus_seeping_sha_dmg : public AuraScript
+{
+    PrepareAuraScript(spell_immerseus_seeping_sha_dmg);
+
+    void OnPeriodic(AuraEffect const* /*p_AurEff*/)
+    {
+        Unit* l_Immerseus = GetCaster();
+        InstanceScript* l_Instance = l_Immerseus ? l_Immerseus->GetInstanceScript() : nullptr;
+        if (!l_Instance || l_Instance->GetBossState(DATA_IMMERSEUS) != IN_PROGRESS)
+        {
+            PreventDefaultAction();
+            Remove();
+        }
+    }
+
+    void Register() override
+    {
+        OnEffectPeriodic += AuraEffectPeriodicFn(spell_immerseus_seeping_sha_dmg::OnPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DAMAGE);
+    }
 };
 
 /// Sha Corruption - 143579
@@ -1645,4 +1678,5 @@ void AddSC_boss_immerseus()
     RegisterAreaTriggerAI(spell_area_immerseus_swirl_target); // 143309
     RegisterAreaTriggerAI(spell_area_immerseus_seeping_sha);  // 143281
     RegisterAuraScript(spell_sha_corruption);   // 143579
+    RegisterAuraScript(spell_immerseus_seeping_sha_dmg); // 143286
 }
