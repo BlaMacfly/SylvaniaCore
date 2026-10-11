@@ -26,8 +26,10 @@ INSERT INTO `creature` (`guid`,`id`,`map`,`zoneId`,`areaId`,`spawnDifficulties`,
 --    teleportes (galakrasPlayersPos2[1] = 1767.58 -5265.74 6.97), face a eux.
 (290330008,72560,1136,6738,0,'14,15,16,17',0,0,0,-1,0,0,1764.5,-5263.5,6.97,5.65,604800,0,0,1,0,0,0,0,0,0,0,'',0,0),
 (290330009,72561,1136,6738,0,'14,15,16,17',0,0,0,-1,0,0,1765.0,-5268.5,6.97,0.82,604800,0,0,1,0,0,0,0,0,0,0,'',0,0),
---    Aethas Sunreaver : position pandaria_5.4.8 (quais)
-(290330010,73909,1136,6738,0,'14,15,16,17',0,0,0,-1,0,0,1432.52,-4899.54,11.4054,4.36251,604800,0,0,1,0,0,0,0,0,0,0,'',0,0),
+--    Aethas Sunreaver : il ouvre le Portail mineur (145531) a la scene 1, donc SUR le navire
+--    Horde, tourne vers le point d'arrivee des joueurs (la position pandaria_5.4.8 aux quais,
+--    utilisee d'abord, ouvrait le portail la-bas : signalement du 11/10 a 22h19).
+(290330010,73909,1136,6738,0,'14,15,16,17',0,0,0,-1,0,0,1761.5,-5266.0,6.97,0.0,604800,0,0,1,0,0,0,0,0,0,0,'',0,0),
 -- 3. Chefs Alliance : point du navire Alliance du script (galakrasNpcPos2[0]) ; Varian entre
 --    Jaina et le point d'arrivee des joueurs (galakrasPlayersPos2[0]).
 (290330011,72302,1136,6738,0,'14,15,16,17',0,0,0,-1,0,0,1360.96,-5404.39,10.32,4.89,604800,0,0,1,0,0,0,0,0,0,0,'',0,0),
@@ -52,7 +54,16 @@ UPDATE `creature_template` SET `gossip_menu_id` = 15803 WHERE `entry` = 72311;
 DELETE FROM `graveyard_zone` WHERE `ID` = 4575 AND `GhostZone` = 6738;
 INSERT INTO `graveyard_zone` (`ID`,`GhostZone`,`Faction`,`Comment`) VALUES (4575,6738,0,'Siege of Orgrimmar - Vale Raid GY');
 
+-- 6. Portail mineur -> quais : le portail (221522) lance 145524 sur le joueur, effet 252 vers
+--    une destination en base (TARGET_DEST_DB) qui n'existait pas : le clic ne faisait rien.
+--    Destination = « position at the docks » du script (galakrasPlayersPos2[2]) ; l'orientation
+--    1.664 est portee par le sort lui-meme.
+DELETE FROM `spell_target_position` WHERE `ID` = 145524 AND `EffectIndex` = 0;
+INSERT INTO `spell_target_position` (`ID`,`EffectIndex`,`MapID`,`PositionX`,`PositionY`,`PositionZ`,`VerifiedBuild`) VALUES
+(145524,0,1136,1440.49,-5015.87,12.11,0);
+
 -- Retour arriere :
+-- DELETE FROM `spell_target_position` WHERE `ID` = 145524 AND `EffectIndex` = 0;
 -- DELETE FROM `creature` WHERE `guid` BETWEEN 290330001 AND 290330012;
 -- DELETE FROM `gossip_menu` WHERE `MenuId` IN (15992, 15803);
 -- DELETE FROM `gossip_menu_option` WHERE `MenuId` IN (72560, 15992, 15803);

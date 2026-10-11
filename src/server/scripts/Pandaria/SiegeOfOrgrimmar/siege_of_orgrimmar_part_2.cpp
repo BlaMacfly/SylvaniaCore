@@ -1034,6 +1034,17 @@ class npc_siege_of_orgrimmar_korkron_cannon : public CreatureScript
                 isMineActivated = true;
             }
 
+            // Un canon detruit a l'attaque compte aussi (une seule fois) : les joueurs les
+            // abattaient sans les saboter et la scene 2 de Galakras ne venait jamais.
+            void JustDied(Unit* /*killer*/) override
+            {
+                if (isMineActivated)
+                    return;
+
+                isMineActivated = true;
+                SendCannonDestroyed();
+            }
+
         private:
 
             void SendCannonDestroyed()
