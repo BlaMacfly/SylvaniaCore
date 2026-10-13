@@ -2106,7 +2106,8 @@ void Player::ProcessDelayedOperations()
             if (teamID == PETBATTLE_TEAM_2)
                 std::swap(request.TeamPosition[PETBATTLE_TEAM_1], request.TeamPosition[PETBATTLE_TEAM_2]);
 
-            matchMakingRequest.PetBattleCenterPosition.m_positionZ = GetMap()->GetHeight(matchMakingRequest.PetBattleCenterPosition.GetPositionX(), matchMakingRequest.PetBattleCenterPosition.GetPositionZ(), MAX_HEIGHT);
+            // the ground height was asked at (X, Z) instead of (X, Y)
+            matchMakingRequest.PetBattleCenterPosition.m_positionZ = GetMap()->GetHeight(matchMakingRequest.PetBattleCenterPosition.GetPositionX(), matchMakingRequest.PetBattleCenterPosition.GetPositionY(), MAX_HEIGHT);
 
             GetSession()->SendPetBattleFinalizeLocation(&request);
 
@@ -6542,6 +6543,10 @@ void Player::CheckAreaExploreAndOutdoor()
             GetName().c_str(), GetGUID().ToString().c_str(), GetPositionX(), GetPositionY(), GetPositionZ(), GetMapId());
         return;
     }
+
+    // -1 for areas without an exploration bit: 1 << -1 set bit 31 of the first field
+    if (areaEntry->AreaBit < 0)
+        return;
 
     uint32 offset = areaEntry->AreaBit / 32;
 
@@ -13800,6 +13805,12 @@ void Player::SplitItem(uint16 src, uint16 dst, uint32 count)
         pSrcItem->SetState(ITEM_CHANGED, this);
         EquipItem(dest, pNewItem, true);
         AutoUnequipOffhandIfNeed();
+    }
+    else
+    {
+        // a destination none of the above takes (forged packet): the clone leaked each time
+        delete pNewItem;
+        SendEquipError(EQUIP_ERR_ITEM_NOT_FOUND, pSrcItem);
     }
 }
 
@@ -29581,9 +29592,20 @@ void Player::RefundItem(Item* item)
         {
             ItemPosCountVec dest;
             InventoryResult msg = CanStoreNewItem(NULL_BAG, NULL_SLOT, dest, itemid, count);
-            ASSERT(msg == EQUIP_ERR_OK); /// Already checked before
-            Item* it = StoreNewItem(dest, itemid, true);
-            SendNewItem(it, count, true, false, true);
+            // Each cost item was checked alone above, but two of them can each fit and not fit together:
+            // the ASSERT that stood here let any player stop the server. What no longer fits comes by mail.
+            if (msg == EQUIP_ERR_OK)
+            {
+                Item* it = StoreNewItem(dest, itemid, true);
+                SendNewItem(it, count, true, false, true);
+            }
+            else if (Item* mailItem = Item::CreateItem(itemid, count, this))
+            {
+                mailItem->SaveToDB(trans);
+                MailDraft draft("Item refund", "");
+                draft.AddItem(mailItem);
+                draft.SendMailTo(trans, MailReceiver(this, GetGUID().GetCounter()), MailSender(this, MAIL_STATIONERY_GM));
+            }
         }
     }
 

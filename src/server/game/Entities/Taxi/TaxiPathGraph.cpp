@@ -142,6 +142,10 @@ std::size_t TaxiPathGraph::GetCompleteNodeRoute(TaxiNodesEntry const* from, Taxi
     else
     {
         shortestPath.clear();
+        // nodes without any path are not in the graph: the client chooses the destination
+        if (GetVertexIDFromNodeID(from) >= boost::num_vertices(m_graph) || GetVertexIDFromNodeID(to) >= boost::num_vertices(m_graph))
+            return 0;
+
         std::vector<vertex_descriptor> p(boost::num_vertices(m_graph));
         std::vector<uint32> d(boost::num_vertices(m_graph));
 

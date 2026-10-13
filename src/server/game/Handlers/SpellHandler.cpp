@@ -455,6 +455,14 @@ void WorldSession::HandleUpdateSpellVisualOpcode(WorldPackets::Spells::UpdateSpe
 {
     if (Aura* aura = GetPlayer()->GetAura(packet.SpellID))
     {
+        // the visual is broadcast to everyone around: it must be one of this spell's own visuals
+        if (packet.SpellXSpellVisualId)
+        {
+            SpellXSpellVisualEntry const* visual = sSpellXSpellVisualStore.LookupEntry(packet.SpellXSpellVisualId);
+            if (!visual || uint32(visual->SpellID) != aura->GetId())
+                return;
+        }
+
         aura->SetSpellVisual(packet.SpellXSpellVisualId);
         aura->SetNeedClientUpdateForTargets();
     }
@@ -600,9 +608,17 @@ void WorldSession::HandleMirrorImageDataRequest(WorldPackets::Spells::GetMirrorI
     }
 }
 
+// The client only aims its own missiles: any unit's current spell could be redirected otherwise
+static bool IsOwnMissileCaster(Player* player, Unit const* caster)
+{
+    return caster == player || caster == player->GetUnitBeingMoved() || caster == player->GetCharm() || caster == player->GetGuardianPet();
+}
+
 void WorldSession::HandleMissileTrajectoryCollision(WorldPackets::Spells::MissileTrajectoryCollision& packet)
 {
     Unit* caster = ObjectAccessor::GetUnit(*_player, packet.Target);
+    if (caster && !IsOwnMissileCaster(_player, caster))
+        return;
     if (!caster)
         return;
 
@@ -624,6 +640,9 @@ void WorldSession::HandleMissileTrajectoryCollision(WorldPackets::Spells::Missil
 void WorldSession::HandleUpdateMissileTrajectory(WorldPackets::Spells::UpdateMissileTrajectory& packet)
 {
     Unit* caster = ObjectAccessor::GetUnit(*_player, packet.Guid);
+    if (caster && !IsOwnMissileCaster(_player, caster))
+        return;
+
     Spell* spell = caster ? caster->GetCurrentSpell(CURRENT_GENERIC_SPELL) : NULL;
     if (!spell || spell->m_spellInfo->Id != uint32(packet.SpellID) || !spell->m_targets.HasDst() || !spell->m_targets.HasSrc())
         return;

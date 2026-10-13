@@ -604,6 +604,10 @@ void WorldSession::HandleMoveSplineDoneOpcode(WorldPackets::Movement::MoveSpline
                 FlightPathMovementGenerator* flight = (FlightPathMovementGenerator*)(GetPlayer()->GetMotionMaster()->top());
 
                 flight->SetCurrentNodeAfterTeleport();
+                // the teleport landed on the last node: indexing the path read past its end
+                if (flight->HasArrived())
+                    return;
+
                 TaxiPathNodeEntry const* node = flight->GetPath()[flight->GetCurrentNode()];
                 flight->SkipCurrentNode();
 

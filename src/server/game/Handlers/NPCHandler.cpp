@@ -187,16 +187,20 @@ void WorldSession::SendTrainerListLegacy(ObjectGuid guid, uint32 index)
                 ++maxReq;
             }
 
-            if (maxReq == 2)
+            if (maxReq >= 2)
                 break;
 
+            // several required spells wrote past the 3 slots of the packet array
             for (auto const& requirePair : sSpellMgr->GetSpellsRequiredForSpellBounds(tSpell->ReqAbility[i]))
             {
+                if (maxReq >= spell.ReqAbility.size())
+                    break;
+
                 spell.ReqAbility[maxReq] = requirePair.second;
                 ++maxReq;
             }
 
-            if (maxReq == 2)
+            if (maxReq >= 2)
                 break;
         }
 

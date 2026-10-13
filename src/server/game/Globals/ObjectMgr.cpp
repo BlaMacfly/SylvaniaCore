@@ -3838,6 +3838,12 @@ void ObjectMgr::LoadPlayerInfo()
             }
 
             uint32 current_level = fields[2].GetUInt8();
+            if (!current_level)
+            {
+                TC_LOG_ERROR("sql.sql", "Wrong level 0 in `player_levelstats` table (race %u, class %u), ignoring.", current_race, current_class);
+                continue;
+            }
+
             if (current_level > sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
             {
                 if (current_level > STRONG_MAX_LEVEL)        // hardcoded level maximum

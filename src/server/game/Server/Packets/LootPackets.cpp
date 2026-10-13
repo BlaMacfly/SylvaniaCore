@@ -71,6 +71,10 @@ void WorldPackets::Loot::LootItem::Read()
     uint32 Count;
     _worldPacket >> Count;
 
+    // client-supplied count, each entry takes at least 3 bytes (packed guid mask + slot): bad_alloc is not caught
+    if (Count > (_worldPacket.size() - _worldPacket.rpos()) / 3)
+        throw ByteBufferPositionException(_worldPacket.rpos(), _worldPacket.size(), size_t(Count) * 3);
+
     Loot.resize(Count);
     for (uint32 i = 0; i < Count; ++i)
     {

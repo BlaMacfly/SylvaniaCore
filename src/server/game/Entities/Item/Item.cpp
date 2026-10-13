@@ -1475,6 +1475,7 @@ bool Item::GemsFitSockets() const
     for (ItemDynamicFieldGems const& gemData : GetGems())
     {
         SocketColor color = GetTemplate()->GetSocketColor(gemSlot);
+        ++gemSlot;      // never advanced: every gem was checked against the first socket
         if (!color) // no socket slot
             continue;
 

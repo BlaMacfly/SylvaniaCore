@@ -384,6 +384,10 @@ void WorldPackets::Query::QueryQuestCompletionNPCs::Read()
     uint32 questCount = 0;
 
     _worldPacket >> questCount;
+    // client-supplied count: a huge value made resize() throw bad_alloc, which nothing catches
+    if (questCount > (_worldPacket.size() - _worldPacket.rpos()) / sizeof(int32))
+        throw ByteBufferPositionException(_worldPacket.rpos(), _worldPacket.size(), questCount * sizeof(int32));
+
     QuestCompletionNPCs.resize(questCount);
 
     for (int32& QuestID : QuestCompletionNPCs)

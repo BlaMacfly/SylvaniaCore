@@ -101,7 +101,7 @@ void WorldSession::HandleAutostoreLootItemOpcode(WorldPackets::Loot::LootItem& p
         else if (lguid.IsCorpse())
         {
             Corpse* bones = ObjectAccessor::GetCorpse(*player, lguid);
-            if (!bones)
+            if (!bones || !bones->IsWithinDistInMap(player, AELootCreatureCheck::LootDistance))
             {
                 player->SendLootRelease(lguid);
                 continue;

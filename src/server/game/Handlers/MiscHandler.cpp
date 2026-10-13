@@ -427,6 +427,18 @@ void WorldSession::HandleSetSelectionOpcode(WorldPackets::Misc::SetSelection& pa
 
 void WorldSession::HandleStandStateChangeOpcode(WorldPackets::Misc::StandStateChange& packet)
 {
+    // the client may only stand, sit, sleep or kneel; any other value (dead, submerged...) was applied as sent
+    switch (packet.StandState)
+    {
+        case UNIT_STAND_STATE_STAND:
+        case UNIT_STAND_STATE_SIT:
+        case UNIT_STAND_STATE_SLEEP:
+        case UNIT_STAND_STATE_KNEEL:
+            break;
+        default:
+            return;
+    }
+
     _player->SetStandState(packet.StandState);
 }
 
@@ -522,6 +534,18 @@ void WorldSession::HandleAreaTriggerOpcode(WorldPackets::AreaTrigger::AreaTrigge
 
     if (sScriptMgr->OnAreaTrigger(player, atEntry, packet.Entered))
         return;
+
+    // A leave is not checked against the radius (the client reports it from wherever the player ended up), so it
+    // must never reach the quest, tavern and teleport code below: a forged leave teleported from anywhere.
+    if (!packet.Entered)
+    {
+        if (Battleground* bg = player->GetBattleground())
+            bg->HandleAreaTrigger(player, packet.AreaTriggerID, false);
+
+        if (OutdoorPvP* pvp = player->GetOutdoorPvP())
+            pvp->HandleAreaTrigger(_player, packet.AreaTriggerID, false);
+        return;
+    }
 
     if (player->IsAlive())
     {

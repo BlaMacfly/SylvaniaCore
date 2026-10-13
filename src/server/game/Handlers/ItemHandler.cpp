@@ -1192,6 +1192,11 @@ void WorldSession::HandleUseCritterItem(WorldPackets::Item::UseCritterItem& useC
 
     int32 spellToLearn = item->GetTemplate()->Effects[1]->SpellID;
 
+    // Battle pets are added when their summon spell is learned (Player::addSpell -> AddBattlePet): the item was
+    // destroyed here without teaching anything. A spell already known adds nothing, as before.
+    if (spellToLearn > 0 && sDB2Manager.GetSpeciesBySpell(uint32(spellToLearn)) && !_player->HasSpell(uint32(spellToLearn)))
+        _player->LearnSpell(uint32(spellToLearn), false);
+
     _player->DestroyItem(item->GetBagSlot(), item->GetSlot(), true);
 }
 

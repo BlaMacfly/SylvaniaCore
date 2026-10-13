@@ -59,6 +59,10 @@ void WorldPackets::ClientConfig::UserClientUpdateAccountData::Read()
     DataType = _worldPacket.ReadBits(3);
 
     uint32 compressedSize = _worldPacket.read<uint32>();
+    // client-supplied size: never allocate more than what the packet carries (bad_alloc is not caught)
+    if (compressedSize > _worldPacket.size() - _worldPacket.rpos())
+        throw ByteBufferPositionException(_worldPacket.rpos(), _worldPacket.size(), compressedSize);
+
     if (compressedSize)
     {
         CompressedData.resize(compressedSize);

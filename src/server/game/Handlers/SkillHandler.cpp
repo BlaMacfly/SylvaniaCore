@@ -140,10 +140,11 @@ void WorldSession::HandleShowTradeSkill(WorldPackets::Misc::ShowTradeSkill& pack
         if (skillLine->ParentSkillLineID != packet.SkillLineID)
             continue;
 
-        if (!player->HasSkill(skillLine->ParentSkillLineID))
+        // the child skill line itself: testing the parent again only re-inserted packet.SkillLineID
+        if (!player->HasSkill(skillLine->ID))
             continue;
 
-        relatedSkills.insert(skillLine->ParentSkillLineID);
+        relatedSkills.insert(skillLine->ID);
     }
 
     std::set<uint32> profSpells;

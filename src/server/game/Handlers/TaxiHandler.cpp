@@ -235,6 +235,10 @@ void WorldSession::HandleTaxiRequestEarlyLanding(WorldPackets::Taxi::TaxiRequest
         if (GetPlayer()->m_taxi.RequestEarlyLanding())
         {
             FlightPathMovementGenerator* flight = static_cast<FlightPathMovementGenerator*>(GetPlayer()->GetMotionMaster()->top());
+            // a request at the last node indexed the path past its end
+            if (flight->HasArrived())
+                return;
+
             flight->LoadPath(GetPlayer(), flight->GetPath()[flight->GetCurrentNode()]->NodeIndex);
             flight->Reset(GetPlayer());
         }
