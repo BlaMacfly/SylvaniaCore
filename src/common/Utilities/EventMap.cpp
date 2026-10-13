@@ -206,7 +206,7 @@ uint32 EventMap::GetTimeUntilEvent(uint32 eventId) const
 {
     for (EventStore::const_iterator itr = _eventMap.begin(); itr != _eventMap.end(); ++itr)
         if (eventId == (itr->second & 0x00000000FFFFFFFF))
-            return itr->first - _time;
+            return itr->first > _time ? itr->first - _time : 0;    // an event already due wrapped around
 
     return std::numeric_limits<uint32>::max();
 }

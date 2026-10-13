@@ -1846,7 +1846,8 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
             ev.target = e.target;
             ev.action = ac;
             InitTimer(ev);
-            mStoredEvents.push_back(ev);
+            // may run while OnUpdate walks mStoredEvents: a push_back there reallocated the vector under it
+            mPendingStoredEvents.push_back(ev);
             break;
         }
         case SMART_ACTION_TRIGGER_TIMED_EVENT:
@@ -2082,7 +2083,8 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
         }
         case SMART_ACTION_CALL_RANDOM_RANGE_TIMED_ACTIONLIST:
         {
-            uint32 id = urand(e.action.randTimedActionList.entry1, e.action.randTimedActionList.entry2);
+            // urand asserts min <= max: two entries given in the wrong order in the database stopped the server
+            uint32 id = urand(std::min(e.action.randTimedActionList.entry1, e.action.randTimedActionList.entry2), std::max(e.action.randTimedActionList.entry1, e.action.randTimedActionList.entry2));
             if (e.GetTargetType() == SMART_TARGET_NONE)
             {
                 TC_LOG_ERROR("sql.sql", "SmartScript: Entry " SI64FMTD " SourceType %u Event %u Action %u is using TARGET_NONE(0) for Script9 target. Please correct target_type in database.", e.entryOrGuid, e.GetScriptType(), e.GetEventType(), e.GetActionType());
@@ -2724,6 +2726,9 @@ void SmartScript::ProcessAction(SmartScriptHolder& e, Unit* unit, uint32 var0, u
         }
         case SMART_ACTION_CIRCLE_PATH:
         {
+            if (!me)    // the script of a game object or an area trigger
+                break;
+
             if (ObjectList* targets = GetTargets(e, unit))
             {
                 for (ObjectList::const_iterator itr = targets->begin(); itr != targets->end(); ++itr)
@@ -4085,6 +4090,15 @@ bool SmartScript::CheckTimer(SmartScriptHolder const& e) const
     return e.active;
 }
 
+void SmartScript::AddPendingStoredEvents()
+{
+    if (mPendingStoredEvents.empty())
+        return;
+
+    mStoredEvents.insert(mStoredEvents.end(), mPendingStoredEvents.begin(), mPendingStoredEvents.end());
+    mPendingStoredEvents.clear();
+}
+
 void SmartScript::InstallEvents()
 {
     if (!mInstallEvents.empty())
@@ -4172,6 +4186,8 @@ void SmartScript::OnUpdate(uint32 const diff)
     for (SmartAIEventList::iterator i = mEvents.begin(); i != mEvents.end(); ++i)
         UpdateTimer(*i, diff);
 
+    AddPendingStoredEvents();
+
     if (!mStoredEvents.empty())
         for (SmartAIEventList::iterator i = mStoredEvents.begin(); i != mStoredEvents.end(); ++i)
              UpdateTimer(*i, diff);
@@ -4194,12 +4210,17 @@ void SmartScript::OnUpdate(uint32 const diff)
     if (needCleanup)
         mTimedActionList.clear();
 
+    AddPendingStoredEvents();
+
     if (!mRemIDs.empty())
     {
         for (std::list<uint32>::iterator i = mRemIDs.begin(); i != mRemIDs.end(); ++i)
         {
              RemoveStoredEvent((*i));
         }
+
+        // never cleared: a removed timed event was removed again at every update, so it could not be created anew
+        mRemIDs.clear();
     }
     if (mUseTextTimer && me)
     {

@@ -468,9 +468,13 @@ void LFGMgr::Update(uint32 diff)
 
     if (lastProposalId != m_lfgProposalId)
     {
-        // FIXME lastProposalId ? lastProposalId +1 ?
-        for (LfgProposalContainer::const_iterator itProposal = ProposalsStore.find(m_lfgProposalId); itProposal != ProposalsStore.end(); ++itProposal)
+        // every proposal created this update (ids are pre-incremented: find(m_lfgProposalId) only reached the
+        // last one), with the next iterator taken first since UpdateProposal may erase the current one
+        for (LfgProposalContainer::const_iterator itProposal = ProposalsStore.upper_bound(lastProposalId), next; itProposal != ProposalsStore.end(); itProposal = next)
         {
+            next = itProposal;
+            ++next;
+
             uint32 proposalId = itProposal->first;
             LfgProposal& proposal = ProposalsStore[proposalId];
 
@@ -527,6 +531,8 @@ void LFGMgr::JoinLfg(Player* player, uint8 roles, LfgDungeonSet& dungeons)
 {
     if (!player || !player->GetSession() || dungeons.empty())
         return;
+
+    roles &= (PLAYER_ROLE_LEADER | PLAYER_ROLE_TANK | PLAYER_ROLE_HEALER | PLAYER_ROLE_DAMAGE);  // sent by the client
 
     Group* grp = player->GetGroup();
     ObjectGuid guid = player->GetGUID();

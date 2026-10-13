@@ -134,6 +134,7 @@ class TC_GAME_API SmartScript
 
         uint32 mPathId;
         SmartAIEventList mStoredEvents;
+        SmartAIEventList mPendingStoredEvents;  // created while mStoredEvents is being walked
         std::list<uint32> mRemIDs;
 
         uint32 mTextTimer;
@@ -143,6 +144,7 @@ class TC_GAME_API SmartScript
 
         SMARTAI_TEMPLATE mTemplate;
         void InstallEvents();
+        void AddPendingStoredEvents();
 
         void RemoveStoredEvent(uint32 id);
 };

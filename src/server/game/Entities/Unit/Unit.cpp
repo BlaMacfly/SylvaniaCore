@@ -3880,6 +3880,8 @@ void Unit::RemoveOwnedAuras(uint32 spellId, std::function<bool(Aura const*)> con
         if (check(iter->second))
         {
             RemoveOwnedAura(iter);
+            // RemoveOwnedAura hands the iterator back at begin(): the check then ran on the auras of other spells
+            iter = m_ownedAuras.lower_bound(spellId);
             continue;
         }
         ++iter;
@@ -3899,7 +3901,8 @@ void Unit::RemoveAurasByType(AuraType auraType, std::function<bool(AuraApplicati
         {
             uint32 removedAuras = m_removedAurasCount;
             RemoveAura(aurApp);
-            if (m_removedAurasCount > removedAuras + 1)
+            // iter may point to another effect of the same aura, erased with it
+            if (m_removedAurasCount > removedAuras)
                 iter = m_modAuras[auraType].begin();
         }
     }
@@ -4070,7 +4073,8 @@ void Unit::RemoveAurasByType(AuraType auraType, ObjectGuid casterGUID, Aura* exc
         {
             uint32 removedAuras = m_removedAurasCount;
             RemoveAura(aurApp);
-            if (m_removedAurasCount > removedAuras + 1)
+            // iter may point to another effect of the same aura, erased with it
+            if (m_removedAurasCount > removedAuras)
                 iter = m_modAuras[auraType].begin();
         }
     }
@@ -5606,7 +5610,17 @@ FactionTemplateEntry const* Unit::GetFactionTemplateEntry() const
         if (Player const* player = ToPlayer())
             TC_LOG_ERROR("entities.unit", "Player %s has invalid faction (faction template id) #%u", player->GetName().c_str(), getFaction());
         else if (Creature const* creature = ToCreature())
-            TC_LOG_ERROR("entities.unit", "Creature (template id: %u) has invalid faction (faction template id) #%u", creature->GetCreatureTemplate()->Entry, getFaction());
+        {
+            // a bad faction set by a script or the database stopped the whole server: friendly to all instead,
+            // logged once per creature entry (this is read at every reaction check)
+            static thread_local uint32 lastLoggedEntry = 0;
+            if (creature->GetEntry() != lastLoggedEntry)
+            {
+                lastLoggedEntry = creature->GetEntry();
+                TC_LOG_ERROR("entities.unit", "Creature (template id: %u) has invalid faction (faction template id) #%u, using 35", creature->GetCreatureTemplate()->Entry, getFaction());
+            }
+            return sFactionTemplateStore.LookupEntry(35);
+        }
         else
             TC_LOG_ERROR("entities.unit", "Unit (name=%s, type=%u) has invalid faction (faction template id) #%u", GetName().c_str(), uint32(GetTypeId()), getFaction());
 
@@ -13895,7 +13909,10 @@ void Unit::StopAttackFaction(uint32 faction_id)
     {
         if ((*itr)->GetFactionTemplateEntry()->Faction == faction_id)
         {
-            (*itr)->AttackStop();
+            // an attacker no longer attacking this unit is not removed by AttackStop: the restart found it forever
+            Unit* attacker = *itr;
+            if (!attacker->AttackStop())
+                _removeAttacker(attacker);
             itr = attackers.begin();
         }
         else

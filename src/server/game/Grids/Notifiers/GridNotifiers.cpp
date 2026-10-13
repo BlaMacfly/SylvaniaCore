@@ -69,7 +69,8 @@ void VisibleNotifier::SendToSelf()
 
         if (it->IsPlayer())
         {
-            Player* player = ObjectAccessor::FindPlayer(*it);
+            // same map only: a player who left for another map is updated by that map's thread
+            Player* player = ObjectAccessor::GetPlayer(i_player, *it);
             if (player && !player->isNeedNotify(NOTIFY_VISIBILITY_CHANGED))
                 player->UpdateVisibilityOf(&i_player);
         }

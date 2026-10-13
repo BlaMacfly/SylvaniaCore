@@ -77,7 +77,8 @@ void PetAI::_stopAttack()
 
     me->AttackStop();
     me->InterruptNonMeleeSpells(false);
-    me->GetCharmInfo()->SetIsCommandAttack(false);
+    if (CharmInfo* charmInfo = me->GetCharmInfo())     // gone once the pet is released
+        charmInfo->SetIsCommandAttack(false);
     ClearCharmInfoFlags();
     HandleReturnMovement();
 }

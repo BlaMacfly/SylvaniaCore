@@ -1674,15 +1674,15 @@ class TC_GAME_API ObjectMgr
         uint32 GetScriptIdForGarrison(uint32 siteLevelId);
 
     private:
-        // first free id for selected id type
-        uint32 _auctionId;
-        uint64 _equipmentSetGuid;
-        uint32 _itemTextId;
-        uint32 _mailId;
-        uint32 _hiPetNumber;
-        uint64 _voidItemId;
-        uint64 _creatureSpawnId;
-        uint64 _gameObjectSpawnId;
+        // first free id for selected id type; atomic, the map threads draw them at the same time
+        std::atomic<uint32> _auctionId;
+        std::atomic<uint64> _equipmentSetGuid;
+        std::atomic<uint32> _itemTextId;
+        std::atomic<uint32> _mailId;
+        std::atomic<uint32> _hiPetNumber;
+        std::atomic<uint64> _voidItemId;
+        std::atomic<uint64> _creatureSpawnId;
+        std::atomic<uint64> _gameObjectSpawnId;
 
         // first free low guid for selected guid type
         template<HighGuid high>

@@ -19,6 +19,7 @@
 #define OBJECTGUID_H
 
 #include "Define.h"
+#include <atomic>
 #include <deque>
 #include <functional>
 #include <list>
@@ -358,7 +359,8 @@ public:
 
 protected:
     static void HandleCounterOverflow(HighGuid high);
-    uint64 _nextGuid;
+    // every map runs in its own thread and the global generators (items...) are shared: two maps drew the same guid
+    std::atomic<uint64> _nextGuid;
 };
 
 template<HighGuid high>
