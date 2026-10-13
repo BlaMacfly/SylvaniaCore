@@ -324,7 +324,7 @@ DEFINE_DB2_SET_COMPARATOR(ChrClassesXPowerTypesEntry)
 struct ItemLevelSelectorQualityEntryComparator
 {
     bool operator()(ItemLevelSelectorQualityEntry const* left, ItemLevelSelectorQualityEntry const* right) const { return Compare(left, right); }
-    bool operator()(ItemLevelSelectorQualityEntry const* left, ItemQualities quality) const { return left->Quality < quality; }
+    bool operator()(ItemLevelSelectorQualityEntry const* left, ItemQualities quality) const { return left->Quality > quality; }   // the set is sorted by descending quality: with < every selector got the epic bonus
     static bool Compare(ItemLevelSelectorQualityEntry const* left, ItemLevelSelectorQualityEntry const* right);
 };
 

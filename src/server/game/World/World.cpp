@@ -3644,7 +3644,30 @@ void World::InitWeeklyQuestResetTime()
 {
     time_t wstime = sWorld->getWorldState(WS_WEEKLY_QUEST_RESET_TIME);
     time_t curtime = time(NULL);
-    m_NextWeeklyQuestReset = wstime < curtime ? curtime : wstime;
+    // a reset missed while the server was down runs at once; otherwise the next one is on the configured day and hour
+    // (the stored time used to drift to the hour of a late start, and kept it week after week)
+    m_NextWeeklyQuestReset = wstime < curtime ? curtime : std::min(wstime, GetNextWeeklyResetTime(curtime));
+}
+
+// Next weekly reset strictly after 'after': day Currency.ResetDay (0 = Sunday) at Currency.ResetHour, server local time.
+// mktime ignores tm_wday, so the day is added to tm_mday by hand.
+time_t World::GetNextWeeklyResetTime(time_t after) const
+{
+    tm localTm;
+    localtime_r(&after, &localTm);
+    localTm.tm_mday += (int32(getIntConfig(CONFIG_CURRENCY_RESET_DAY)) - localTm.tm_wday + 7) % 7;
+    localTm.tm_hour = getIntConfig(CONFIG_CURRENCY_RESET_HOUR);
+    localTm.tm_min = 0;
+    localTm.tm_sec = 0;
+    localTm.tm_isdst = -1;
+    time_t reset = mktime(&localTm);
+    if (reset <= after)
+    {
+        localTm.tm_mday += 7;
+        localTm.tm_isdst = -1;
+        reset = mktime(&localTm);
+    }
+    return reset;
 }
 
 void World::InitDailyQuestResetTime(bool loading)
@@ -3751,22 +3774,9 @@ void World::InitCurrencyResetTime()
     if (!currencytime)
         m_NextCurrencyReset = time(NULL);         // game time not yet init
 
-    // generate time by config
+    // generate time by config (setting tm_wday had no effect on mktime: the reset fell on the day of the first start)
     time_t curTime = time(NULL);
-    tm localTm;
-    localtime_r(&curTime, &localTm);
-
-    localTm.tm_wday = getIntConfig(CONFIG_CURRENCY_RESET_DAY);
-    localTm.tm_hour = getIntConfig(CONFIG_CURRENCY_RESET_HOUR);
-    localTm.tm_min = 0;
-    localTm.tm_sec = 0;
-
-    // current week reset time
-    time_t nextWeekResetTime = mktime(&localTm);
-
-    // next reset time before current moment
-    if (curTime >= nextWeekResetTime)
-        nextWeekResetTime += getIntConfig(CONFIG_CURRENCY_RESET_INTERVAL) * DAY;
+    time_t nextWeekResetTime = GetNextWeeklyResetTime(curTime);
 
     // normalize reset time
     m_NextCurrencyReset = currencytime < curTime ? nextWeekResetTime - getIntConfig(CONFIG_CURRENCY_RESET_INTERVAL) * DAY : nextWeekResetTime;
@@ -3831,7 +3841,11 @@ void World::ResetCurrencyWeekCap()
         if (itr->second->GetPlayer())
             itr->second->GetPlayer()->ResetCurrencyWeekCap();
 
-    m_NextCurrencyReset = time_t(m_NextCurrencyReset + DAY * getIntConfig(CONFIG_CURRENCY_RESET_INTERVAL));
+    // a weekly interval follows the configured day and hour, across daylight saving changes too
+    if (getIntConfig(CONFIG_CURRENCY_RESET_INTERVAL) == 7)
+        m_NextCurrencyReset = GetNextWeeklyResetTime(time(NULL));
+    else
+        m_NextCurrencyReset = time_t(m_NextCurrencyReset + DAY * getIntConfig(CONFIG_CURRENCY_RESET_INTERVAL));
     sWorld->setWorldState(WS_CURRENCY_RESET_TIME, uint32(m_NextCurrencyReset));
 }
 
@@ -3889,7 +3903,7 @@ void World::ResetWeeklyQuests()
         if (itr->second->GetPlayer())
             itr->second->GetPlayer()->ResetWeeklyQuestStatus();
 
-    m_NextWeeklyQuestReset = time_t(m_NextWeeklyQuestReset + WEEK);
+    m_NextWeeklyQuestReset = GetNextWeeklyResetTime(time(NULL));
     sWorld->setWorldState(WS_WEEKLY_QUEST_RESET_TIME, uint32(m_NextWeeklyQuestReset));
 
     // change available weeklies

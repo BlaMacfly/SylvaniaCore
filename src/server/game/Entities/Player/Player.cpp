@@ -7362,7 +7362,8 @@ void Player::ModifyCurrency(uint32 id, int32 count, bool printLog/* = true*/, bo
     CurrencyTypesEntry const* currency = sCurrencyTypesStore.LookupEntry(id);
     ASSERT(currency);
 
-    if (!ignoreMultipliers)
+    // gains only: the aura also scaled the costs paid in this currency
+    if (!ignoreMultipliers && count > 0)
         count *= GetTotalAuraMultiplierByMiscValue(SPELL_AURA_MOD_CURRENCY_GAIN, id);
 
     uint32 oldTotalCount = 0;
@@ -22617,8 +22618,9 @@ void Player::ResetInstances(uint8 method, bool isRaid, bool isLegacy)
 
         if (method == INSTANCE_RESET_ALL)
         {
-            // the "reset all instances" method can only reset normal maps
-            if (entry->IsRaid() || diff == DIFFICULTY_HEROIC)
+            // since Legion only raids and mythic dungeons keep a lockout: normal and heroic dungeons reset freely
+            // (heroic was a daily lockout up to Wrath)
+            if (entry->IsRaid() || diff == DIFFICULTY_MYTHIC || diff == DIFFICULTY_MYTHIC_KEYSTONE)
             {
                 ++itr;
                 continue;
@@ -28788,7 +28790,7 @@ void Player::_SaveBGData(CharacterDatabaseTransaction& trans)
     stmt->setUInt16(7, m_bgData.joinPos.GetMapId());
     stmt->setUInt16(8, m_bgData.taxiPath[0]);
     stmt->setUInt16(9, m_bgData.taxiPath[1]);
-    stmt->setUInt16(10, m_bgData.mountSpell);
+    stmt->setUInt32(10, m_bgData.mountSpell);         // Legion mounts are above 65535: on 16 bits a relog in a battleground gave back another spell
     trans->Append(stmt);
 }
 

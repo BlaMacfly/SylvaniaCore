@@ -2255,8 +2255,9 @@ void Group::ResetInstances(uint8 method, bool isRaid, bool isLegacy, Player* Sen
 
         if (method == INSTANCE_RESET_ALL)
         {
-            // the "reset all instances" method can only reset normal maps
-            if (entry->IsRaid() || diff == DIFFICULTY_HEROIC)
+            // since Legion only raids and mythic dungeons keep a lockout: normal and heroic dungeons reset freely
+            // (heroic was a daily lockout up to Wrath)
+            if (entry->IsRaid() || diff == DIFFICULTY_MYTHIC || diff == DIFFICULTY_MYTHIC_KEYSTONE)
             {
                 ++itr;
                 continue;

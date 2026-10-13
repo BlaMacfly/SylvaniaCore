@@ -846,6 +846,7 @@ class TC_GAME_API World
 
         void InitDailyQuestResetTime(bool loading = true);
         void InitWeeklyQuestResetTime();
+        time_t GetNextWeeklyResetTime(time_t after) const;
         void InitMonthlyQuestResetTime();
         void InitRandomBGResetTime();
         void InitGuildResetTime();
