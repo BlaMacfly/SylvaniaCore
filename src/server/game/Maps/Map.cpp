@@ -3838,6 +3838,11 @@ void InstanceMap::PermBindAllPlayers()
     if (!IsDungeon())
         return;
 
+    // Legion : seuls les raids et les donjons mythiques verrouillent ; un lien permanent sur un donjon normal ou
+    // heroique (ou une cle mythique) faisait refuser le donjon par la recherche de groupe jusqu'au reset
+    if (!IsRaid() && GetDifficultyID() != DIFFICULTY_MYTHIC)
+        return;
+
     InstanceSave* save = sInstanceSaveMgr->GetInstanceSave(GetInstanceId());
     if (!save)
     {
