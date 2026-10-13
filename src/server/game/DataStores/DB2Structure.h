@@ -765,6 +765,17 @@ struct CinematicSequencesEntry
     uint16 Camera[8];
 };
 
+// Legionfall buildings of the Broken Shore (7.2)
+struct ContributionEntry
+{
+    LocalizedString* Description;
+    LocalizedString* Name;
+    uint32 ID;
+    int32 ManagedWorldStateInputID;
+    int32 UiTextureAtlasMemberID[4];
+    int32 OrderIndex;
+};
+
 struct ConversationLineEntry
 {
     uint32 ID;
@@ -2229,6 +2240,37 @@ struct LockEntry
 
         return false;
     }
+};
+
+struct ManagedWorldStateEntry
+{
+    int32 CurrentStageWorldStateID;
+    int32 ProgressWorldStateID;
+    int32 UpTimeSecs;
+    int32 DownTimeSecs;
+    int32 OccurrencesWorldStateID;
+    int32 AccumulationStateTargetValue;
+    int32 DepletionStateTargetValue;
+    int32 AccumulationAmountPerMinute;
+    int32 DepletionAmountPerMinute;
+    uint32 ID;
+};
+
+struct ManagedWorldStateBuffEntry
+{
+    uint32 ID;
+    uint32 OccurrenceValue;
+    int32 BuffSpellID;
+    int32 PlayerConditionID;
+    int32 ManagedWorldStateID;
+};
+
+struct ManagedWorldStateInputEntry
+{
+    uint32 ID;
+    int32 ManagedWorldStateID;
+    int32 QuestID;
+    int32 ValidInputConditionID;
 };
 
 struct MailTemplateEntry

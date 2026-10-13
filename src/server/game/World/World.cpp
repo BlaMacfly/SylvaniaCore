@@ -95,6 +95,7 @@
 #include "WaypointManager.h"
 #include "WaypointMovementGenerator.h"
 #include "WeatherMgr.h"
+#include "ContributionMgr.h"
 #include "WorldQuestMgr.h"
 #include "WorldSession.h"
 #include "WorldSocket.h"
@@ -1237,6 +1238,11 @@ void World::LoadConfigSettings(bool reload)
 
     m_int_configs[CONFIG_CHALLENGE_KEY_RESET] = sConfigMgr->GetIntDefault("Challenge.Key.Reset", 7);
     m_bool_configs[CONFIG_CHALLENGE_ENABLED] = sConfigMgr->GetBoolDefault("Challenge.Enabled", true);
+
+    // Legionfall: contributions (100 War Supplies each) needed to build a Broken Shore building; the Mage Tower stays built
+    // for good, as from June 2018
+    m_int_configs[CONFIG_LEGIONFALL_CONTRIBUTIONS_REQUIRED] = sConfigMgr->GetIntDefault("Legionfall.ContributionsRequired", 10);
+    m_bool_configs[CONFIG_LEGIONFALL_MAGE_TOWER_ALWAYS_BUILT] = sConfigMgr->GetBoolDefault("Legionfall.MageTower.AlwaysBuilt", true);
 
     m_int_configs[CONFIG_MAX_PRIMARY_TRADE_SKILL] = sConfigMgr->GetIntDefault("MaxPrimaryTradeSkill", 2);
     m_int_configs[CONFIG_MIN_PETITION_SIGNS] = sConfigMgr->GetIntDefault("MinPetitionSigns", 4);
@@ -2672,6 +2678,9 @@ void World::SetInitialWorldSettings()
     TC_LOG_INFO("server.loading", "Loading active world quests...");
     sWorldQuestMgr->LoadActiveWorldQuests();
 
+    TC_LOG_INFO("server.loading", "Loading Legionfall buildings...");
+    sContributionMgr->Initialize();
+
     // load battle pay
     TC_LOG_INFO("server.loading", "Loading battlepay data...");
     sBattlePayDataStore->Initialize();
@@ -2872,6 +2881,8 @@ void World::Update(uint32 diff)
         sWorldQuestMgr->Update();
         m_timers[WUPDATE_WORLD_QUEST].Reset();
     }
+
+    sContributionMgr->Update(diff);
 
     /// <li> Handle session updates when the timer has passed
     ResetTimeDiffRecord();

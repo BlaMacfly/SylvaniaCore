@@ -371,6 +371,18 @@ bool WorldQuestMgr::IsQuestActive(uint32 questId)
     return GetQuestActive(questId) != nullptr;
 }
 
+// Legionfall: the world quests of the Broken Shore and of the Armies of Legionfall also give War Supplies, the currency the
+// buildings are built with (LegionCore: 25 for each, beside the usual reward)
+static uint32 GetLegionfallWarSupplies(Quest const* quest)
+{
+    if (!quest)
+        return 0;
+    if (quest->GetZoneOrSort() == 7543 || quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGIONFALL
+        || quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGIONFALL_DUNGEON)
+        return 25;
+    return 0;
+}
+
 void WorldQuestMgr::RewardQuestForPlayer(Player* player, uint32 questId)
 {
     // Ni LegionCore ni le reste du core n alimentaient ce compteur : l assaut restait bloque a 0/4
@@ -383,6 +395,9 @@ void WorldQuestMgr::RewardQuestForPlayer(Player* player, uint32 questId)
     ActiveWorldQuest const* activeWorldQuest = sWorldQuestMgr->GetQuestActive(questId);
     if (!activeWorldQuest)
         return;
+
+    if (uint32 supplies = GetLegionfallWarSupplies(sObjectMgr->GetQuestTemplate(questId)))
+        player->ModifyCurrency(CURRENCY_TYPE_LEGIONFALL_WAR_SUPPLIES, supplies);
 
     std::vector<WorldQuestReward const*> worldQuestRewards = sWorldQuestMgr->GetRewardsForPlayerById(player, activeWorldQuest->RewardId);
     for (WorldQuestReward const* worldQuestReward : worldQuestRewards)
@@ -513,6 +528,14 @@ void WorldQuestMgr::BuildRewardPacket(Player* player, uint32 questId, WorldPacke
     ActiveWorldQuest const* activeWorldQuest = GetQuestActive(questId);
     if (!activeWorldQuest)
         return;
+
+    if (uint32 supplies = GetLegionfallWarSupplies(sObjectMgr->GetQuestTemplate(questId)))
+    {
+        WorldPackets::Quest::QueryQuestRewardResponse::CurrencyReward currencyReward;
+        currencyReward.CurrencyID = CURRENCY_TYPE_LEGIONFALL_WAR_SUPPLIES;
+        currencyReward.Quantity = supplies;
+        packet.CurrencyRewards.push_back(currencyReward);
+    }
 
     std::vector<WorldQuestReward const*> worldQuestRewards = GetRewardsForPlayerById(player, activeWorldQuest->RewardId);
     if (!worldQuestRewards.size())

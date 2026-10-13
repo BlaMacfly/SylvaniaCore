@@ -1316,6 +1316,27 @@ struct CinematicSequencesLoadInfo
     }
 };
 
+struct ContributionLoadInfo
+{
+    static DB2LoadInfo const* Instance()
+    {
+        static DB2FieldMeta const fields[] =
+        {
+            { false, FT_STRING, "Description" },
+            { false, FT_STRING, "Name" },
+            { false, FT_INT, "ID" },
+            { true, FT_INT, "ManagedWorldStateInputID" },
+            { true, FT_INT, "UiTextureAtlasMemberID1" },
+            { true, FT_INT, "UiTextureAtlasMemberID2" },
+            { true, FT_INT, "UiTextureAtlasMemberID3" },
+            { true, FT_INT, "UiTextureAtlasMemberID4" },
+            { true, FT_INT, "OrderIndex" },
+        };
+        static DB2LoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, ContributionMeta::Instance(), HOTFIX_SEL_CONTRIBUTION);
+        return &loadInfo;
+    }
+};
+
 struct ConversationLineLoadInfo
 {
     static DB2LoadInfo const* Instance()
@@ -3715,6 +3736,61 @@ struct LockLoadInfo
             { false, FT_BYTE, "Action8" },
         };
         static DB2LoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, LockMeta::Instance(), HOTFIX_SEL_LOCK);
+        return &loadInfo;
+    }
+};
+
+struct ManagedWorldStateLoadInfo
+{
+    static DB2LoadInfo const* Instance()
+    {
+        static DB2FieldMeta const fields[] =
+        {
+            { true, FT_INT, "CurrentStageWorldStateID" },
+            { true, FT_INT, "ProgressWorldStateID" },
+            { true, FT_INT, "UpTimeSecs" },
+            { true, FT_INT, "DownTimeSecs" },
+            { true, FT_INT, "OccurrencesWorldStateID" },
+            { true, FT_INT, "AccumulationStateTargetValue" },
+            { true, FT_INT, "DepletionStateTargetValue" },
+            { true, FT_INT, "AccumulationAmountPerMinute" },
+            { true, FT_INT, "DepletionAmountPerMinute" },
+            { false, FT_INT, "ID" },
+        };
+        static DB2LoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, ManagedWorldStateMeta::Instance(), HOTFIX_SEL_MANAGED_WORLD_STATE);
+        return &loadInfo;
+    }
+};
+
+struct ManagedWorldStateBuffLoadInfo
+{
+    static DB2LoadInfo const* Instance()
+    {
+        static DB2FieldMeta const fields[] =
+        {
+            { false, FT_INT, "ID" },
+            { false, FT_INT, "OccurrenceValue" },
+            { true, FT_INT, "BuffSpellID" },
+            { true, FT_INT, "PlayerConditionID" },
+            { true, FT_INT, "ManagedWorldStateID" },
+        };
+        static DB2LoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, ManagedWorldStateBuffMeta::Instance(), HOTFIX_SEL_MANAGED_WORLD_STATE_BUFF);
+        return &loadInfo;
+    }
+};
+
+struct ManagedWorldStateInputLoadInfo
+{
+    static DB2LoadInfo const* Instance()
+    {
+        static DB2FieldMeta const fields[] =
+        {
+            { false, FT_INT, "ID" },
+            { true, FT_INT, "ManagedWorldStateID" },
+            { true, FT_INT, "QuestID" },
+            { true, FT_INT, "ValidInputConditionID" },
+        };
+        static DB2LoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, ManagedWorldStateInputMeta::Instance(), HOTFIX_SEL_MANAGED_WORLD_STATE_INPUT);
         return &loadInfo;
     }
 };

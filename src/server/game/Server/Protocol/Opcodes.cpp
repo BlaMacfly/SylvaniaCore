@@ -343,8 +343,8 @@ void OpcodeTable::Initialize()
     DEFINE_HANDLER(CMSG_CONFIRM_ARTIFACT_RESPEC,                            STATUS_LOGGEDIN,  PROCESS_THREADUNSAFE, &WorldSession::HandleConfirmArtifactRespec);
     DEFINE_HANDLER(CMSG_CONFIRM_RESPEC_WIPE,                                STATUS_LOGGEDIN,  PROCESS_THREADUNSAFE, &WorldSession::HandleConfirmRespecWipeOpcode);
     DEFINE_HANDLER(CMSG_CONNECT_TO_FAILED,                                  STATUS_NEVER,     PROCESS_INPLACE,      &WorldSession::Handle_EarlyProccess);
-    DEFINE_HANDLER(CMSG_CONTRIBUTION_CONTRIBUTE,                            STATUS_UNHANDLED, PROCESS_THREADUNSAFE, &WorldSession::Handle_NULL);
-    DEFINE_HANDLER(CMSG_CONTRIBUTION_GET_STATE,                             STATUS_UNHANDLED, PROCESS_THREADUNSAFE, &WorldSession::Handle_NULL);
+    DEFINE_HANDLER(CMSG_CONTRIBUTION_CONTRIBUTE,                            STATUS_LOGGEDIN,  PROCESS_THREADUNSAFE, &WorldSession::HandleContributionContribute);
+    DEFINE_HANDLER(CMSG_CONTRIBUTION_GET_STATE,                             STATUS_LOGGEDIN,  PROCESS_THREADUNSAFE, &WorldSession::HandleContributionGetState);
     DEFINE_HANDLER(CMSG_CONVERSATION_LINE_STARTED,                          STATUS_LOGGEDIN,  PROCESS_THREADUNSAFE, &WorldSession::HandleConversationLineStarted);
     DEFINE_HANDLER(CMSG_CONVERT_CONSUMPTION_TIME,                           STATUS_UNHANDLED, PROCESS_THREADUNSAFE, &WorldSession::Handle_NULL);
     DEFINE_HANDLER(CMSG_CONVERT_RAID,                                       STATUS_LOGGEDIN,  PROCESS_THREADUNSAFE, &WorldSession::HandleConvertRaidOpcode);

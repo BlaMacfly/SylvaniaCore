@@ -4329,6 +4329,21 @@ Challenge.Key.Reset = 7
 Challenge.Enabled = 1
 
 #
+#    Legionfall.ContributionsRequired
+#        Number of contributions (100 War Supplies each) needed to build a Broken Shore building
+#        (Mage Tower, Command Center, Nether Disruptor). On retail a whole region contributed: follow
+#        the population of the realm. Cycle from the client data: building, active 2 days, under
+#        attack 1 day, destroyed 1 day, then building again. GM commands: .legionfall info|state|progress
+#        Default: 10
+#
+#    Legionfall.MageTower.AlwaysBuilt
+#        1 keeps the Mage Tower built for good, as Blizzard did in June 2018 (7.3.5).
+#        Default: 1
+
+Legionfall.ContributionsRequired = 10
+Legionfall.MageTower.AlwaysBuilt = 1
+
+#
 ####################################################################################################
 
 ####################################################################################################

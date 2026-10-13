@@ -1103,6 +1103,30 @@ namespace WorldPackets
             ObjectGuid ConversationGUID;
             uint32 LineID = 0;
         };
+
+        // Legionfall construction table: the client asks for the last change of a building
+        class ContributionGetState final : public ClientPacket
+        {
+        public:
+            ContributionGetState(WorldPacket&& packet) : ClientPacket(CMSG_CONTRIBUTION_GET_STATE, std::move(packet)) { }
+
+            void Read() override;
+
+            uint32 ContributionID = 0;
+            uint32 ContributionGUID = 0;
+        };
+
+        // Legionfall construction table: 100 War Supplies given to a building
+        class ContributionContribute final : public ClientPacket
+        {
+        public:
+            ContributionContribute(WorldPacket&& packet) : ClientPacket(CMSG_CONTRIBUTION_CONTRIBUTE, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid ContributionTableNpcGuid;
+            uint32 OrderIndex = 0;
+        };
     }
 }
 

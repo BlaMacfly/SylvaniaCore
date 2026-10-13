@@ -561,6 +561,8 @@ namespace WorldPackets
 
     namespace Misc
     {
+        class ContributionContribute;
+        class ContributionGetState;
         class SetSelection;
         class ViolenceLevel;
         class PlayerSelectFaction;
@@ -1934,6 +1936,8 @@ class TC_GAME_API WorldSession
         void HandleUseToy(WorldPackets::Toy::UseToy& packet);
 
         void HandleMountSetFavorite(WorldPackets::Misc::MountSetFavorite& mountSetFavorite);
+        void HandleContributionContribute(WorldPackets::Misc::ContributionContribute& packet);
+        void HandleContributionGetState(WorldPackets::Misc::ContributionGetState& packet);
 
         // Scenes
         void HandleSceneTriggerEvent(WorldPackets::Scenes::SceneTriggerEvent& sceneTriggerEvent);

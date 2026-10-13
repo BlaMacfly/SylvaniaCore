@@ -125,6 +125,7 @@
 #include "WeatherMgr.h"
 #include "World.h"
 #include "WorldPacket.h"
+#include "ContributionMgr.h"
 #include "WorldQuestMgr.h"
 #include "WorldSession.h"
 #include "WorldStatePackets.h"
@@ -10107,6 +10108,7 @@ void Player::SendInitWorldStates()
     }
 
     sWorldQuestMgr->FillInitWorldStates(packet);
+    sContributionMgr->FillInitWorldStates(packet);
     GetSession()->SendPacket(packet.Write());
     SendBGWeekendWorldStates();
     SendBattlefieldWorldStates();

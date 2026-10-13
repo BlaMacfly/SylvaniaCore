@@ -296,6 +296,11 @@ void HotfixDatabaseConnection::DoPrepareStatements()
     PrepareStatement(HOTFIX_SEL_CINEMATIC_SEQUENCES, "SELECT ID, SoundID, Camera1, Camera2, Camera3, Camera4, Camera5, Camera6, Camera7, Camera8"
         " FROM cinematic_sequences ORDER BY ID DESC", CONNECTION_SYNCH);
 
+    // Contribution.db2
+    PrepareStatement(HOTFIX_SEL_CONTRIBUTION, "SELECT Description, Name, ID, ManagedWorldStateInputID, UiTextureAtlasMemberID1, UiTextureAtlasMemberID2, "
+        "UiTextureAtlasMemberID3, UiTextureAtlasMemberID4, OrderIndex FROM contribution ORDER BY ID DESC", CONNECTION_SYNCH);
+    PREPARE_LOCALE_STMT(HOTFIX_SEL_CONTRIBUTION, "SELECT ID, Description_lang, Name_lang FROM contribution_locale WHERE locale = ?", CONNECTION_SYNCH);
+
     // ConversationLine.db2
     PrepareStatement(HOTFIX_SEL_CONVERSATION_LINE, "SELECT ID, BroadcastTextID, SpellVisualKitID, AdditionalDuration, NextConversationLineID, "
         "AnimKitID, SpeechType, StartAnimation, EndAnimation FROM conversation_line ORDER BY ID DESC", CONNECTION_SYNCH);
@@ -759,6 +764,19 @@ void HotfixDatabaseConnection::DoPrepareStatements()
     PrepareStatement(HOTFIX_SEL_LOCK, "SELECT ID, Index1, Index2, Index3, Index4, Index5, Index6, Index7, Index8, Skill1, Skill2, Skill3, Skill4, "
         "Skill5, Skill6, Skill7, Skill8, Type1, Type2, Type3, Type4, Type5, Type6, Type7, Type8, Action1, Action2, Action3, Action4, Action5, "
         "Action6, Action7, Action8 FROM `lock` ORDER BY ID DESC", CONNECTION_SYNCH);
+
+    // ManagedWorldState.db2
+    PrepareStatement(HOTFIX_SEL_MANAGED_WORLD_STATE, "SELECT CurrentStageWorldStateID, ProgressWorldStateID, UpTimeSecs, DownTimeSecs, "
+        "OccurrencesWorldStateID, AccumulationStateTargetValue, DepletionStateTargetValue, AccumulationAmountPerMinute, DepletionAmountPerMinute, ID "
+        "FROM managed_world_state ORDER BY ID DESC", CONNECTION_SYNCH);
+
+    // ManagedWorldStateBuff.db2
+    PrepareStatement(HOTFIX_SEL_MANAGED_WORLD_STATE_BUFF, "SELECT ID, OccurrenceValue, BuffSpellID, PlayerConditionID, ManagedWorldStateID"
+        " FROM managed_world_state_buff ORDER BY ID DESC", CONNECTION_SYNCH);
+
+    // ManagedWorldStateInput.db2
+    PrepareStatement(HOTFIX_SEL_MANAGED_WORLD_STATE_INPUT, "SELECT ID, ManagedWorldStateID, QuestID, ValidInputConditionID FROM managed_world_state_input"
+        " ORDER BY ID DESC", CONNECTION_SYNCH);
 
     // MailTemplate.db2
     PrepareStatement(HOTFIX_SEL_MAIL_TEMPLATE, "SELECT ID, Body FROM mail_template ORDER BY ID DESC", CONNECTION_SYNCH);

@@ -806,3 +806,15 @@ void WorldPackets::Misc::ConversationLineStarted::Read()
     _worldPacket >> ConversationGUID;
     _worldPacket >> LineID;
 }
+
+void WorldPackets::Misc::ContributionGetState::Read()
+{
+    _worldPacket >> ContributionID;
+    _worldPacket >> ContributionGUID;
+}
+
+void WorldPackets::Misc::ContributionContribute::Read()
+{
+    _worldPacket >> ContributionTableNpcGuid;
+    _worldPacket >> OrderIndex;
+}

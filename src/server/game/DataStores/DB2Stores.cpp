@@ -95,6 +95,7 @@ DB2Storage<CharShipmentEntry>                   sCharShipmentStore("CharShipment
 DB2Storage<CharShipmentContainerEntry>          sCharShipmentContainerStore("CharShipmentContainer.db2", CharShipmentContainerLoadInfo::Instance());
 DB2Storage<CinematicCameraEntry>                sCinematicCameraStore("CinematicCamera.db2", CinematicCameraLoadInfo::Instance());
 DB2Storage<CinematicSequencesEntry>             sCinematicSequencesStore("CinematicSequences.db2", CinematicSequencesLoadInfo::Instance());
+DB2Storage<ContributionEntry>                   sContributionStore("Contribution.db2", ContributionLoadInfo::Instance());
 DB2Storage<ConversationLineEntry>               sConversationLineStore("ConversationLine.db2", ConversationLineLoadInfo::Instance());
 DB2Storage<CreatureDisplayInfoEntry>            sCreatureDisplayInfoStore("CreatureDisplayInfo.db2", CreatureDisplayInfoLoadInfo::Instance());
 DB2Storage<CreatureDisplayInfoExtraEntry>       sCreatureDisplayInfoExtraStore("CreatureDisplayInfoExtra.db2", CreatureDisplayInfoExtraLoadInfo::Instance());
@@ -197,6 +198,9 @@ DB2Storage<LFGDungeonsEntry>                    sLFGDungeonsStore("LFGDungeons.d
 DB2Storage<LightEntry>                          sLightStore("Light.db2", LightLoadInfo::Instance());
 DB2Storage<LiquidTypeEntry>                     sLiquidTypeStore("LiquidType.db2", LiquidTypeLoadInfo::Instance());
 DB2Storage<LockEntry>                           sLockStore("Lock.db2", LockLoadInfo::Instance());
+DB2Storage<ManagedWorldStateEntry>               sManagedWorldStateStore("ManagedWorldState.db2", ManagedWorldStateLoadInfo::Instance());
+DB2Storage<ManagedWorldStateBuffEntry>           sManagedWorldStateBuffStore("ManagedWorldStateBuff.db2", ManagedWorldStateBuffLoadInfo::Instance());
+DB2Storage<ManagedWorldStateInputEntry>          sManagedWorldStateInputStore("ManagedWorldStateInput.db2", ManagedWorldStateInputLoadInfo::Instance());
 DB2Storage<MailTemplateEntry>                   sMailTemplateStore("MailTemplate.db2", MailTemplateLoadInfo::Instance());
 DB2Storage<MapEntry>                            sMapStore("Map.db2", MapLoadInfo::Instance());
 DB2Storage<MapChallengeModeEntry>               sMapChallengeModeStore("MapChallengeMode.db2", MapChallengeModeLoadInfo::Instance());
@@ -621,6 +625,7 @@ void DB2Manager::LoadStores(std::string const& dataPath, uint32 defaultLocale)
     LOAD_DB2(sCharShipmentContainerStore);
     LOAD_DB2(sCinematicCameraStore);
     LOAD_DB2(sCinematicSequencesStore);
+    LOAD_DB2(sContributionStore);
     LOAD_DB2(sConversationLineStore);
     LOAD_DB2(sCreatureDisplayInfoStore);
     LOAD_DB2(sCreatureDisplayInfoExtraStore);
@@ -722,6 +727,9 @@ void DB2Manager::LoadStores(std::string const& dataPath, uint32 defaultLocale)
     LOAD_DB2(sLightStore);
     LOAD_DB2(sLiquidTypeStore);
     LOAD_DB2(sLockStore);
+    LOAD_DB2(sManagedWorldStateStore);
+    LOAD_DB2(sManagedWorldStateBuffStore);
+    LOAD_DB2(sManagedWorldStateInputStore);
     LOAD_DB2(sMailTemplateStore);
     LOAD_DB2(sMapStore);
     LOAD_DB2(sMapChallengeModeStore);

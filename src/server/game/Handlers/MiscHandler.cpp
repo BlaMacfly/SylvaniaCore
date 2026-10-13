@@ -52,6 +52,7 @@
 #include "WhoPackets.h"
 #include "World.h"
 #include "WorldPacket.h"
+#include "ContributionMgr.h"
 #include <boost/thread/shared_mutex.hpp>
 #include <boost/thread/locks.hpp>
 #include <zlib.h>
@@ -1239,6 +1240,20 @@ void WorldSession::HandleMountSpecialAnimOpcode(WorldPackets::Misc::MountSpecial
 void WorldSession::HandleMountSetFavorite(WorldPackets::Misc::MountSetFavorite& mountSetFavorite)
 {
     _collectionMgr->MountSetFavorite(mountSetFavorite.MountSpellID, mountSetFavorite.IsFavorite);
+}
+
+// Legionfall construction table: the client opens it on its own (no server packet opens it in 7.3.5)
+void WorldSession::HandleContributionContribute(WorldPackets::Misc::ContributionContribute& packet)
+{
+    if (!GetPlayer()->GetNPCIfCanInteractWith(packet.ContributionTableNpcGuid, UNIT_NPC_FLAG_CONTRIBUTION_COLLECTOR))
+        return;
+
+    sContributionMgr->Contribute(GetPlayer(), packet.OrderIndex);
+}
+
+void WorldSession::HandleContributionGetState(WorldPackets::Misc::ContributionGetState& packet)
+{
+    sContributionMgr->OnStateRequest(GetPlayer(), packet.ContributionID);
 }
 
 void WorldSession::HandlePvpPrestigeRankUp(WorldPackets::Misc::PvpPrestigeRankUp& /*pvpPrestigeRankUp*/)

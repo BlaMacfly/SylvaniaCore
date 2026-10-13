@@ -80,6 +80,7 @@ TC_GAME_API extern DB2Storage<CharShipmentEntry>                    sCharShipmen
 TC_GAME_API extern DB2Storage<CharShipmentContainerEntry>           sCharShipmentContainerStore;
 TC_GAME_API extern DB2Storage<CinematicCameraEntry>                 sCinematicCameraStore;
 TC_GAME_API extern DB2Storage<CinematicSequencesEntry>              sCinematicSequencesStore;
+TC_GAME_API extern DB2Storage<ContributionEntry>                    sContributionStore;
 TC_GAME_API extern DB2Storage<ConversationLineEntry>                sConversationLineStore;
 TC_GAME_API extern DB2Storage<CreatureDisplayInfoEntry>             sCreatureDisplayInfoStore;
 TC_GAME_API extern DB2Storage<CreatureDisplayInfoExtraEntry>        sCreatureDisplayInfoExtraStore;
@@ -165,6 +166,9 @@ TC_GAME_API extern DB2Storage<JournalInstanceEntry>                 sJournalInst
 TC_GAME_API extern DB2Storage<LFGDungeonsEntry>                     sLFGDungeonsStore;
 TC_GAME_API extern DB2Storage<LiquidTypeEntry>                      sLiquidTypeStore;
 TC_GAME_API extern DB2Storage<LockEntry>                            sLockStore;
+TC_GAME_API extern DB2Storage<ManagedWorldStateEntry>                sManagedWorldStateStore;
+TC_GAME_API extern DB2Storage<ManagedWorldStateBuffEntry>            sManagedWorldStateBuffStore;
+TC_GAME_API extern DB2Storage<ManagedWorldStateInputEntry>           sManagedWorldStateInputStore;
 TC_GAME_API extern DB2Storage<MailTemplateEntry>                    sMailTemplateStore;
 TC_GAME_API extern DB2Storage<MapEntry>                             sMapStore;
 TC_GAME_API extern DB2Storage<MapChallengeModeEntry>                sMapChallengeModeStore;
