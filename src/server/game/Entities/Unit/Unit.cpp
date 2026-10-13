@@ -1208,9 +1208,8 @@ void Unit::CalculateSpellDamageTaken(SpellNonMeleeDamage* damageInfo, int32 dama
     if (!victim || !victim->IsAlive())
         return;
 
-    // Versatility
-    if (victim->GetSpellModOwner())
-        damage -= CalculatePct(damage, victim->GetSpellModOwner()->GetRatingBonusValue(CR_VERSATILITY_DAMAGE_TAKEN) + victim->GetSpellModOwner()->GetTotalAuraModifier(SPELL_AURA_MOD_VERSATILITY));
+    // Versatility is already taken off by SpellDamageBonusTaken / MeleeDamageBonusTaken, which direct spell damage goes
+    // through first: a second reduction here (with the full aura instead of half) cut spell damage taken twice
 
     SpellSchoolMask damageSchoolMask = SpellSchoolMask(damageInfo->schoolMask);
 
