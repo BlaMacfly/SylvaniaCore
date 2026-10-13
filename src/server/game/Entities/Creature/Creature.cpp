@@ -1544,6 +1544,23 @@ bool Creature::LoadCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool ad
     if (!Create(map->GenerateLowGuid<HighGuid::Creature>(), map, data->id, data->posX, data->posY, data->posZ, data->orientation, data, 0))
         return false;
 
+    // Spawns placed in the air with the flying anim tier but without INHABIT_AIR in their template (about 8,000 here,
+    // birds and drakes mostly) fell to the ground: the client applies gravity to them. A spawn clear of the ground,
+    // vmaps included, flies as if its template allowed it (idea from Titans-Project 0aa13a59).
+    m_airSpawn = false;
+    if (!CanFly())
+        if (CreatureAddon const* addon = GetCreatureAddon())
+            if (((addon->bytes1 >> 24) & 0xFF) == 3)
+            {
+                float ground = map->GetHeight(GetPhaseShift(), data->posX, data->posY, data->posZ, true, MAX_FALL_DISTANCE);
+                if (ground > INVALID_HEIGHT && data->posZ - ground > 2.5f)
+                {
+                    m_airSpawn = true;
+                    RemoveUnitMovementFlag(MOVEMENTFLAG_HOVER);     // given by the addon to an anim tier without flight
+                    UpdateMovementFlags();
+                }
+            }
+
     //We should set first home position, because then AI calls home movement
     SetHomePosition(data->posX, data->posY, data->posZ, data->orientation);
 

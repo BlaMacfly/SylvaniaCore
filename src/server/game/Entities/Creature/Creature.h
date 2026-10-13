@@ -103,7 +103,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool IsGuard() const { return (GetCreatureTemplate()->flags_extra & CREATURE_FLAG_EXTRA_GUARD) != 0; }
         bool CanWalk() const { return (GetCreatureTemplate()->InhabitType & INHABIT_GROUND) != 0; }
         bool CanSwim() const override { return (GetCreatureTemplate()->InhabitType & INHABIT_WATER) != 0 || IsPet(); }
-        bool CanFly()  const override { return (GetCreatureTemplate()->InhabitType & INHABIT_AIR) != 0; }
+        bool CanFly()  const override { return (GetCreatureTemplate()->InhabitType & INHABIT_AIR) != 0 || m_airSpawn; }
 
         void SetReactState(ReactStates st) { m_reactState = st; }
         void SetReactState(ReactStates st, uint32 delay); // variante differee (compat DestinyCoreNew)
@@ -415,6 +415,7 @@ class TC_GAME_API Creature : public Unit, public GridObject<Creature>, public Ma
         bool m_AlreadySearchedAssistance;
         bool m_regenHealth;
         bool m_cannotReachTarget;
+        bool m_airSpawn = false;                            // db spawn placed in the air with the flying anim tier, see LoadCreatureFromDB
         uint32 m_cannotReachTimer;
         bool m_AI_locked;
 
