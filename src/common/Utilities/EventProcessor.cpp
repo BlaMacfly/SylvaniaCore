@@ -77,6 +77,45 @@ void EventProcessor::Update(uint32 p_time)
         // the next update tick
         AddEvent(event, CalculateTime(1), false);
     }
+
+    UpdateFunctions();
+}
+
+void EventProcessor::AddFunctionsFromQueue()
+{
+    // m_queued is only set and cleared under the lock: a function being added right now is taken at the next tick
+    if (!m_queued.load(std::memory_order_acquire))
+        return;
+
+    FunctionList tempFunctions;
+    {
+        std::lock_guard<std::recursive_mutex> _queue_lock(m_queue_lock);
+        std::swap(tempFunctions, m_functions_queue);
+        m_queued.store(false, std::memory_order_release);
+    }
+
+    for (auto& pair : tempFunctions)
+        m_functions.insert(std::move(pair));
+}
+
+void EventProcessor::UpdateFunctions()
+{
+    if (clean)
+    {
+        m_functions.clear();
+        clean = false;
+    }
+
+    AddFunctionsFromQueue();
+
+    // a function may call KillAllFunctions (death, reset): the remaining ones must not run after it
+    FunctionList::iterator itr;
+    while (!clean && (itr = m_functions.begin()) != m_functions.end() && itr->first <= m_time)
+    {
+        std::function<void()> function = std::move(itr->second);
+        m_functions.erase(itr);
+        function();
+    }
 }
 
 void EventProcessor::KillAllEvents(bool force)
@@ -112,6 +151,10 @@ void EventProcessor::KillAllEvents(bool force)
 
 void EventProcessor::KillAllFunctions()
 {
+    // functions added after this call (e.g. KillAllDelayedEvents then AddDelayedEvent in a Reset) must survive
+    std::lock_guard<std::recursive_mutex> _queue_lock(m_queue_lock);
+    m_functions_queue.clear();
+    m_queued.store(false, std::memory_order_release);
     clean = true;
 }
 
@@ -126,7 +169,8 @@ void EventProcessor::AddEvent(BasicEvent* Event, uint64 e_time, bool set_addtime
 void EventProcessor::AddFunction(std::function<void()>&& Function, uint64 e_time)
 {
     std::lock_guard<std::recursive_mutex> _queue_lock(m_queue_lock);
-    m_functions_queue.insert(std::make_pair(e_time, Function));
+    m_functions_queue.insert(std::make_pair(e_time, std::move(Function)));
+    m_queued.store(true, std::memory_order_release);
 }
 
 uint64 EventProcessor::CalculateTime(uint64 t_offset) const

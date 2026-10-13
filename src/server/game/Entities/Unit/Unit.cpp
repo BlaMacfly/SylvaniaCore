@@ -463,6 +463,12 @@ void Unit::Update(uint32 p_time)
     // Or else we may have some SPELL_STATE_FINISHED spells stalled in pointers, that is bad.
     m_Events.Update(p_time);
 
+    if (!m_cleanupDone)
+    {
+        m_Functions.Update(p_time);
+        m_CombatFunctions.Update(p_time);
+    }
+
     _scheduler.Update(p_time);
 
     if (!IsInWorld())

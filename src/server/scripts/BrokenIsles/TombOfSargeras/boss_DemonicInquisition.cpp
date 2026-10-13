@@ -5,6 +5,7 @@
 */
 
 #include "tomb_of_sargeras.h"
+#include "ObjectAccessor.h"
 
 enum Spells
 {
@@ -139,11 +140,12 @@ public:
 
             if (Creature* other = instance->instance->GetCreature(instance->GetGuidData(me->GetEntry() == NPC_BELAK ? NPC_ATRIGAN : NPC_BELAK)))
             {
-                other->AddDelayedEvent(100, [other,who]() -> void
+                ObjectGuid whoGuid = who ? who->GetGUID() : ObjectGuid::Empty;
+                other->AddDelayedEvent(100, [other, whoGuid]() -> void
                 {
-                    if (who)
-                        if(!other->IsInCombat())
-                            other->AI()->EnterCombat(who);
+                    if (Unit* attacker = ObjectAccessor::GetUnit(*other, whoGuid))
+                        if (!other->IsInCombat())
+                            other->AI()->EnterCombat(attacker);
                 });
             }
         }
@@ -256,8 +258,11 @@ public:
                             calcifiedQuilsTargets.clear();
 
                             DoCast(target, SPELL_CALCIFIED_QUILS);
-                            me->AddDelayedEvent(5000, [this, target]()
+                            ObjectGuid targetGuid = target->GetGUID();
+                            me->AddDelayedEvent(5000, [this, targetGuid]()
                             {
+                                // the target may have left or logged out in 5 seconds
+                                Unit* target = ObjectAccessor::GetUnit(*me, targetGuid);
                                 if (!target)
                                     return;
 

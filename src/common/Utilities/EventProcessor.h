@@ -19,8 +19,10 @@
 #define EVENTPROCESSOR_H
 
 #include "Define.h"
+#include <atomic>
 #include <map>
 #include <functional>
+#include <mutex>
 
 typedef std::multimap<uint64, std::function<void()>> FunctionList;
 
@@ -73,7 +75,7 @@ class TC_COMMON_API BasicEvent
 class TC_COMMON_API EventProcessor
 {
     public:
-        EventProcessor() : m_time(0) { }
+        EventProcessor() : m_time(0), m_queued(false), clean(false) { }
         ~EventProcessor();
 
         void Update(uint32 p_time);
@@ -85,12 +87,17 @@ class TC_COMMON_API EventProcessor
         void AddDelayedEvent(uint64 t_offset, std::function<void()>&& function);
 
     protected:
-        uint64 m_time;
+        void AddFunctionsFromQueue();
+        void UpdateFunctions();
+
+        // AddDelayedEvent may be called from another map's thread, which reads the clock
+        std::atomic<uint64> m_time;
         std::multimap<uint64, BasicEvent*> m_events;
         FunctionList m_functions;
         FunctionList m_functions_queue;
+        std::atomic<bool> m_queued;                         // lock-free hint read every tick by every unit
         std::recursive_mutex m_queue_lock;
-        bool clean;
+        std::atomic<bool> clean;
 };
 
 #endif
