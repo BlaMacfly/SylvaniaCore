@@ -3804,6 +3804,15 @@ void World::InitChallengeKeyResetTime()
     while (curTime >= nextResetTime)
         nextResetTime += getIntConfig(CONFIG_CHALLENGE_KEY_RESET) * DAY;
 
+    // a weekly reset follows the configured day and hour, like weekly quests and currencies (setting tm_wday above
+    // has no effect on mktime: the reset kept the day of the first start)
+    if (getIntConfig(CONFIG_CHALLENGE_KEY_RESET) == 7)
+    {
+        nextResetTime = GetNextWeeklyResetTime(curTime);
+        if (insttime > curTime)
+            insttime = std::min(insttime, nextResetTime);
+    }
+
     // normalize reset time
     m_NextChallengeKeyReset = insttime ? insttime : nextResetTime;
 
@@ -3864,7 +3873,10 @@ void World::ChallengeKeyResetTime()
 
     time_t curTime = time(nullptr);
     time_t m_LastChallengeKeyReset = m_NextChallengeKeyReset;
-    m_NextChallengeKeyReset = time_t(m_NextChallengeKeyReset + DAY * getIntConfig(CONFIG_CHALLENGE_KEY_RESET));
+    if (getIntConfig(CONFIG_CHALLENGE_KEY_RESET) == 7)
+        m_NextChallengeKeyReset = GetNextWeeklyResetTime(curTime);
+    else
+        m_NextChallengeKeyReset = time_t(m_NextChallengeKeyReset + DAY * getIntConfig(CONFIG_CHALLENGE_KEY_RESET));
 
     while (curTime >= m_NextChallengeKeyReset)
         m_NextChallengeKeyReset += getIntConfig(CONFIG_CHALLENGE_KEY_RESET) * DAY;
