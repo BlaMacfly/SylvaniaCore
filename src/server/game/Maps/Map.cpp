@@ -98,6 +98,8 @@ Map::~Map()
     if (m_parentMap == this)
         delete m_childTerrainMaps;
 
+    delete m_brawlerGuild;
+
     MMAP::MMapFactory::createOrGetMMapManager()->unloadMapInstance(GetId(), i_InstanceId);
 }
 
@@ -861,6 +863,10 @@ void Map::Update(const uint32 t_diff)
 
         obj->Update(t_diff);
     }
+
+    // Guilde des bagarreurs (cartes 369 et 1043) : file d'attente, invocation du boss, fin de manche
+    if (m_brawlerGuild)
+        m_brawlerGuild->Update(t_diff);
 
     SendObjectUpdates();
 

@@ -151,7 +151,25 @@ enum BrawlersBosses
     
 };
 
-class BrawlersGuild
+enum BrawlersDataTypes
+{
+    DATA_BOSS_RANK_ONE    = 1,
+    DATA_BOSS_RANK_TWO    = 2,
+    DATA_BOSS_RANK_THREE  = 3,
+    DATA_BOSS_RANK_FOUR   = 4,
+    DATA_BOSS_RANK_FIVE   = 5,
+    DATA_BOSS_RANK_SIX    = 6,
+    DATA_BOSS_RANK_SEVEN  = 7
+};
+
+enum BrawlersRoundResult
+{
+    ROUND_RESULT_NONE,
+    ROUND_RESULT_WIN,
+    ROUND_RESULT_LOSS
+};
+
+class TC_GAME_API BrawlersGuild
 {
 public:
     explicit BrawlersGuild(uint32 id, Map* map);
@@ -165,6 +183,13 @@ public:
     void RemovePlayer(ObjectGuid guid);
 
     void BossReport(ObjectGuid guid, bool win);
+
+    // mort du boss invoque (appele par Unit::Kill pour toute creature de la carte)
+    void OnCreatureKilled(Creature* victim, Unit* killer);
+    // combats a plusieurs adversaires : le script signale la fin quand le dernier tombe
+    void ReportRoundWon(Creature* reporter, Unit* killer);
+
+    bool IsPlayerInQueue(ObjectGuid guid) const;
 
     bool IsPlayerInBrawl(Player* player);
 
@@ -189,7 +214,10 @@ private:
     void SetBrawlState(uint32 state);
     void PlayFightSound(bool play, uint32 boss = 0);
     void SendCongratulations(Player* player);
-    
+
+    bool IsRoundKiller(Creature* boss, Unit* killer) const;
+    void SetRoundResult(bool win);
+
     std::list<ObjectGuid> _waitList;
     std::list<ObjectGuid> _removeList;
     ObjectGuid _current;
@@ -200,6 +228,8 @@ private:
     IntervalTimer _prepareCombatTimer;
     IntervalTimer _combatTimer;
     IntervalTimer _transitionTimer;
+    IntervalTimer _resultTimer;
+    uint32 _roundResult;
     Map* m_map;
 };
 

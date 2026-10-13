@@ -465,12 +465,14 @@ public:
             _Reset();
         }
 
-        void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
+        void SummonedCreatureDies(Creature* summon, Unit* killer) override
         {
             count_adds--;
             if (count_adds <= 0)
             {
                 _Reset();
+                if (BrawlersGuild* brawlerGuild = me->GetBrawlerGuild())
+                    brawlerGuild->ReportRoundWon(me, killer);
             }
         }
     };

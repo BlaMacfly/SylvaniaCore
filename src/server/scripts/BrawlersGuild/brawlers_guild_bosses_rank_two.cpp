@@ -608,7 +608,7 @@ public:
             }
         }
 
-        void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
+        void SummonedCreatureDies(Creature* summon, Unit* killer) override
         {
             if (summon->GetEntry() != 115637)
                 return;
@@ -618,17 +618,10 @@ public:
             if (count_adds == 0)
             {
                 summons.DespawnAll();
-                if (me->GetOwner() && me->GetOwner()->IsPlayer())
-                {
-                    me->KillAllDelayedEvents();
-                    Player* player = me->GetOwner()->ToPlayer();
-                    player->AddDelayedEvent(700, [player]() -> void
-                    {
-                     //   if (player && player->IsAlive())
-                          //  if (BrawlersGuild* brawlerGuild = player->GetBrawlerGuild())
-                            //    brawlerGuild->BossReport(player->GetGUID(), true);
-                    });
-                }
+                me->KillAllDelayedEvents();
+                // Paku lui-meme ne meurt pas : la manche se joue sur ses clones
+                if (BrawlersGuild* brawlerGuild = me->GetBrawlerGuild())
+                    brawlerGuild->ReportRoundWon(me, killer);
             }
         }
 

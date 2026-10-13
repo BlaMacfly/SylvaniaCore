@@ -285,6 +285,11 @@ public:
                 }
             
             _Reset();
+
+            // le second des deux tombe : la manche est jouee (le controleur, invoque par le joueur, ne meurt pas)
+            if (who)
+                if (BrawlersGuild* brawlerGuild = me->GetBrawlerGuild())
+                    brawlerGuild->ReportRoundWon(me, who);
         }
         
         void UpdateAI(uint32 diff) override
@@ -357,14 +362,10 @@ public:
             if (me->GetOwner() && me->GetOwner()->IsCreature())
                 me->GetOwner()->ToCreature()->AI()->JustDied(who); // some hack
             
+            // le vehicule invoque par le joueur ne meurt pas quand son passager tombe
             if (me->GetOwner() && me->GetOwner()->IsPlayer())
-            {
-                Player* player = me->GetOwner()->ToPlayer();
-                player->AddDelayedEvent(1000, [player] () -> void
-                {
- 
-                });
-            }
+                if (BrawlersGuild* brawlerGuild = me->GetBrawlerGuild())
+                    brawlerGuild->ReportRoundWon(me, who);
         }   
 
         void EnterEvadeMode(EvadeReason why) override
@@ -436,13 +437,15 @@ public:
             _Reset();
         }
         
-        void SummonedCreatureDies(Creature* summon, Unit* /*killer*/) override
+        void SummonedCreatureDies(Creature* summon, Unit* killer) override
         {
 
             count_adds--;
             if (count_adds <= 0)
             {
                 _Reset();
+                if (BrawlersGuild* brawlerGuild = me->GetBrawlerGuild())
+                    brawlerGuild->ReportRoundWon(me, killer);
             }
         }
     };

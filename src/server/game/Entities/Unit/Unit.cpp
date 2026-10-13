@@ -11862,6 +11862,10 @@ void Unit::Kill(Unit* victim, bool durabilityLoss)
                 if (summoner->ToCreature() && summoner->IsAIEnabled)
                     summoner->ToCreature()->AI()->SummonedCreatureDies(creature, this);
 
+        // Guilde des bagarreurs : la mort du boss invoque termine la manche
+        if (BrawlersGuild* brawlersGuild = creature->GetBrawlerGuild())
+            brawlersGuild->OnCreatureKilled(creature, this);
+
         // Dungeon specific stuff, only applies to players killing creatures
         if (creature->GetInstanceId())
         {

@@ -19,6 +19,7 @@
 #include "BrawlersGuild.h"
 #include "ScriptedGossip.h"
 #include "Creature.h"
+#include "Item.h"
 
 // 68408, 67267
 class npc_brawlers_guild_queue : public CreatureScript
@@ -40,8 +41,14 @@ public:
 
             if (player->HasAchieved(ACHIEVEMENT_FIRST_RULE_H) || player->HasAchieved(ACHIEVEMENT_FIRST_RULE_A))
             {
-                AddGossipItemFor(player, 15284, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+1);
-                AddGossipItemFor(player, 15284, 1, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF+2);
+                // l'option 1 du menu 15284 est "combattre un adversaire au hasard", pas un retrait de la file
+                if (BrawlersGuild* brawlerGuild = player->GetBrawlerGuild())
+                {
+                    if (brawlerGuild->IsPlayerInQueue(player->GetGUID()))
+                        AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Retirez-moi de la liste des combattants.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 2);
+                    else if (!brawlerGuild->IsPlayerInBrawl(player))
+                        AddGossipItemFor(player, 15284, 0, GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF + 1);
+                }
             }
 
             player->PlayerTalkClass->SendGossipMenu(player->GetGossipTextId(creature), creature->GetGUID());
@@ -60,6 +67,13 @@ public:
             {
                 if (BrawlersGuild* brawlerGuild = player->GetBrawlerGuild())
                     brawlerGuild->AddPlayer(player);
+                CloseGossipMenuFor(player);
+            }
+            else if (action == GOSSIP_ACTION_INFO_DEF + 2)
+            {
+                // cette option ne faisait rien : le joueur restait inscrit et etait teleporte a son tour
+                if (BrawlersGuild* brawlerGuild = player->GetBrawlerGuild())
+                    brawlerGuild->RemovePlayer(player);
                 CloseGossipMenuFor(player);
             }
         }
@@ -102,7 +116,8 @@ public:
 
         void Reset() override
         {
-            //SetFlyMode(true);
+            me->SetCanFly(true);
+            me->SetDisableGravity(true);
             events.Reset();
             me->Mount(44634);
             if (BrawlersGuild* brawlerGuild = me->GetBrawlerGuild())
@@ -213,7 +228,8 @@ public:
 
         void Reset() override
         {
-       //     SetFlyMode(true);
+            me->SetCanFly(true);
+            me->SetDisableGravity(true);
             events.Reset();
             if (BrawlersGuild* brawlerGuild = me->GetBrawlerGuild())
                 brawlerGuild->SetAnnouncer(me->GetGUID());
@@ -366,7 +382,7 @@ public:
             player->CastSpell(player, SPELL_HORDE_SOUND, true);
         }
 
-      //  player->DestroyItemCount(item->GetEntry(), 1, true);
+        player->DestroyItemCount(item->GetEntry(), 1, true);
         return true;
     }
 };

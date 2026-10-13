@@ -26,6 +26,14 @@
 #include <Spells/SpellMgr.h>
 #include "UnitAI.h"
 #include "MotionMaster.h"
+#include "Creature.h"
+#include "CreatureAI.h"
+#include "DatabaseEnv.h"
+#include "Item.h"
+#include "Mail.h"
+#include "Map.h"
+#include "TemporarySummon.h"
+#include <algorithm>
 
 uint32 BrawlersBoss[MAX_BRAWLERS_RANK][BOSS_PER_RANK] =
 {
@@ -79,6 +87,9 @@ BrawlersGuild::BrawlersGuild(uint32 id, Map* map)
     _combatTimer.SetInterval(0);
     _transitionTimer.SetCurrent(0);
     _transitionTimer.SetInterval(0);
+    _resultTimer.SetCurrent(0);
+    _resultTimer.SetInterval(0);
+    _roundResult = ROUND_RESULT_NONE;
     m_map = map;
 }
 
@@ -86,11 +97,13 @@ BrawlersGuild::~BrawlersGuild() = default;
 
 void BrawlersGuild::Update(uint32 diff)
 {
+    // on ne cherche les joueurs que sur notre carte : l'arene est mise a jour par le thread de la carte
     for (auto& it : _waitList)
-        if (!ObjectAccessor::FindPlayer(it))
+        if (!ObjectAccessor::GetPlayer(m_map, it))
             RemovePlayer(it);
 
-    if (!ObjectAccessor::FindPlayer(_current))
+    // sans ce test, un GUID vide (personne en combat) terminait un combat a chaque tick et la file n'avancait jamais
+    if (_current && !ObjectAccessor::GetPlayer(m_map, _current))
         EndCombat(false);
 
     auto needUpdateAura = !_removeList.empty();
@@ -109,13 +122,20 @@ void BrawlersGuild::AddPlayer(Player* player)
 {
     if (!player)
         return;
-    if (GetPlayerRank(player) > 7)
+
+    // le rang 8 n'a pas d'adversaire
+    if (!GetBossForPlayer(player))
     {
-        ChatHandler(player->GetSession()).PSendSysMessage("Your rank very high! Now realeased only rank 1,2,3, 4, 5, 6, 7");
+        ChatHandler(player->GetSession()).PSendSysMessage("Votre rang est trop élevé : l'arène n'a d'adversaires que pour les rangs 1 à 7.");
         return;
     }
 
-    _waitList.push_back(player->GetGUID());
+    // une seule inscription, vivant, et pas pendant son propre combat : chaque clic ajoutait une entree
+    ObjectGuid guid = player->GetGUID();
+    if (!player->IsAlive() || guid == _current || IsPlayerInQueue(guid))
+        return;
+
+    _waitList.push_back(guid);
     UpdateAura(player, _waitList.size());
 }
 
@@ -124,7 +144,7 @@ void BrawlersGuild::RemovePlayers()
     for (auto& it : _removeList)
     {
         _waitList.remove(it);
-        if (auto player = ObjectAccessor::FindPlayer(it))
+        if (auto player = ObjectAccessor::GetPlayer(m_map, it))
             player->RemoveAura(SPELL_QUEUED_FOR_BRAWL);
     }
 }
@@ -138,6 +158,12 @@ void BrawlersGuild::RemovePlayer(Player* player)
 void BrawlersGuild::RemovePlayer(ObjectGuid guid)
 {
     _removeList.push_back(guid);
+}
+
+bool BrawlersGuild::IsPlayerInQueue(ObjectGuid guid) const
+{
+    return std::find(_waitList.begin(), _waitList.end(), guid) != _waitList.end()
+        && std::find(_removeList.begin(), _removeList.end(), guid) == _removeList.end();
 }
 
 void BrawlersGuild::UpdateAura(Player* player, uint32 rank)
@@ -158,7 +184,7 @@ void BrawlersGuild::UpdateAllAuras()
     uint32 rank = 1;
     for (auto& it : _waitList)
     {
-        if (auto player = ObjectAccessor::FindPlayer(it))
+        if (auto player = ObjectAccessor::GetPlayer(m_map, it))
         {
             UpdateAura(player, rank);
             ++rank;
@@ -173,6 +199,7 @@ void BrawlersGuild::UpdateBrawl(uint32 diff)
     _prepareCombatTimer.Update(diff);
     _combatTimer.Update(diff);
     _transitionTimer.Update(diff);
+    _resultTimer.Update(diff);
 
     switch (_brawlState)
     {
@@ -182,7 +209,7 @@ void BrawlersGuild::UpdateBrawl(uint32 diff)
                 _current = _waitList.front();
                 RemovePlayer(_current);
 
-                if (auto player = ObjectAccessor::FindPlayer(_current))
+                if (auto player = ObjectAccessor::GetPlayer(m_map, _current))
                 {
                     player->RemoveAura(SPELL_QUEUED_FOR_BRAWL);
                     player->NearTeleportTo(player->GetMapId(), &BrawlersTeleportLocations[player->GetTeamId() == TEAM_ALLIANCE ? 0 : 2]);
@@ -195,63 +222,83 @@ void BrawlersGuild::UpdateBrawl(uint32 diff)
                     _prepareCombatTimer.SetCurrent(0);
                     _prepareCombatTimer.SetInterval(6000);
                     SetBrawlState(BRAWL_STATE_PREPARE_COMBAT);
-                    
-                    if (auto ann = ObjectAccessor::FindCreature(_announcer))
+
+                    if (auto ann = m_map->GetCreature(_announcer))
                     {
                         ann->GetMotionMaster()->Clear();
                         ann->GetMotionMaster()->MovePath((player->GetTeamId() == TEAM_ALLIANCE ? 11854502 : 11854503), true);
                         uint32 repRank = GetPlayerRank(player)+1;
-                        ObjectGuid player_guid = player->GetGUID();
 
-                        ann->AddDelayedEvent(1000, [ann, repRank, player_guid] () -> void
+                        ann->AddDelayedEvent(1000, [ann, repRank] () -> void
                         {
-                                ann->AI()->Talk(repRank);
+                            ann->AI()->Talk(repRank);
                         });
                     }
-                        
                 }
             }
             break;
         case BRAWL_STATE_PREPARE_COMBAT:
             if (_prepareCombatTimer.Passed())
             {
-                if (auto player = ObjectAccessor::FindPlayer(_current))
-                {
-                    if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(SPELL_ARENA_FORCE_REACTION))
-                        //if (Aura* aura = Aura::TryRefreshStackOrCreate(spellInfo, MAX_EFFECT_MASK, player, player))
-                            //aura->ApplyForTargets(); @TODO
+                _prepareCombatTimer.SetCurrent(0);
 
+                if (auto player = ObjectAccessor::GetPlayer(m_map, _current))
+                {
                     if (auto entry = GetBossForPlayer(player))
                     {
                         uint8 select_points = (player->GetTeamId() == TEAM_ALLIANCE ? 4 : 5);
-                        
+
                         if (entry == NPC_NIBBLEH) // hack
                             select_points += 2;
-                        
+
                         if (auto summon = player->SummonCreature(entry, BrawlersTeleportLocations[select_points], TEMPSUMMON_TIMED_DESPAWN, 120000))
                         {
-                            //_boss = summon->GetGUID();
-                            //_combatTimer.SetCurrent(0);
-                            //_combatTimer.SetInterval(120000);
-                            //SetBrawlState(BRAWL_STATE_COMBAT);
-                            //PlayFightSound(true, summon->GetEntry());
-                            //summon->CastSpell(summon, 132633);
+                            // la reaction forcee rend attaquables les adversaires de faction amicale (Grand-pere, Splat, Razorgrin...)
+                            player->AddAura(SPELL_ARENA_FORCE_REACTION, player);
+
+                            // sans ce passage en combat, le minuteur restait ecoule et un boss etait invoque a chaque tick
+                            _boss = summon->GetGUID();
+                            _roundResult = ROUND_RESULT_NONE;
+                            _combatTimer.SetCurrent(0);
+                            _combatTimer.SetInterval(120000);
+                            SetBrawlState(BRAWL_STATE_COMBAT);
+                            PlayFightSound(true, summon->GetEntry());
                             return;
                         }
-                    }   
+                    }
                 }
-                _prepareCombatTimer.SetCurrent(0);
 
                 EndCombat(false);
             }
             break;
         case BRAWL_STATE_COMBAT:
+        {
+            Player* player = ObjectAccessor::GetPlayer(m_map, _current);
+            if (!player) // EndCombat deja appele par Update
+                break;
+
+            // manche jouee : on laisse passer la mort simultanee du joueur (perdue) avant de conclure
+            if (_roundResult != ROUND_RESULT_NONE)
+            {
+                if (_resultTimer.Passed())
+                    EndCombat(_roundResult == ROUND_RESULT_WIN && player->IsAlive());
+                break;
+            }
+
+            // joueur mort, ou boss disparu sans etre tue (depop, evade hors de l'arene) : manche perdue
+            if (!player->IsAlive() || !m_map->GetCreature(_boss))
+            {
+                EndCombat(false);
+                break;
+            }
+
             if (_combatTimer.Passed())
             {
                 _combatTimer.SetCurrent(0);
                 EndCombat(false, true);
             }
             break;
+        }
         case BRAWL_STATE_TRANSITION:
             if (_transitionTimer.Passed())
             {
@@ -268,7 +315,7 @@ void BrawlersGuild::EndCombat(bool win, bool time)
 {
     PlayFightSound(false);
 
-    if (auto player = ObjectAccessor::FindPlayer(_current))
+    if (auto player = ObjectAccessor::GetPlayer(m_map, _current))
     {
         player->AddDelayedEvent(1000, [player] () -> void
         {
@@ -286,18 +333,32 @@ void BrawlersGuild::EndCombat(bool win, bool time)
         _transitionTimer.SetCurrent(0);
         _transitionTimer.SetInterval(5000);
 
-        player->ResurrectPlayer(1.0f);
-        player->SpawnCorpseBones();
-        
+        if (!player->IsAlive())
+        {
+            player->ResurrectPlayer(1.0f);
+            player->SpawnCorpseBones();
+        }
+
         if (win)
         {
             player->PlayDirectSound(BrawlersSound[_ID][VICTORY]);
-            player->AddItem(92718, 1);
+            if (!player->AddItem(92718, 1))
+            {
+                // sacs pleins : la bourse arrive par courrier au lieu d'etre perdue
+                if (Item* purse = Item::CreateItem(92718, 1, player))
+                {
+                    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
+                    purse->SaveToDB(trans);
+                    MailDraft(purse->GetTemplate()->GetName(player->GetSession()->GetSessionDbLocaleIndex()), "").AddItem(purse)
+                        .SendMailTo(trans, MailReceiver(player), MailSender(MAIL_NORMAL, UI64LIT(0), MAIL_STATIONERY_DEFAULT));
+                    CharacterDatabase.CommitTransaction(trans);
+                }
+            }
 
             auto rep = player->GetReputation(BrawlersFaction[player->GetTeamId()]) + REPUTATION_PER_RANK;
             if (rep > MAX_BRAWLERS_REPUTATION)
                 rep = MAX_BRAWLERS_REPUTATION;
-            
+
             uint32 oldRank = GetPlayerRank(player);
             player->SetReputation(BrawlersFaction[player->GetTeamId()], rep);
             if (oldRank < GetPlayerRank(player))
@@ -335,38 +396,39 @@ void BrawlersGuild::EndCombat(bool win, bool time)
             if (player->GetTeamId() == TEAM_HORDE && !player->HasAchieved(ACHIEVEMENT_WIN_BRAWL_H))
                 if (auto achievementEntry = sAchievementStore.LookupEntry(ACHIEVEMENT_WIN_BRAWL_H))
                     player->CompletedAchievement(achievementEntry);
-                
-            if (auto ann = ObjectAccessor::FindCreature(_announcer))
+
+            if (auto ann = m_map->GetCreature(_announcer))
                 ann->AI()->Talk(9);
         }
         else
         {
             player->PlayDirectSound(BrawlersSound[_ID][DEFEAT]);
-            if (auto ann = ObjectAccessor::FindCreature(_announcer))
+            if (auto ann = m_map->GetCreature(_announcer))
                 ann->AI()->Talk(10);
         }
-        
+
         if (time)
         {
             player->CastSpell(player, SPELL_EXPLOSION_0, true);
             player->CastSpell(player, SPELL_EXPLOSION_1, true);
             player->CastSpell(player, SPELL_EXPLOSION_2, true);
             player->CastSpell(player, SPELL_EXPLOSION_3, true);
-            // player->Kill(player);
         }
         player->SaveToDB();
     }
 
     _current.Clear();
-    
-    if (auto cboss = ObjectAccessor::FindCreature(_boss))
+
+    if (auto cboss = m_map->GetCreature(_boss))
     {
-        cboss->AI()->JustDied(nullptr); // for remove adds, AT and some
-        
+        if (cboss->IsAIEnabled)
+            cboss->AI()->JustDied(nullptr); // for remove adds, AT and some
+
         cboss->DespawnOrUnsummon(1000);
     }
 
     _boss.Clear();
+    _roundResult = ROUND_RESULT_NONE;
     SetBrawlState(BRAWL_STATE_TRANSITION);
 }
 
@@ -382,7 +444,7 @@ uint32 BrawlersGuild::GetPlayerSubRank(Player* player)
 {
     if (player)
         return (player->GetReputation(BrawlersFaction[player->GetTeamId()]) / REPUTATION_PER_RANK) % BOSS_PER_RANK;
-       
+
     return 0;
 }
 
@@ -402,8 +464,52 @@ uint32 BrawlersGuild::GetBossForPlayer(Player* player)
 
 void BrawlersGuild::BossReport(ObjectGuid guid, bool win)
 {
-    if (_current == guid)
+    if (_current && _current == guid)
         EndCombat(win);
+}
+
+// La manche est gagnee par le joueur qui combat, ou par ce qui lui appartient (familier, totem, vehicule) ;
+// le combat lui-meme compte aussi (un adversaire tue par script, killer == boss).
+bool BrawlersGuild::IsRoundKiller(Creature* boss, Unit* killer) const
+{
+    if (!killer || !_current)
+        return false;
+
+    if (killer == boss)
+        return true;
+
+    Player* killerPlayer = killer->GetCharmerOrOwnerPlayerOrPlayerItself();
+    if (!killerPlayer)
+        if (Unit* killerOwner = killer->GetAnyOwner())
+            killerPlayer = killerOwner->GetCharmerOrOwnerPlayerOrPlayerItself();
+
+    return killerPlayer && killerPlayer->GetGUID() == _current;
+}
+
+void BrawlersGuild::SetRoundResult(bool win)
+{
+    if (_brawlState != BRAWL_STATE_COMBAT || _roundResult != ROUND_RESULT_NONE)
+        return;
+
+    _roundResult = win ? ROUND_RESULT_WIN : ROUND_RESULT_LOSS;
+    _resultTimer.SetCurrent(0);
+    _resultTimer.SetInterval(700);
+}
+
+void BrawlersGuild::OnCreatureKilled(Creature* victim, Unit* killer)
+{
+    if (!victim || !_boss || victim->GetGUID() != _boss)
+        return;
+
+    SetRoundResult(IsRoundKiller(victim, killer));
+}
+
+void BrawlersGuild::ReportRoundWon(Creature* reporter, Unit* killer)
+{
+    if (!reporter || !_current)
+        return;
+
+    SetRoundResult(IsRoundKiller(reporter, killer));
 }
 
 bool BrawlersGuild::IsPlayerInBrawl(Player* player)
@@ -426,12 +532,12 @@ void BrawlersGuild::SetAnnouncer(ObjectGuid guid)
 
 void BrawlersGuild::PlayFightSound(bool play, uint32 boss)
 {
-    if (auto ann = ObjectAccessor::FindCreature(_announcer))
+    if (auto ann = m_map->GetCreature(_announcer))
     {
         if (play)
         {
             ann->CastSpell(ann, BrawlersFightAmbiance[_ID], true);
-            if (boss)
+            if (boss && ann->IsAIEnabled)
                 ann->AI()->SetData(boss, 0);
         }
         else
@@ -459,7 +565,7 @@ void BrawlersGuild::SendCongratulations(Player* player)
 {
     if (!player)
         return;
-    
+
     std::list<Creature*> fanats;
     GetCreatureListWithEntryInGrid(fanats, player, (player->GetTeamId() == TEAM_ALLIANCE ? 68992 : 68404), 70.0f);
     GetCreatureListWithEntryInGrid(fanats, player, (player->GetTeamId() == TEAM_ALLIANCE ? 68994 : 68403), 70.0f);
@@ -468,7 +574,6 @@ void BrawlersGuild::SendCongratulations(Player* player)
         return;
 
     for (auto& fanat : fanats)
-        if (urand(1, 3) == 2)
+        if (urand(1, 3) == 2 && fanat->IsAIEnabled)
             fanat->AI()->Talk(1);
-    
 }
