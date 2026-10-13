@@ -3515,18 +3515,24 @@ public:
             DeathAndDecay = 43265,
         };
 
-        void HandleProc(AuraEffect const* aurEff, ProcEventInfo& procInfo)
+        bool CheckProc(ProcEventInfo& eventInfo)
+        {
+            Unit* actor = eventInfo.GetActor();
+            Unit* target = eventInfo.GetActionTarget();
+            return actor && target && target->HasAura(Spells::BloodPlague, actor->GetGUID());
+        }
+
+        void HandleProc(AuraEffect const* /*aurEff*/, ProcEventInfo& eventInfo)
         {
             PreventDefaultAction();
-            if (procInfo.GetDamageInfo()->GetVictim()->HasAura(Spells::BloodPlague, GetCaster()->GetGUID()))
-            {
-                GetCaster()->CastSpell(GetCaster(), CrimsonScourgeTriggered, true);
-                GetCaster()->ToPlayer()->GetSpellHistory()->ResetCooldown(Spells::DeathAndDecay, true);
-            }
+            Unit* actor = eventInfo.GetActor();
+            actor->CastSpell(actor, CrimsonScourgeTriggered, true);
+            actor->GetSpellHistory()->ResetCooldown(Spells::DeathAndDecay, true);
         }
 
         void Register() override
         {
+            DoCheckProc += AuraCheckProcFn(spell_dk_crimson_scourge_AuraScript::CheckProc);
             OnEffectProc += AuraEffectProcFn(spell_dk_crimson_scourge_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
         }
     };
@@ -3534,6 +3540,83 @@ public:
     AuraScript* GetAuraScript() const override
     {
         return new spell_dk_crimson_scourge_AuraScript();
+    }
+};
+
+// 206960 - Tremble Before Me
+class spell_dk_tremble_before_me : public AuraScript
+{
+    PrepareAuraScript(spell_dk_tremble_before_me);
+
+    enum Spells
+    {
+        TrembleBeforeMeStun     = 206961,
+        TrembleBeforeMeMarker   = 206962,   // once per 10 s per target
+    };
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_DK_DEATH_AND_DECAY_DAMAGE, TrembleBeforeMeStun, TrembleBeforeMeMarker });
+    }
+
+    bool CheckProc(ProcEventInfo& eventInfo)
+    {
+        SpellInfo const* spellInfo = eventInfo.GetSpellInfo();
+        Unit* actor = eventInfo.GetActor();
+        Unit* target = eventInfo.GetActionTarget();
+        return spellInfo && spellInfo->Id == SPELL_DK_DEATH_AND_DECAY_DAMAGE && actor && target
+            && !target->HasAura(TrembleBeforeMeMarker, actor->GetGUID());
+    }
+
+    void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+    {
+        PreventDefaultAction();
+        Unit* actor = eventInfo.GetActor();
+        Unit* target = eventInfo.GetActionTarget();
+        actor->CastSpell(target, TrembleBeforeMeStun, true, nullptr, aurEff);
+        actor->CastSpell(target, TrembleBeforeMeMarker, true, nullptr, aurEff);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(spell_dk_tremble_before_me::CheckProc);
+        OnEffectProc += AuraEffectProcFn(spell_dk_tremble_before_me::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
+    }
+};
+
+// 192548 - Blood Feast (artifact trait): Heart Strike heals you for 25% of the damage it deals
+class spell_dk_blood_feast : public AuraScript
+{
+    PrepareAuraScript(spell_dk_blood_feast);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_DK_HEART_STRIKE });
+    }
+
+    bool CheckProc(ProcEventInfo& eventInfo)
+    {
+        SpellInfo const* spellInfo = eventInfo.GetSpellInfo();
+        DamageInfo* damageInfo = eventInfo.GetDamageInfo();
+        return spellInfo && spellInfo->Id == SPELL_DK_HEART_STRIKE && damageInfo && damageInfo->GetDamage() > 0 && eventInfo.GetActor();
+    }
+
+    void HandleProc(AuraEffect const* aurEff, ProcEventInfo& eventInfo)
+    {
+        PreventDefaultAction();
+        Unit* actor = eventInfo.GetActor();
+        uint32 heal = CalculatePct(eventInfo.GetDamageInfo()->GetDamage(), aurEff->GetAmount());
+        if (!heal)
+            return;
+
+        HealInfo healInfo(actor, actor, heal, GetSpellInfo(), GetSpellInfo()->GetSchoolMask());
+        actor->HealBySpell(healInfo);
+    }
+
+    void Register() override
+    {
+        DoCheckProc += AuraCheckProcFn(spell_dk_blood_feast::CheckProc);
+        OnEffectProc += AuraEffectProcFn(spell_dk_blood_feast::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
     }
 };
 
@@ -3609,6 +3692,8 @@ void AddSC_deathknight_spell_scripts()
     new spell_dk_mark_of_blood();
     new spell_dk_tombstone();
     new spell_dk_crimson_scourge();
+    RegisterAuraScript(spell_dk_tremble_before_me);
+    RegisterAuraScript(spell_dk_blood_feast);
     new spell_dk_virulent_eruption();
     //new spell_dk_scourge_strike_shadow();
     new spell_dk_runic_corruption();

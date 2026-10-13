@@ -4,6 +4,7 @@ https://uwow.biz/
 */
 
 #include "tomb_of_sargeras.h"
+#include "ObjectAccessor.h"
 
 enum Says
 {
@@ -489,15 +490,22 @@ struct boss_fallen_avatar : BossAI
             if (Creature* kiljedan = instance->instance->GetCreature(instance->GetGuidData(NPC_KILDJEDAN_AVATARA)))
             {
                 kiljedan->CastSpell(kiljedan, 242902);
-                kiljedan->AddDelayedEvent(27000, [kiljedan, this]() -> void
+                ObjectGuid avatarGuid = me->GetGUID();
+                kiljedan->AddDelayedEvent(27000, [kiljedan, avatarGuid]() -> void
                 {
-                    kiljedan->CastSpell(me, 240897);
-                    me->AddDelayedEvent(3000, [this]() -> void
+                    // the avatar may have despawned during these 27 seconds
+                    Creature* avatar = ObjectAccessor::GetCreature(*kiljedan, avatarGuid);
+                    if (!avatar)
+                        return;
+
+                    kiljedan->CastSpell(avatar, 240897);
+                    avatar->AddDelayedEvent(3000, [avatar]() -> void
                     {
-                        me->SetAIAnimKitId(12758);     
-                        me->AddDelayedEvent(10000, [this]() -> void
+                        avatar->SetAIAnimKitId(12758);
+                        avatar->AddDelayedEvent(10000, [avatar]() -> void
                         {
-                            DoCast(SPELL_VISUAL_SWORD);
+                            if (avatar->AI())
+                                avatar->AI()->DoCast(SPELL_VISUAL_SWORD);
                         });
                     });
 
