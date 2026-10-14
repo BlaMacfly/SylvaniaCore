@@ -458,7 +458,7 @@ class spell_archdruid_glaidalis_primal_rage_charge : public AuraScript
 
     void Register() override
     {
-        OnEffectRemove += AuraEffectRemoveFn(spell_archdruid_glaidalis_primal_rage_charge::HandleRemove, EFFECT_0, SPELL_AURA_AREA_TRIGGER, AURA_EFFECT_HANDLE_REAL);
+        OnEffectRemove += AuraEffectRemoveFn(spell_archdruid_glaidalis_primal_rage_charge::HandleRemove, EFFECT_1, SPELL_AURA_AREA_TRIGGER, AURA_EFFECT_HANDLE_REAL);
     }
 };
 

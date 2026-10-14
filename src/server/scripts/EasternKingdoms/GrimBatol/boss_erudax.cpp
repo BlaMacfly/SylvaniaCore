@@ -493,12 +493,15 @@ public:
 
         void FilterTargets(std::list<WorldObject*>& targetList)
         {
+            // la zone ne trie plus les ennemis (cible 7 en 7.x) : seulement ce que le lanceur peut attaquer
+            if (Unit* caster = GetCaster())
+                targetList.remove_if([caster](WorldObject* obj) { Unit* unit = obj->ToUnit(); return !unit || !caster->IsValidAttackTarget(unit); });
             targetList.remove_if(DistanceCheck(GetCaster()));
         }
 
         void Register() override
         {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_shadow_gale_damage_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_shadow_gale_damage_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
             OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_shadow_gale_damage_SpellScript::FilterTargets, EFFECT_1, TARGET_UNIT_SRC_AREA_ENEMY);
         }
     };

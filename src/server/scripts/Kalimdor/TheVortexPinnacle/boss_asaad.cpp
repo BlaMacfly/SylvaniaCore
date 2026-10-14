@@ -600,6 +600,8 @@ public :
         void FilterTargets(std::list<WorldObject*>& unitList)
         {
             Creature* const trigger = GetCaster()->FindNearestCreature(NPC_UNSTABLE_GROUNDING_FIELD, 100.0f, true);
+            if (!trigger || !trigger->AI())
+                return;
             position[0] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[0];
             position[1] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[1];
             position[2] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[2];
@@ -644,7 +646,12 @@ public :
 
         void FilterTargets(std::list<WorldObject*>& unitList)
         {
+            // la zone ne trie plus les ennemis (cible 7 en 7.x) : seulement ce que le lanceur peut attaquer
+            if (Unit* caster = GetCaster())
+                unitList.remove_if([caster](WorldObject* obj) { Unit* unit = obj->ToUnit(); return !unit || !caster->IsValidAttackTarget(unit); });
             Creature* const trigger = GetCaster()->FindNearestCreature(NPC_UNSTABLE_GROUNDING_FIELD, 100.0f, true);
+            if (!trigger || !trigger->AI())
+                return;
             position[0] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[0];
             position[1] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[1];
             position[2] = CAST_AI(npc_asaad_grounding_field_trigger::script_impl, trigger->AI())->_trianglePos[2];
@@ -661,7 +668,7 @@ public :
 
         void Register() override
         {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_asaad_supremacy_dummy_SpellScript::FilterTargets, EFFECT_0,  TARGET_UNIT_SRC_AREA_ENEMY);
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_asaad_supremacy_dummy_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
         }
     };
 

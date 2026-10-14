@@ -1714,7 +1714,7 @@ class auchindoun_spell_void_beam : public SpellScript
     void Register() override
     {
         //OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(auchindoun_spell_void_beam::CorrectTargets, SpellEffIndex::EFFECT_0, Targets::TARGET_UNIT_NEARBY_ENTRY);
-        OnObjectTargetSelect += SpellObjectTargetSelectFn(auchindoun_spell_void_beam::CheckTarget, EFFECT_0, TARGET_UNIT_TARGET_ANY);
+        OnObjectTargetSelect += SpellObjectTargetSelectFn(auchindoun_spell_void_beam::CheckTarget, EFFECT_0, TARGET_UNIT_NEARBY_ENTRY);
     }
 };
 

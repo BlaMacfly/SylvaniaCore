@@ -1862,6 +1862,9 @@ class spell_alysrazor_harsh_winds : public SpellScriptLoader
 
             void FilterTargets(std::list<WorldObject*>& targets)
             {
+                // la zone ne trie plus les ennemis (cible 7 en 7.x) : seulement ce que le lanceur peut attaquer
+                if (Unit* caster = GetCaster())
+                    targets.remove_if([caster](WorldObject* obj) { Unit* unit = obj->ToUnit(); return !unit || !caster->IsValidAttackTarget(unit); });
                 if (!GetCaster())
                     return;
 
@@ -1870,7 +1873,7 @@ class spell_alysrazor_harsh_winds : public SpellScriptLoader
 
             void Register() override
             {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_alysrazor_harsh_winds_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_alysrazor_harsh_winds_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
             }
 
         private:
@@ -2028,6 +2031,9 @@ class spell_alysrazor_firestorm : public SpellScriptLoader
 
             void FilterTargets(std::list<WorldObject*>& targets)
             {
+                // la zone ne trie plus les ennemis (cible 7 en 7.x) : seulement ce que le lanceur peut attaquer
+                if (Unit* caster = GetCaster())
+                    targets.remove_if([caster](WorldObject* obj) { Unit* unit = obj->ToUnit(); return !unit || !caster->IsValidAttackTarget(unit); });
                 if (!GetCaster())
                     return;
 
@@ -2042,7 +2048,7 @@ class spell_alysrazor_firestorm : public SpellScriptLoader
 
             void Register() override
             {
-                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_alysrazor_firestorm_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_alysrazor_firestorm_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
             }
 
         private:

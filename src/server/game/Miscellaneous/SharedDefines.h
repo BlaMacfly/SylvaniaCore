@@ -2292,7 +2292,7 @@ enum Targets
     TARGET_UNIT_PASSENGER_6            = 102,
     TARGET_UNIT_PASSENGER_7            = 103,
     TARGET_UNIT_CONE_ENEMY_104         = 104,
-    TARGET_UNIT_UNK_105                = 105, // 1 spell
+    TARGET_UNIT_CASTER_AND_PASSENGERS  = 105, // 1 spell
     TARGET_DEST_CHANNEL_CASTER         = 106,
     TARGET_UNK_DEST_AREA_UNK_107       = 107, // not enough info - only generic spells avalible
     TARGET_GAMEOBJECT_CONE_108         = 108,
@@ -2318,14 +2318,14 @@ enum Targets
     TARGET_UNK_128                     = 128,
     TARGET_UNIT_CASTER_AREA_ENEMY_FRONT= 129,
     TARGET_ENNEMY_IN_LINE              = 130,
-    TARGET_UNK_131                     = 131,
+    TARGET_DEST_SUMMONER               = 131,
     TARGET_DEST_TARGET_ALLY            = 132,
     TARGET_UNK_133                     = 133,
     TARGET_UNIT_LINE_ENEMY_134         = 134,
     TARGET_UNK_135                     = 135,
     TARGET_UNK_136                     = 136,
     TARGET_UNK_137                     = 137,
-    TARGET_UNK_138                     = 138,
+    TARGET_DEST_DEST_GROUND            = 138,
     TARGET_UNK_139                     = 139,
     TARGET_UNK_140                     = 140,
     TARGET_UNK_141                     = 141,
@@ -2335,7 +2335,7 @@ enum Targets
     TARGET_UNK_145                     = 145,
     TARGET_UNK_146                     = 146,
     TARGET_UNK_147                     = 147,
-    TARGET_UNK_148                     = 148,
+    TARGET_DEST_DEST_TARGET_TOWARDS_CASTER = 148,
     TARGET_UNK_149                     = 149,
     TOTAL_SPELL_TARGETS
 };

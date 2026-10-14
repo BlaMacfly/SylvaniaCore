@@ -1365,6 +1365,14 @@ void Spell::SelectImplicitAreaTargets(SpellEffIndex effIndex, SpellImplicitTarge
             SearchAreaTargets(targets, radius, center, referer, targetType.GetObjectType(), TARGET_CHECK_SUMMONED, effect->ImplicitTargetConditions);
         targets.push_front(referer);
     }
+    else if (targetType.GetTarget() == TARGET_UNIT_CASTER_AND_PASSENGERS)
+    {
+        targets.push_back(m_caster);
+        if (Vehicle const* vehicleKit = m_caster->GetVehicleKit())
+            for (int8 seat = 0; seat < MAX_VEHICLE_SEATS; ++seat)
+                if (Unit* passenger = vehicleKit->GetPassenger(seat))
+                    targets.push_back(passenger);
+    }
     else if (radius)
         SearchAreaTargets(targets, radius, center, referer, targetType.GetObjectType(), targetType.GetCheckType(), effect->ImplicitTargetConditions);
 
@@ -1393,6 +1401,11 @@ void Spell::SelectImplicitCasterDestTargets(SpellEffIndex effIndex, SpellImplici
     switch (targetType.GetTarget())
     {
         case TARGET_DEST_CASTER:
+            break;
+        case TARGET_DEST_SUMMONER:
+            if (TempSummon const* casterSummon = m_caster->ToTempSummon())
+                if (Unit const* summoner = casterSummon->GetSummoner())
+                    dest = SpellDestination(*summoner);
             break;
         case TARGET_DEST_HOME:
             if (Player* playerCaster = m_caster->ToPlayer())
@@ -1546,6 +1559,7 @@ void Spell::SelectImplicitTargetDestTargets(SpellEffIndex effIndex, SpellImplici
     {
         case TARGET_DEST_TARGET_ENEMY:
         case TARGET_DEST_TARGET_ANY:
+        case TARGET_DEST_TARGET_ALLY:
             break;
         default:
         {
@@ -1592,6 +1606,25 @@ void Spell::SelectImplicitDestDestTargets(SpellEffIndex effIndex, SpellImplicitT
         case TARGET_DEST_TRAJ:
             SelectImplicitTrajTargets(effIndex);
             return;
+        case TARGET_DEST_DEST_GROUND:
+        {
+            float groundZ = m_caster->GetMap()->GetHeight(m_caster->GetPhaseShift(), dest._position.GetPositionX(), dest._position.GetPositionY(), dest._position.GetPositionZ() + 2.0f, true);
+            if (groundZ > INVALID_HEIGHT)
+                dest._position.m_positionZ = groundZ;
+            break;
+        }
+        case TARGET_DEST_DEST_TARGET_TOWARDS_CASTER:
+        {
+            if (SpellEffectInfo const* effect = GetEffect(effIndex))
+            {
+                Position pos = dest._position;
+                float angle = pos.GetAngle(m_caster) - m_caster->GetOrientation();
+                m_caster->MovePositionToFirstCollision(pos, effect->CalcRadius(m_caster), angle);
+                pos.SetOrientation(m_caster->GetAngle(&dest._position));
+                dest.Relocate(pos);
+            }
+            break;
+        }
         default:
         {
             if (SpellEffectInfo const* effect = GetEffect(effIndex))

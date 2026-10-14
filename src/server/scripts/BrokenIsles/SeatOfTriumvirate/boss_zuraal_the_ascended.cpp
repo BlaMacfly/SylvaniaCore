@@ -187,9 +187,9 @@ class aura_void_phased : public AuraScript
 
     void Register() override
     {
-        OnEffectApply += AuraEffectApplyFn(aura_void_phased::OnApply, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
-        OnEffectPeriodic += AuraEffectPeriodicFn(aura_void_phased::OnPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
-        OnEffectRemove += AuraEffectRemoveFn(aura_void_phased::OnRemove, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        OnEffectApply += AuraEffectApplyFn(aura_void_phased::OnApply, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
+        OnEffectPeriodic += AuraEffectPeriodicFn(aura_void_phased::OnPeriodic, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
+        OnEffectRemove += AuraEffectRemoveFn(aura_void_phased::OnRemove, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY, AURA_EFFECT_HANDLE_REAL);
     }
 };
 

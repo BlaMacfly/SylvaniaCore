@@ -121,7 +121,7 @@ public:
 
         void Register()
         {
-            OnDestinationTargetSelect += SpellDestinationTargetSelectFn(spell_mountain_strike_dest_SpellScript::ModDestHeight, EFFECT_0, TARGET_DEST_DEST_RANDOM);
+            OnDestinationTargetSelect += SpellDestinationTargetSelectFn(spell_mountain_strike_dest_SpellScript::ModDestHeight, EFFECT_0, TARGET_DEST_DEST_GROUND);
         }
     };
 

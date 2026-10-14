@@ -535,6 +535,9 @@ public:
 
         void FilterTargets(std::list<WorldObject*>& targets)
         {
+            // la zone ne trie plus les ennemis (cible 7 en 7.x) : seulement ce que le lanceur peut attaquer
+            if (Unit* caster = GetCaster())
+                targets.remove_if([caster](WorldObject* obj) { Unit* unit = obj->ToUnit(); return !unit || !caster->IsValidAttackTarget(unit); });
             if (!GetCaster())
                 return;
 
@@ -544,7 +547,7 @@ public:
 
         void Register() override
         {
-            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_perotharn_punishing_flames_dmg_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENEMY);
+            OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_perotharn_punishing_flames_dmg_SpellScript::FilterTargets, EFFECT_0, TARGET_UNIT_SRC_AREA_ENTRY);
         }
 
     private:
