@@ -192,6 +192,11 @@ class TC_GAME_API AuraEffect
         void HandleModConfuse(AuraApplication const* aurApp, uint8 mode, bool apply) const;
         void HandleModFear(AuraApplication const* aurApp, uint8 mode, bool apply) const;
         void HandleAuraModStun(AuraApplication const* aurApp, uint8 mode, bool apply) const;
+        void HandleAuraModStunAndDisableGravity(AuraApplication const* aurApp, uint8 mode, bool apply) const;
+        void HandleAuraAllowTalentSwapping(AuraApplication const* aurApp, uint8 mode, bool apply) const;
+        void HandleConvertCritToParry(AuraApplication const* aurApp, uint8 mode, bool apply) const;
+        void HandleDetectAmore(AuraApplication const* aurApp, uint8 mode, bool apply) const;
+        void HandleTriggerSpellOnHealthPercent(AuraApplication const* aurApp, uint8 mode, bool apply) const;
         void HandleAuraModRoot(AuraApplication const* aurApp, uint8 mode, bool apply) const;
         void HandlePreventFleeing(AuraApplication const* aurApp, uint8 mode, bool apply) const;
         //  charm

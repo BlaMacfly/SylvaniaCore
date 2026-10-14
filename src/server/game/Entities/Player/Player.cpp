@@ -5540,6 +5540,10 @@ void Player::UpdateRating(CombatRating cr)
         if (aurEff->GetMiscValue() & (1 << cr))
             amount += int32(CalculatePct(amount, aurEff->GetAmount()));
 
+    // Riposte : une part du score de critique devient du score de parade (d'apres TrinityCore)
+    if (cr == CR_PARRY)
+        amount += int32(m_baseRatingValue[CR_CRIT_MELEE] * (GetTotalAuraMultiplier(SPELL_AURA_CONVERT_CRIT_RATING_PCT_TO_PARRY_RATING) - 1.0f));
+
     if (amount < 0)
         amount = 0;
 
@@ -5577,6 +5581,8 @@ void Player::UpdateRating(CombatRating cr)
                 UpdateCritPercentage(BASE_ATTACK);
                 UpdateCritPercentage(OFF_ATTACK);
             }
+            if (HasAuraType(SPELL_AURA_CONVERT_CRIT_RATING_PCT_TO_PARRY_RATING))
+                UpdateRating(CR_PARRY);
             break;
         case CR_CRIT_RANGED:
             if (affectStats)
@@ -7197,6 +7203,7 @@ void Player::_LoadCurrency(PreparedQueryResult result)
         cur.TrackedQuantity = fields[3].GetUInt32();
         cur.Flags = fields[4].GetUInt8();
         cur.WeekCap = fields[5].GetUInt32();
+        cur.IncreasedCap = fields[6].GetUInt32();
 
         _currencyStorage.insert(PlayerCurrenciesMap::value_type(currencyID, cur));
 
@@ -7223,6 +7230,7 @@ void Player::_SaveCurrency(CharacterDatabaseTransaction& trans)
                 stmt->setUInt32(4, itr->second.TrackedQuantity);
                 stmt->setUInt8(5, itr->second.Flags);
                 stmt->setUInt32(6, itr->second.WeekCap);
+                stmt->setUInt32(7, itr->second.IncreasedCap);
                 trans->Append(stmt);
                 break;
             case PLAYERCURRENCY_CHANGED:
@@ -7232,8 +7240,9 @@ void Player::_SaveCurrency(CharacterDatabaseTransaction& trans)
                 stmt->setUInt32(2, itr->second.TrackedQuantity);
                 stmt->setUInt8(3, itr->second.Flags);
                 stmt->setUInt32(4, itr->second.WeekCap);
-                stmt->setUInt64(5, GetGUID().GetCounter());
-                stmt->setUInt16(6, itr->first);
+                stmt->setUInt32(5, itr->second.IncreasedCap);
+                stmt->setUInt64(6, GetGUID().GetCounter());
+                stmt->setUInt16(7, itr->first);
                 trans->Append(stmt);
                 break;
             default:
@@ -7261,6 +7270,8 @@ void Player::SendNewCurrency(uint32 id) const
     record.WeeklyQuantity = itr->second.WeeklyQuantity;
     record.MaxWeeklyQuantity = GetCurrencyWeekCap(entry);
     record.TrackedQuantity = itr->second.TrackedQuantity;
+    if (itr->second.IncreasedCap)
+        record.MaxQuantity = GetCurrencyTotalCap(entry);
     record.Flags = itr->second.Flags;
 
     packet.Data.push_back(record);
@@ -7287,6 +7298,8 @@ void Player::SendCurrencies() const
         record.WeeklyQuantity = itr->second.WeeklyQuantity;
         record.MaxWeeklyQuantity = GetCurrencyWeekCap(entry);
         record.TrackedQuantity = itr->second.TrackedQuantity;
+        if (itr->second.IncreasedCap)
+            record.MaxQuantity = GetCurrencyTotalCap(entry);
         record.Flags = itr->second.Flags;
 
         packet.Data.push_back(record);
@@ -7471,6 +7484,8 @@ void Player::ModifyCurrency(uint32 id, int32 count, bool printLog/* = true*/, bo
         packet.SuppressChatLog = !printLog;
         packet.WeeklyQuantity = newWeekCount;
         packet.TrackedQuantity = newTrackedCount;
+        if (itr->second.IncreasedCap)
+            packet.MaxQuantity = totalCap;
         packet.Flags = itr->second.Flags;
 
         GetSession()->SendPacket(packet.Write());
@@ -7586,7 +7601,40 @@ uint32 Player::GetCurrencyTotalCap(CurrencyTypesEntry const* currency) const
         }
     }
 
+    if (cap)
+    {
+        PlayerCurrenciesMap::const_iterator itr = _currencyStorage.find(currency->ID);
+        if (itr != _currencyStorage.end())
+            cap += itr->second.IncreasedCap;
+    }
+
     return cap;
+}
+
+void Player::IncreaseCurrencyCap(uint32 id, uint32 amount)
+{
+    CurrencyTypesEntry const* entry = sCurrencyTypesStore.LookupEntry(id);
+    if (!entry || !amount)
+        return;
+
+    PlayerCurrenciesMap::iterator itr = _currencyStorage.find(id);
+    if (itr == _currencyStorage.end())
+    {
+        PlayerCurrency cur;
+        cur.state = PLAYERCURRENCY_NEW;
+        cur.Quantity = 0;
+        cur.WeeklyQuantity = 0;
+        cur.TrackedQuantity = 0;
+        cur.Flags = 0;
+        cur.WeekCap = CalculateCurrencyWeekCap(id);
+        _currencyStorage[id] = cur;
+        itr = _currencyStorage.find(id);
+    }
+    else if (itr->second.state != PLAYERCURRENCY_NEW)
+        itr->second.state = PLAYERCURRENCY_CHANGED;
+
+    itr->second.IncreasedCap += amount;
+    SendNewCurrency(id);
 }
 
 void Player::SetInGuild(ObjectGuid::LowType guildId)

@@ -99,7 +99,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectBind,                                     // 11 SPELL_EFFECT_BIND
     &Spell::EffectNULL,                                     // 12 SPELL_EFFECT_PORTAL
     &Spell::EffectUnused,                                   // 13 SPELL_EFFECT_RITUAL_BASE              unused
-    &Spell::EffectUnused,                                   // 14 SPELL_EFFECT_INCREASE_CURRENCY_CAP
+    &Spell::EffectIncreaseCurrencyCap,                      // 14 SPELL_EFFECT_INCREASE_CURRENCY_CAP
     &Spell::EffectUnused,                                   // 15 SPELL_EFFECT_RITUAL_ACTIVATE_PORTAL   unused
     &Spell::EffectQuestComplete,                            // 16 SPELL_EFFECT_QUEST_COMPLETE
     &Spell::EffectWeaponDmg,                                // 17 SPELL_EFFECT_WEAPON_DAMAGE_NOSCHOOL
@@ -4384,6 +4384,19 @@ void Spell::EffectReputation(SpellEffIndex /*effIndex*/)
 
     player->GetReputationMgr().ModifyParagonReputation(factionEntry, repChange);
     player->GetReputationMgr().ModifyReputation(factionEntry, repChange);
+}
+
+// Mana ancien de Suramar et autres : releve le plafond de la monnaie (MiscValue) du joueur touche
+void Spell::EffectIncreaseCurrencyCap(SpellEffIndex /*effIndex*/)
+{
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
+        return;
+
+    if (damage <= 0 || !unitTarget)
+        return;
+
+    if (Player* player = unitTarget->ToPlayer())
+        player->IncreaseCurrencyCap(effectInfo->MiscValue, uint32(damage));
 }
 
 void Spell::EffectQuestComplete(SpellEffIndex /*effIndex*/)

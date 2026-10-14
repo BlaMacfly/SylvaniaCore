@@ -10024,7 +10024,9 @@ void Unit::SetHealth(uint64 val)
             val = maxHealth;
     }
 
+    uint64 const oldVal = GetHealth();
     SetUInt64Value(UNIT_FIELD_HEALTH, val);
+    TriggerOnHealthChangeAuras(oldVal, val);
 
     // group update
     if (Player* player = ToPlayer())
@@ -10036,6 +10038,38 @@ void Unit::SetHealth(uint64 val)
     {
         if (pet->isControlled())
             pet->SetGroupUpdateFlag(GROUP_UPDATE_FLAG_PET_CUR_HP);
+    }
+}
+
+// Auras « declencher a X % de vie » : seulement quand la vie franchit le seuil dans le bon sens (d'apres TrinityCore)
+void Unit::TriggerOnHealthChangeAuras(uint64 oldVal, uint64 newVal)
+{
+    if (oldVal == newVal || !IsInWorld() || !HasAuraType(SPELL_AURA_TRIGGER_SPELL_ON_HEALTH_PCT))
+        return;
+
+    AuraEffectList const effects = GetAuraEffectsByType(SPELL_AURA_TRIGGER_SPELL_ON_HEALTH_PCT); // copie : le sort peut changer la liste
+    for (AuraEffect const* effect : effects)
+    {
+        uint32 const triggerSpell = effect->GetSpellEffectInfo()->TriggerSpell;
+        if (!triggerSpell)
+            continue;
+
+        uint64 const threshold = CountPctFromMaxHealth(effect->GetAmount());
+        switch (effect->GetMiscValue())
+        {
+            case 0: // au-dessus
+                if (newVal < threshold || oldVal > threshold)
+                    continue;
+                break;
+            case 1: // en dessous
+                if (newVal > threshold || oldVal < threshold)
+                    continue;
+                break;
+            default:
+                break;
+        }
+
+        CastSpell(this, triggerSpell, true, nullptr, effect);
     }
 }
 

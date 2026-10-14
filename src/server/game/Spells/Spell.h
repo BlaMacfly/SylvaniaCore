@@ -449,6 +449,7 @@ class TC_GAME_API Spell
         void EffectFeedPet(SpellEffIndex effIndex);
         void EffectDismissPet(SpellEffIndex effIndex);
         void EffectReputation(SpellEffIndex effIndex);
+        void EffectIncreaseCurrencyCap(SpellEffIndex effIndex);
         void EffectForceDeselect(SpellEffIndex effIndex);
         void EffectSelfResurrect(SpellEffIndex effIndex);
         void EffectSkinning(SpellEffIndex effIndex);

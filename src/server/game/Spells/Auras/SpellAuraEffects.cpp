@@ -223,7 +223,7 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleNoImmediateEffect,                         //155 SPELL_AURA_MOD_WATER_BREATHING
     &AuraEffect::HandleNoImmediateEffect,                         //156 SPELL_AURA_MOD_REPUTATION_GAIN
     &AuraEffect::HandleNULL,                                      //157 SPELL_AURA_PET_DAMAGE_MULTI
-    &AuraEffect::HandleNULL,                                      //158 SPELL_AURA_ALLOW_TALENT_SWAPPING
+    &AuraEffect::HandleAuraAllowTalentSwapping,                   //158 SPELL_AURA_ALLOW_TALENT_SWAPPING
     &AuraEffect::HandleNoImmediateEffect,                         //159 SPELL_AURA_NO_PVP_CREDIT      only for Honorless Target spell
     &AuraEffect::HandleUnused,                                    //160 Unused (4.3.4) old SPELL_AURA_MOD_AOE_AVOIDANCE
     &AuraEffect::HandleNoImmediateEffect,                         //161 SPELL_AURA_MOD_HEALTH_REGEN_IN_COMBAT
@@ -235,7 +235,7 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleAuraModRangedAttackPowerPercent,           //167 SPELL_AURA_MOD_RANGED_ATTACK_POWER_PCT
     &AuraEffect::HandleNoImmediateEffect,                         //168 SPELL_AURA_MOD_DAMAGE_DONE_VERSUS            implemented in Unit::SpellDamageBonus, Unit::MeleeDamageBonus
     &AuraEffect::HandleSetFFAPvP,                                 //169 SPELL_AURA_SET_FFA_PVP implemented in Player::UpdatePvPState
-    &AuraEffect::HandleNULL,                                      //170 SPELL_AURA_DETECT_AMORE       various spells that change visual of units for aura target (clientside?)
+    &AuraEffect::HandleDetectAmore,                               //170 SPELL_AURA_DETECT_AMORE       various spells that change visual of units for aura target (clientside?)
     &AuraEffect::HandleAuraModIncreaseSpeed,                      //171 SPELL_AURA_MOD_SPEED_NOT_STACK
     &AuraEffect::HandleAuraModIncreaseMountedSpeed,               //172 SPELL_AURA_MOD_MOUNTED_SPEED_NOT_STACK
     &AuraEffect::HandleUnused,                                    //173 unused (4.3.4) no spells, old SPELL_AURA_ALLOW_CHAMPION_SPELLS  only for Proclaim Champion spell
@@ -363,7 +363,7 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleNoImmediateEffect,                         //295 SPELL_AURA_MOD_PERIODIC_DAMAGE_TAKEN implemented in Unit::MeleeDamageBonusTaken, Unit::SpellDamageBonusTaken
     &AuraEffect::HandleAuraSetVehicle,                            //296 SPELL_AURA_SET_VEHICLE_ID sets vehicle on target
     &AuraEffect::HandleNULL,                                      //297 Spirit Burst spells
-    &AuraEffect::HandleNULL,                                      //298 70569 - Strangulating, maybe prevents talk or cast
+    &AuraEffect::HandleAuraModStunAndDisableGravity,              //298 etourdi et souleve (Asphyxie, 7.x : MOD_STUN_DISABLE_GRAVITY)
     &AuraEffect::HandleUnused,                                    //299 unused (4.3.4)
     &AuraEffect::HandleNoImmediateEffect,                         //300 SPELL_AURA_SHARE_DAMAGE_PCT implemented in Unit::DealDamage
     &AuraEffect::HandleNoImmediateEffect,                         //301 SPELL_AURA_SCHOOL_HEAL_ABSORB implemented in Unit::CalcHealAbsorb
@@ -528,12 +528,12 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleNoImmediateEffect,                         //460 SPELL_AURA_RESET_COOLDOWNS_ON_DUEL_START
     &AuraEffect::HandleNULL,                                      //461
     &AuraEffect::HandleNULL,                                      //462 SPELL_AURA_MOD_HEALING_AND_ABSORB_FROM_CASTER
-    &AuraEffect::HandleNULL,                                      //463 SPELL_AURA_CONVERT_CRIT_RATING_PCT_TO_PARRY_RATING used by Riposte
+    &AuraEffect::HandleConvertCritToParry,                        //463 SPELL_AURA_CONVERT_CRIT_RATING_PCT_TO_PARRY_RATING used by Riposte
     &AuraEffect::HandleNULL,                                      //464 SPELL_AURA_MOD_ATTACK_POWER_OF_BONUS_ARMOR
     &AuraEffect::HandleModStatBonusArmor,                         //465 SPELL_AURA_MOD_BONUS_ARMOR
     &AuraEffect::HandleModStatBonusArmorPercent,                  //466 SPELL_AURA_MOD_BONUS_ARMOR_PCT
     &AuraEffect::HandleModStatBonusPercent,                       //467 SPELL_AURA_MOD_STAT_BONUS_PCT
-    &AuraEffect::HandleNULL,                                      //468 SPELL_AURA_TRIGGER_SPELL_ON_HEALTH_PCT
+    &AuraEffect::HandleTriggerSpellOnHealthPercent,               //468 SPELL_AURA_TRIGGER_SPELL_ON_HEALTH_PCT
     &AuraEffect::HandleShowConfirmationPrompt,                    //469 SPELL_AURA_SHOW_CONFIRMATION_PROMPT_WITH_DIFFICULTY
     &AuraEffect::HandleNULL,                                      //470
     &AuraEffect::HandleModVersatilityByPct,                       //471 SPELL_AURA_MOD_VERSATILITY
@@ -3009,6 +3009,97 @@ void AuraEffect::HandleAuraModStun(AuraApplication const* aurApp, uint8 mode, bo
     Unit* target = aurApp->GetTarget();
 
     target->SetControlled(apply, UNIT_STATE_STUNNED);
+}
+
+// Asphyxie et autres : etourdi et souleve du sol (d'apres TrinityCore)
+void AuraEffect::HandleAuraModStunAndDisableGravity(AuraApplication const* aurApp, uint8 mode, bool apply) const
+{
+    if (!(mode & AURA_EFFECT_HANDLE_REAL))
+        return;
+
+    Unit* target = aurApp->GetTarget();
+    target->SetControlled(apply, UNIT_STATE_STUNNED);
+
+    // ne pas reposer au sol tant qu'une autre aura du meme type le tient, ni une creature qui vole
+    if (!apply && (target->HasAuraType(GetAuraType()) || (target->GetTypeId() == TYPEID_UNIT && target->CanFly())))
+        return;
+    target->SetDisableGravity(apply);
+}
+
+// Riposte : la parade se recalcule quand l'aura arrive, change ou part (la conversion est dans Player::UpdateRating)
+void AuraEffect::HandleConvertCritToParry(AuraApplication const* aurApp, uint8 mode, bool /*apply*/) const
+{
+    if (!(mode & (AURA_EFFECT_HANDLE_CHANGE_AMOUNT_MASK | AURA_EFFECT_HANDLE_STAT)))
+        return;
+
+    if (Player* target = aurApp->GetTarget()->ToPlayer())
+        target->UpdateRating(CR_PARRY);
+}
+
+// Tome / Codex de l'esprit serein, Preparation : changer de talents hors d'une zone de repos (le controle existe dans Player)
+void AuraEffect::HandleAuraAllowTalentSwapping(AuraApplication const* aurApp, uint8 mode, bool apply) const
+{
+    if (!(mode & AURA_EFFECT_HANDLE_REAL))
+        return;
+
+    Player* target = aurApp->GetTarget()->ToPlayer();
+    if (!target)
+        return;
+
+    if (apply)
+        target->SetFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_ALLOW_CHANGING_TALENTS);
+    else if (!target->HasAuraType(GetAuraType()))
+        target->RemoveFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_ALLOW_CHANGING_TALENTS);
+}
+
+// Detection (marques de quete, objets caches...) : le client montre ce qui porte la vision correspondante
+void AuraEffect::HandleDetectAmore(AuraApplication const* aurApp, uint8 mode, bool apply) const
+{
+    if (!(mode & AURA_EFFECT_HANDLE_SEND_FOR_CLIENT_MASK))
+        return;
+
+    Player* target = aurApp->GetTarget()->ToPlayer();
+    if (!target || GetMiscValue() < 1 || GetMiscValue() > 8)
+        return;
+
+    uint8 const flag = uint8(1 << (GetMiscValue() - 1));
+    if (apply)
+        target->SetByteFlag(PLAYER_FIELD_BYTES2, PLAYER_FIELD_BYTES_2_OFFSET_AURA_VISION, flag);
+    else
+    {
+        for (AuraEffect const* other : target->GetAuraEffectsByType(SPELL_AURA_DETECT_AMORE))
+            if (other != this && other->GetMiscValue() == GetMiscValue())
+                return;
+        target->RemoveByteFlag(PLAYER_FIELD_BYTES2, PLAYER_FIELD_BYTES_2_OFFSET_AURA_VISION, flag);
+    }
+}
+
+// Declenchement a un seuil de vie : a la pose si la vie est deja du bon cote (Unit::SetHealth gere le franchissement)
+void AuraEffect::HandleTriggerSpellOnHealthPercent(AuraApplication const* aurApp, uint8 mode, bool apply) const
+{
+    if (!(mode & AURA_EFFECT_HANDLE_REAL) || !apply)
+        return;
+
+    Unit* target = aurApp->GetTarget();
+    uint32 const triggerSpell = GetSpellEffectInfo()->TriggerSpell;
+    if (!triggerSpell)
+        return;
+
+    switch (GetMiscValue())
+    {
+        case 0: // au-dessus
+            if (!target->HealthAbovePct(GetAmount()))
+                return;
+            break;
+        case 1: // en dessous
+            if (!target->HealthBelowPct(GetAmount()))
+                return;
+            break;
+        default:
+            break;
+    }
+
+    target->CastSpell(target, triggerSpell, true, nullptr, this);
 }
 
 void AuraEffect::HandleAuraModRoot(AuraApplication const* aurApp, uint8 mode, bool apply) const

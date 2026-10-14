@@ -259,6 +259,7 @@ struct PlayerCurrency
     uint32 TrackedQuantity;
     uint32 WeekCap;
     uint8 Flags;
+    uint32 IncreasedCap = 0;    // plafond releve par des sorts (SPELL_EFFECT_INCREASE_CURRENCY_CAP)
 };
 
 typedef std::unordered_map<uint32, PlayerSpellState> PlayerTalentMap;
@@ -1413,6 +1414,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         /// send initialization of new currency for client
         void SendNewCurrency(uint32 id) const;
+        void IncreaseCurrencyCap(uint32 id, uint32 amount);
         /// send full data about all currencies to client
         void SendCurrencies() const;
         /// send conquest currency points and their cap week/arena

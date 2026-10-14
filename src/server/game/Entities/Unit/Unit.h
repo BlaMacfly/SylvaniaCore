@@ -1071,6 +1071,7 @@ class TC_GAME_API Unit : public WorldObject
         uint64 CountPctFromCurHealth(int32 pct) const { return CalculatePct(GetHealth(), pct); }
 
         void SetHealth(uint64 val);
+        void TriggerOnHealthChangeAuras(uint64 oldVal, uint64 newVal);
         void SetMaxHealth(uint64 val);
         inline void SetFullHealth() { SetHealth(GetMaxHealth()); }
         int64 ModifyHealth(int64 val);
