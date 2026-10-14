@@ -383,11 +383,16 @@ public:
     }
 };
 
-uint32 const pathSize2 = 2;
+// Quete It's Never Over (26616) : la barque suit la riviere au ras de l'eau (trace Krigsgaldrnet/AshamaneCore)
+uint32 const pathSize2 = 6;
 Position const BoatPath[pathSize2] =
 {
-    { -9356.31f, -2414.29f, 69.6370f },
-    { -9425.49f, -2836.49f, 69.9875f },
+    { -9334.30f, -2390.35f, 55.7f },
+    { -9381.73f, -2435.41f, 55.7f },
+    { -9389.94f, -2583.57f, 55.7f },
+    { -9426.63f, -2732.40f, 55.7f },
+    { -9383.77f, -2816.56f, 55.7f },
+    { -9420.81f, -2838.46f, 55.7f },
 };
 
 struct npc_keeshan_riverboat : public VehicleAI
@@ -396,9 +401,46 @@ struct npc_keeshan_riverboat : public VehicleAI
 
     void Reset() override
     {
-        me->GetMotionMaster()->MoveSmoothPath(pathSize2, BoatPath, pathSize2, false, true);
-        me->DespawnOrUnsummon(Seconds(22), Seconds(60));
+        _started = false;
+        _startTimer = 2 * IN_MILLISECONDS;
+        me->DespawnOrUnsummon(Minutes(3));
     }
+
+    void PassengerBoarded(Unit* passenger, int8 /*seatId*/, bool apply) override
+    {
+        if (apply && passenger->IsPlayer())
+            Start();
+    }
+
+    void MovementInform(uint32 type, uint32 point) override
+    {
+        if (type == EFFECT_MOTION_TYPE && point == pathSize2)
+            me->DespawnOrUnsummon();
+    }
+
+    void UpdateAI(uint32 diff) override
+    {
+        VehicleAI::UpdateAI(diff);
+
+        // filet : si le joueur n'est pas monte par le sort, la barque part quand meme
+        if (!_started && _startTimer <= diff)
+            Start();
+        else if (!_started)
+            _startTimer -= diff;
+    }
+
+private:
+    void Start()
+    {
+        if (_started)
+            return;
+        _started = true;
+        me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+        me->GetMotionMaster()->MoveSmoothPath(pathSize2, BoatPath, pathSize2, false, true);
+    }
+
+    bool _started = false;
+    uint32 _startTimer = 0;
 };
 
 enum BlackrockTower
