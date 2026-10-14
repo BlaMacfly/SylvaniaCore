@@ -217,12 +217,85 @@ void GameEventMgr::StopEvent(uint16 event_id, bool overwrite)
     }
 }
 
+// Date d'une fete : la prochaine (ou l'actuelle) parmi celles de Holidays.db2, lignes hotfix comprises.
+// Une date d'annee 31 revient tous les ans au meme jour. D'apres TrinityCore, mais la fin testee est celle de la
+// phase suivie (TrinityCore testait date + duree de la phase sans son decalage : la Fete des Brasseurs et la Foire
+// de Sombrelune s'arretaient avant l'heure).
+void GameEventMgr::SetHolidayEventTime(GameEventData& event)
+{
+    if (!event.holidayStage)
+        return;
+
+    HolidaysEntry const* holiday = sHolidaysStore.LookupEntry(event.holiday_id);
+    if (!holiday || !holiday->Date[0] || !holiday->Duration[0] || !holiday->Duration[event.holidayStage - 1])
+    {
+        TC_LOG_ERROR("sql.sql", "Missing date or duration for holiday %u (stage %u).", event.holiday_id, event.holidayStage);
+        return;
+    }
+
+    uint8 const stageIndex = event.holidayStage - 1;
+    event.length = holiday->Duration[stageIndex] * HOUR / MINUTE;
+
+    time_t stageOffset = 0;
+    for (uint8 i = 0; i < stageIndex; ++i)
+        stageOffset += time_t(holiday->Duration[i]) * HOUR;
+
+    bool const yearly = ((holiday->Date[0] >> 24) & 0x1F) == 31;
+    // dates fixees par le calendrier (annuelles ou listees, comme la Foire de Sombrelune) : pas de repetition
+    // calculee entre deux redemarrages, la date suivante est relue ici a chaque demarrage
+    if (holiday->CalendarFilterType != 0 && holiday->CalendarFilterType != 2)
+        event.occurence = 365 * DAY / MINUTE;
+
+    time_t const now = time(nullptr);
+    tm nowTm;
+    localtime_r(&now, &nowTm);
+
+    auto dateToTime = [](uint32 date, int year)
+    {
+        tm t = tm();
+        t.tm_year = year - 1900;
+        t.tm_mon = (date >> 20) & 0xF;
+        t.tm_mday = ((date >> 14) & 0x3F) + 1;
+        t.tm_hour = (date >> 6) & 0x1F;
+        t.tm_min = date & 0x3F;
+        t.tm_isdst = -1;
+        return mktime(&t);
+    };
+
+    for (uint8 i = 0; i < MAX_HOLIDAY_DATES && holiday->Date[i]; ++i)
+    {
+        uint32 const date = holiday->Date[i];
+        if (yearly)
+        {
+            // l'an dernier d'abord (fete a cheval sur le Nouvel An), puis cette annee, puis la suivante
+            for (int year = nowTm.tm_year + 1900 - 1; year <= nowTm.tm_year + 1900 + 1; ++year)
+            {
+                time_t const start = dateToTime(date, year) + stageOffset;
+                if (now < start + time_t(event.length) * MINUTE)
+                {
+                    event.start = start;
+                    return;
+                }
+            }
+            return;
+        }
+
+        time_t const start = dateToTime(date, ((date >> 24) & 0x1F) + 2000) + stageOffset;
+        if (now < start + time_t(event.length) * MINUTE)
+        {
+            event.start = start;
+            return;
+        }
+        // date passee : la suivante ; s'il n'y en a plus, les dates de game_event restent
+    }
+}
+
 void GameEventMgr::LoadFromDB()
 {
     {
         uint32 oldMSTime = getMSTime();
-        //                                               0           1                           2                         3          4       5        6            7            8
-        QueryResult result = WorldDatabase.Query("SELECT eventEntry, UNIX_TIMESTAMP(start_time), UNIX_TIMESTAMP(end_time), occurence, length, holiday, description, world_event, announce FROM game_event");
+        //                                               0           1                           2                         3          4       5        6            7            8         9
+        QueryResult result = WorldDatabase.Query("SELECT eventEntry, UNIX_TIMESTAMP(start_time), UNIX_TIMESTAMP(end_time), occurence, length, holiday, description, world_event, announce, holidayStage FROM game_event");
         if (!result)
         {
             mGameEvent.clear();
@@ -250,6 +323,7 @@ void GameEventMgr::LoadFromDB()
             pGameEvent.occurence    = fields[3].GetUInt64();
             pGameEvent.length       = fields[4].GetUInt64();
             pGameEvent.holiday_id   = HolidayIds(fields[5].GetUInt32());
+            pGameEvent.holidayStage = fields[9].GetUInt8();
 
             pGameEvent.state        = (GameEventState)(fields[7].GetUInt8());
             pGameEvent.nextstart    = 0;
@@ -268,6 +342,13 @@ void GameEventMgr::LoadFromDB()
                     TC_LOG_ERROR("sql.sql", "`game_event`: game event id (%i) contains nonexisting holiday id %u.", event_id, pGameEvent.holiday_id);
                     pGameEvent.holiday_id = HOLIDAY_NONE;
                 }
+                else if (pGameEvent.holidayStage > MAX_HOLIDAY_DURATIONS)
+                {
+                    TC_LOG_ERROR("sql.sql", "`game_event`: game event id (%i) has out of range holidayStage %u.", event_id, pGameEvent.holidayStage);
+                    pGameEvent.holidayStage = 0;
+                }
+                else
+                    SetHolidayEventTime(pGameEvent);
             }
 
             pGameEvent.description  = fields[6].GetString();

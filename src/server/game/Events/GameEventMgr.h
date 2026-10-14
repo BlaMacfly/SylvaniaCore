@@ -59,7 +59,7 @@ typedef std::map<uint32 /*condition id*/, GameEventFinishCondition> GameEventCon
 
 struct GameEventData
 {
-    GameEventData() : start(1), end(0), nextstart(0), occurence(0), length(0), holiday_id(HOLIDAY_NONE), state(GAMEEVENT_NORMAL),
+    GameEventData() : start(1), end(0), nextstart(0), occurence(0), length(0), holiday_id(HOLIDAY_NONE), holidayStage(0), state(GAMEEVENT_NORMAL),
                       announce(0) { }
     time_t start;           // occurs after this time
     time_t end;             // occurs before this time
@@ -67,6 +67,7 @@ struct GameEventData
     uint32 occurence;       // time between end and start
     uint32 length;          // length of the event (minutes) after finishing all conditions
     HolidayIds holiday_id;
+    uint8 holidayStage;     // phase de la fete (Holidays.db2 Duration[stage - 1]) dont l'evenement suit les dates ; 0 = dates de game_event
     GameEventState state;   // state of the game event, these are saved into the game_event table on change!
     GameEventConditionMap conditions;  // conditions to finish
     std::set<uint16 /*gameevent id*/> prerequisite_events;  // events that must be completed before starting this event
@@ -105,6 +106,7 @@ class TC_GAME_API GameEventMgr
         bool CheckOneGameEvent(uint16 entry) const;
         uint32 NextCheck(uint16 entry) const;
         void LoadFromDB();
+        void SetHolidayEventTime(GameEventData& event);
         uint32 Update();
         bool IsActiveEvent(uint16 event_id) { return (m_ActiveEvents.find(event_id) != m_ActiveEvents.end()); }
         uint32 StartSystem();
