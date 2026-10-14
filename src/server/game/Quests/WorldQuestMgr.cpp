@@ -371,16 +371,16 @@ bool WorldQuestMgr::IsQuestActive(uint32 questId)
     return GetQuestActive(questId) != nullptr;
 }
 
-// Legionfall: the world quests of the Broken Shore and of the Armies of Legionfall also give War Supplies, the currency the
-// buildings are built with (LegionCore: 25 for each, beside the usual reward)
+// Legionfall: the world quests of the Broken Shore also give 25 War Supplies, the currency the buildings are built with,
+// pet battles excepted (retail, Wowhead's Broken Shore guide: "Broken Shore world quests give 25 (excluding Pet Battle quests)")
 static uint32 GetLegionfallWarSupplies(Quest const* quest)
 {
-    if (!quest)
+    if (!quest || quest->GetZoneOrSort() != 7543)
         return 0;
-    if (quest->GetZoneOrSort() == 7543 || quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGIONFALL
-        || quest->GetQuestInfoID() == QUEST_INFO_WORLD_QUEST_LEGIONFALL_DUNGEON)
-        return 25;
-    return 0;
+    for (QuestObjective const& objective : quest->GetObjectives())
+        if (objective.Type == 11 || objective.Type == QUEST_OBJECTIVE_DEFEATBATTLEPET || objective.Type == 13)  // pet battles
+            return 0;
+    return 25;
 }
 
 void WorldQuestMgr::RewardQuestForPlayer(Player* player, uint32 questId)
