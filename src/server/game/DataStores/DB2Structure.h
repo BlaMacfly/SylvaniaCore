@@ -2474,6 +2474,15 @@ struct OverrideSpellDataEntry
     uint8 Flags;
 };
 
+// FileOptions: Index, None
+struct ParagonReputationEntry
+{
+    uint32 ID;
+    int32 LevelThreshold;
+    int32 QuestID;
+    int32 FactionID;                                        // la faction cachee qui porte la barre de parangon
+};
+
 struct PhaseEntry
 {
     uint32 ID;

@@ -34,6 +34,7 @@ const int32 ReputationMgr::PointsInRank[MAX_REPUTATION_RANK] = {36000, 3000, 300
 
 const int32 ReputationMgr::Reputation_Cap = 42999;
 const int32 ReputationMgr::Reputation_Bottom = -42000;
+const int32 ReputationMgr::Reputation_Exalted = 42000;
 
 ReputationRank ReputationMgr::ReputationToRank(int32 standing)
 {
@@ -345,7 +346,7 @@ bool ReputationMgr::SetReputation(FactionEntry const* factionEntry, int32 standi
     return res;
 }
 
-bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, int32 standing, bool incremental)
+bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, int32 standing, bool incremental, bool paragon)
 {
     FactionStateList::iterator itr = _factions.find(factionEntry->ReputationIndex);
     if (itr != _factions.end())
@@ -355,7 +356,8 @@ bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, in
         if (incremental)
         {
             // int32 *= float cause one point loss?
-            standing = int32(floor((float)standing * sWorld->getRate(RATE_REPUTATION_GAIN) + 0.5f));
+            if (!paragon)                                   // le gain d'origine a deja subi le taux
+                standing = int32(floor((float)standing * sWorld->getRate(RATE_REPUTATION_GAIN) + 0.5f));
             standing += itr->second.Standing + BaseRep;
         }
 
@@ -370,6 +372,13 @@ bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, in
         itr->second.Standing = standing - BaseRep;
         itr->second.needSend = true;
         itr->second.needSave = true;
+
+        if (paragon)
+        {
+            // faction cachee : ni rendue visible dans le volet de reputation, ni comptee dans les rangs (hauts faits)
+            _player->ReputationChanged(factionEntry);
+            return true;
+        }
 
         SetVisible(&itr->second);
 
@@ -391,6 +400,51 @@ bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, in
         return true;
     }
     return false;
+}
+
+void ReputationMgr::ModifyParagonReputation(FactionEntry const* factionEntry, int32 gain)
+{
+    // une perte ne retire jamais rien de la barre de parangon
+    if (!factionEntry || !factionEntry->ParagonFactionID || gain <= 0)
+        return;
+
+    FactionStateList::const_iterator parent = _factions.find(factionEntry->ReputationIndex);
+    if (parent == _factions.end())
+        return;
+
+    // seulement ce qui depasse le debut d'exalte : un gain qui le franchit ne donne que son excedent
+    int32 const current = parent->second.Standing + GetBaseReputation(factionEntry);
+    if (current + gain <= Reputation_Exalted)
+        return;
+    gain = std::min(gain, current + gain - Reputation_Exalted);
+
+    FactionEntry const* paragonFaction = sFactionStore.LookupEntry(factionEntry->ParagonFactionID);
+    ParagonReputationEntry const* paragon = sDB2Manager.GetParagonReputation(factionEntry->ParagonFactionID);
+    if (!paragonFaction || !paragon || paragon->LevelThreshold <= 0)
+        return;
+
+    FactionStateList::iterator itr = _factions.find(paragonFaction->ReputationIndex);
+    if (itr == _factions.end())
+        return;
+
+    SetOneFactionReputation(paragonFaction, gain, true, true);
+
+    // barre pleine : la cache de ravitaillement arrive dans le journal, a rendre a l'intendant ; la barre repart de l'excedent
+    if (itr->second.Standing >= paragon->LevelThreshold && _player->GetQuestStatus(paragon->QuestID) == QUEST_STATUS_NONE)
+    {
+        if (Quest const* quest = sObjectMgr->GetQuestTemplate(paragon->QuestID))
+        {
+            if (_player->CanTakeQuest(quest, false) && _player->CanAddQuest(quest, false))
+            {
+                itr->second.Standing -= paragon->LevelThreshold;
+                itr->second.needSend = true;
+                itr->second.needSave = true;
+                _player->AddQuestAndCheckCompletion(quest, nullptr);
+            }
+        }
+    }
+
+    SendState(&itr->second);
 }
 
 void ReputationMgr::SetVisible(FactionTemplateEntry const* factionTemplateEntry)

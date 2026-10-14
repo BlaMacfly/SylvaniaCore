@@ -9294,6 +9294,25 @@ void ObjectMgr::LoadGossipMenu()
     } while (result->NextRow());
 
     TC_LOG_INFO("server.loading", ">> Loaded %u gossip_menu IDs in %u ms", uint32(_gossipMenusStore.size()), GetMSTimeDiffToNow(oldMSTime));
+
+    // reputation d'amitie affichee dans la fenetre de dialogue (fermiers de la Ferme Chant-du-Soleil)
+    _gossipMenuFriendshipStore.clear();
+    if (QueryResult addons = WorldDatabase.Query("SELECT MenuID, FriendshipFactionID FROM gossip_menu_addon WHERE FriendshipFactionID <> 0"))
+    {
+        do
+        {
+            Field* fields = addons->Fetch();
+            uint32 menuId = fields[0].GetUInt32();
+            int32 factionId = fields[1].GetInt32();
+            FactionEntry const* faction = sFactionStore.LookupEntry(factionId);
+            if (!faction || !faction->FriendshipRepID)
+            {
+                TC_LOG_ERROR("sql.sql", "Table `gossip_menu_addon`: menu %u uses faction %i, which is not a friendship reputation", menuId, factionId);
+                continue;
+            }
+            _gossipMenuFriendshipStore[menuId] = factionId;
+        } while (addons->NextRow());
+    }
 }
 
 void ObjectMgr::LoadGossipMenuItems()

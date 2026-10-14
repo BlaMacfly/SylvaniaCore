@@ -1585,6 +1585,11 @@ class TC_GAME_API ObjectMgr
             return _spellClickInfoStore.equal_range(creature_id);
         }
 
+        int32 GetGossipMenuFriendshipFactionID(uint32 menuId) const
+        {
+            auto itr = _gossipMenuFriendshipStore.find(menuId);
+            return itr != _gossipMenuFriendshipStore.end() ? itr->second : 0;
+        }
         GossipMenusMapBounds GetGossipMenusMapBounds(uint32 uiMenuId) const
         {
             return _gossipMenusStore.equal_range(uiMenuId);
@@ -1722,6 +1727,7 @@ class TC_GAME_API ObjectMgr
         RepSpilloverTemplateContainer _repSpilloverTemplateStore;
 
         GossipMenusContainer _gossipMenusStore;
+        std::unordered_map<uint32, int32> _gossipMenuFriendshipStore;
         GossipMenuItemsContainer _gossipMenuItemsStore;
         PointOfInterestContainer _pointsOfInterestStore;
 

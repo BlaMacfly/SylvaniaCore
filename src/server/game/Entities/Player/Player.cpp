@@ -6814,17 +6814,18 @@ void Player::RewardReputation(Quest const* quest)
         else
         {
             uint32 row = ((quest->RewardFactionValue[i] < 0) ? 1 : 0) + 1;
+            uint32 field = abs(quest->RewardFactionValue[i]);
+            if (field > 9)                                  // au-dela des dix colonnes de QuestFactionReward
+                continue;
             if (QuestFactionRewardEntry const* questFactionRewEntry = sQuestFactionRewardStore.LookupEntry(row))
-            {
-                uint32 field = abs(quest->RewardFactionValue[i]);
                 rep = questFactionRewEntry->Difficulty[field];
-            }
         }
 
         if (!rep)
             continue;
 
-        if (quest->RewardFactionCapIn[i] && rep > 0 && uint32(GetReputationMgr().GetRank(factionEntry)) >= quest->RewardFactionCapIn[i])
+        bool const capped = quest->RewardFactionCapIn[i] && rep > 0 && uint32(GetReputationMgr().GetRank(factionEntry)) >= quest->RewardFactionCapIn[i];
+        if (capped && quest->RewardFactionCapIn[i] != REP_EXALTED)
             continue;
 
         if (quest->IsDaily())
@@ -6837,6 +6838,10 @@ void Player::RewardReputation(Quest const* quest)
             rep = CalculateReputationGain(REPUTATION_SOURCE_REPEATABLE_QUEST, GetQuestLevel(quest), rep, quest->RewardFactionId[i], noQuestBonus);
         else
             rep = CalculateReputationGain(REPUTATION_SOURCE_QUEST, GetQuestLevel(quest), rep, quest->RewardFactionId[i], noQuestBonus);
+
+        GetReputationMgr().ModifyParagonReputation(factionEntry, rep);
+        if (capped)
+            continue;
 
         bool noSpillover = (quest->GetRewardReputationMask() & (1 << i)) != 0;
         GetReputationMgr().ModifyReputation(factionEntry, rep, false, noSpillover);

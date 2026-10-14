@@ -211,6 +211,7 @@ void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
     WorldPackets::NPC::GossipMessage packet;
     packet.GossipGUID = objectGUID;
     packet.GossipID = _gossipMenu.GetMenuId();
+    packet.FriendshipFactionID = sObjectMgr->GetGossipMenuFriendshipFactionID(_gossipMenu.GetMenuId());
     packet.TextID = titleTextId;
 
     packet.GossipOptions.resize(_gossipMenu.GetMenuItems().size());

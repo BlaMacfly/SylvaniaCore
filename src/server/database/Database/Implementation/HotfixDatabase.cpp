@@ -838,6 +838,9 @@ void HotfixDatabaseConnection::DoPrepareStatements()
     PrepareStatement(HOTFIX_SEL_OVERRIDE_SPELL_DATA, "SELECT ID, Spells1, Spells2, Spells3, Spells4, Spells5, Spells6, Spells7, Spells8, Spells9, "
         "Spells10, PlayerActionBarFileDataID, Flags FROM override_spell_data ORDER BY ID DESC", CONNECTION_SYNCH);
 
+    // ParagonReputation.db2
+    PrepareStatement(HOTFIX_SEL_PARAGON_REPUTATION, "SELECT ID, LevelThreshold, QuestID, FactionID FROM paragon_reputation ORDER BY ID DESC", CONNECTION_SYNCH);
+
     // Phase.db2
     PrepareStatement(HOTFIX_SEL_PHASE, "SELECT ID, Flags FROM phase ORDER BY ID DESC", CONNECTION_SYNCH);
 

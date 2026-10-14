@@ -76,6 +76,7 @@ class TC_GAME_API ReputationMgr
         static const int32 PointsInRank[MAX_REPUTATION_RANK];
         static const int32 Reputation_Cap;
         static const int32 Reputation_Bottom;
+        static const int32 Reputation_Exalted;            // debut d'exalte : la barre de parangon prend le relais
 
         static ReputationRank ReputationToRank(int32 standing);
     public:                                                 // accessors
@@ -121,6 +122,9 @@ class TC_GAME_API ReputationMgr
         {
             return SetReputation(factionEntry, standing, false, false, false);
         }
+        // Renommee de parangon : ce qu'un gain fait depasser d'exalte remplit la barre de la faction cachee (Faction.ParagonFactionID).
+        // A appeler AVANT ModifyReputation, avec le gain final.
+        void ModifyParagonReputation(FactionEntry const* factionEntry, int32 gain);
         bool ModifyReputation(FactionEntry const* factionEntry, int32 standing, bool spillOverOnly = false, bool noSpillover = false)
         {
             return SetReputation(factionEntry, standing, true, spillOverOnly, noSpillover);
@@ -134,7 +138,7 @@ class TC_GAME_API ReputationMgr
         void ApplyForceReaction(uint32 faction_id, ReputationRank rank, bool apply);
 
         //! Public for chat command needs
-        bool SetOneFactionReputation(FactionEntry const* factionEntry, int32 standing, bool incremental);
+        bool SetOneFactionReputation(FactionEntry const* factionEntry, int32 standing, bool incremental, bool paragon = false);
 
     public:                                                 // senders
         void SendInitialReputations();

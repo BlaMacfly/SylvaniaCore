@@ -4382,6 +4382,7 @@ void Spell::EffectReputation(SpellEffIndex /*effIndex*/)
 
     repChange = player->CalculateReputationGain(REPUTATION_SOURCE_SPELL, 0, repChange, factionId);
 
+    player->GetReputationMgr().ModifyParagonReputation(factionEntry, repChange);
     player->GetReputationMgr().ModifyReputation(factionEntry, repChange);
 }
 
