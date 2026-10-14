@@ -1414,7 +1414,7 @@ public:
         {
             if (Unit* target = GetUnitOwner())
                 if (target->GetTypeId() == TYPEID_PLAYER)
-                    amount = 25;
+                    amount = -25;
         }
 
         void Register() override

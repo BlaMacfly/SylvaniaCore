@@ -1360,11 +1360,10 @@ void Spell::SelectImplicitAreaTargets(SpellEffIndex effIndex, SpellImplicitTarge
 
     if (targetType.GetTarget() == TARGET_UNIT_CASTER_PET)
     {
-        targets.push_back(referer);
-
-        if (referer->IsPlayer())
-            if (Pet* pet = referer->ToPlayer()->GetPet())
-                targets.push_back(pet);
+        // le lanceur, puis ses invocations dans le rayon (familier, diablotins sauvages, gardiens...)
+        if (radius)
+            SearchAreaTargets(targets, radius, center, referer, targetType.GetObjectType(), TARGET_CHECK_SUMMONED, effect->ImplicitTargetConditions);
+        targets.push_front(referer);
     }
     else if (radius)
         SearchAreaTargets(targets, radius, center, referer, targetType.GetObjectType(), targetType.GetCheckType(), effect->ImplicitTargetConditions);
@@ -4401,7 +4400,8 @@ void Spell::SendSpellStart()
         {
             castData.RemainingRunes->Start = 0;
             castData.RemainingRunes->Count = 0;
-            for (uint8 i = 0; i < player->GetMaxPower(POWER_RUNES); ++i)
+            // ici player est nul (lanceur non joueur) : le nombre de runes vient du lanceur lui-meme
+            for (int32 i = 0; i < m_caster->GetMaxPower(POWER_RUNES); ++i)
                 castData.RemainingRunes->Cooldowns.push_back(0);
         }
     }
@@ -4519,7 +4519,8 @@ void Spell::SendSpellGo()
         {
             castData.RemainingRunes->Start = 0;
             castData.RemainingRunes->Count = 0;
-            for (uint8 i = 0; i < player->GetMaxPower(POWER_RUNES); ++i)
+            // ici player est nul (lanceur non joueur) : le nombre de runes vient du lanceur lui-meme
+            for (int32 i = 0; i < m_caster->GetMaxPower(POWER_RUNES); ++i)
                 castData.RemainingRunes->Cooldowns.push_back(0);
         }
     }
@@ -8427,6 +8428,13 @@ bool WorldObjectSpellTargetCheck::operator()(WorldObject* target)
                 if (_referer->getClass() != unitTarget->getClass())
                     return false;
                 // nobreak;
+            case TARGET_CHECK_SUMMONED:
+                // jamais une creature d'un autre : seulement ce que le lanceur a invoque ou possede
+                if (!unitTarget->IsSummon())
+                    return false;
+                if (unitTarget->ToTempSummon()->GetSummonerGUID() != _caster->GetGUID() && unitTarget->GetOwnerGUID() != _caster->GetGUID())
+                    return false;
+                break;
             case TARGET_CHECK_RAID_DEATH:
             case TARGET_CHECK_RAID:
                 if (_targetSelectionType == TARGET_CHECK_RAID_DEATH)

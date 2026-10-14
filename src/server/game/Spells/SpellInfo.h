@@ -125,7 +125,8 @@ enum SpellTargetCheckTypes : uint8
     TARGET_CHECK_RAID_CLASS,
     TARGET_CHECK_PASSENGER,
     TARGET_CHECK_DEATH,
-    TARGET_CHECK_RAID_DEATH
+    TARGET_CHECK_RAID_DEATH,
+    TARGET_CHECK_SUMMONED                   // invocations (familiers compris) du lanceur
 };
 
 enum SpellTargetDirectionTypes

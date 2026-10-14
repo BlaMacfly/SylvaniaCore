@@ -2716,6 +2716,37 @@ class aura_dk_defile : public AuraScript
     }
 };
 
+// 194311 - Festering Wound (eclatement)
+// Soul Reaper (130736) : eclater une blessure sur une cible qui porte votre Faucheur d'ame vous donne Faucheur d'ame (215711, hate)
+class spell_dk_festering_wound_soul_reaper : public SpellScript
+{
+    PrepareSpellScript(spell_dk_festering_wound_soul_reaper);
+
+    enum
+    {
+        SPELL_DK_SOUL_REAPER_DEBUFF = 130736,
+        SPELL_DK_SOUL_REAPER_BUFF   = 215711
+    };
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_DK_SOUL_REAPER_DEBUFF, SPELL_DK_SOUL_REAPER_BUFF });
+    }
+
+    void HandleHit(SpellEffIndex /*effIndex*/)
+    {
+        Unit* caster = GetCaster();
+        Unit* target = GetHitUnit();
+        if (caster && target && target->HasAura(SPELL_DK_SOUL_REAPER_DEBUFF, caster->GetGUID()))
+            caster->CastSpell(caster, SPELL_DK_SOUL_REAPER_BUFF, true);
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_dk_festering_wound_soul_reaper::HandleHit, EFFECT_0, SPELL_EFFECT_SCHOOL_DAMAGE);
+    }
+};
+
 // 55090 - Scourge Strike
 class spell_dk_scourge_strike : public SpellScript
 {
@@ -3683,6 +3714,7 @@ void AddSC_deathknight_spell_scripts()
     RegisterSpellScript(spell_dk_epidemic_aoe);
     RegisterAuraScript(aura_dk_virulent_plague);
     RegisterSpellScript(spell_dk_scourge_strike);
+    RegisterSpellScript(spell_dk_festering_wound_soul_reaper);
     RegisterAuraScript(aura_dk_defile);
     RegisterAreaTriggerAI(at_dk_defile);
     RegisterSpellScript(spell_dk_blighted_rune_weapon);

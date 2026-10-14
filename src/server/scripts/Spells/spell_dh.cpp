@@ -1578,7 +1578,7 @@ public:
         void Register() override
         {
             DoCheckProc += AuraCheckProcFn(spell_dh_fel_barrage_aura_AuraScript::CheckProc);
-            OnEffectProc += AuraEffectProcFn(spell_dh_fel_barrage_aura_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_PROC_TRIGGER_SPELL);
+            OnEffectProc += AuraEffectProcFn(spell_dh_fel_barrage_aura_AuraScript::HandleProc, EFFECT_0, SPELL_AURA_DUMMY);
         }
     };
 
@@ -2611,7 +2611,7 @@ public:
         void Register() override
         {
             OnCheckCast += SpellCheckCastFn(spell_dh_glide_SpellScript::CheckCast);
-            OnEffectHitTarget += SpellEffectFn(spell_dh_glide_SpellScript::HandleOnHit, EFFECT_0, SPELL_EFFECT_KNOCK_BACK);
+            OnEffectHitTarget += SpellEffectFn(spell_dh_glide_SpellScript::HandleOnHit, EFFECT_0, SPELL_EFFECT_APPLY_AURA);
         }
     };
 

@@ -1791,7 +1791,7 @@ public:
         void Register() override
         {
             OnHit += SpellHitFn(spell_pri_leap_of_faith_SpellScript::HandleOnHit);
-            OnEffectHitTarget += SpellEffectFn(spell_pri_leap_of_faith_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_DUMMY);
+            OnEffectHitTarget += SpellEffectFn(spell_pri_leap_of_faith_SpellScript::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
         }
     };
 
