@@ -16,6 +16,8 @@
  */
 
 #include "CriteriaHandler.h"
+#include "CollectionMgr.h"
+#include "WorldSession.h"
 #include "Battleground.h"
 #include "DatabaseEnv.h"
 #include "DB2Stores.h"
@@ -469,7 +471,14 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_ROLL_GREED:
         case CRITERIA_TYPE_QUEST_ABANDONED:
         case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL: // etat : les champions requis sont au niveau (modificateur 184)
+        case CRITERIA_TYPE_OWN_TOY:                  // jouet possede (controle de l'objet dans RequirementsSatisfied)
             SetCriteriaProgress(criteria, 1, referencePlayer, PROGRESS_HIGHEST);
+            break;
+        case CRITERIA_TYPE_OWN_TOY_COUNT:            // nombre de jouets du compte
+            SetCriteriaProgress(criteria, referencePlayer->GetSession()->GetCollectionMgr()->GetAccountToys().size(), referencePlayer, PROGRESS_HIGHEST);
+            break;
+        case CRITERIA_TYPE_OWN_HEIRLOOMS:            // nombre d'heritages du compte
+            SetCriteriaProgress(criteria, referencePlayer->GetSession()->GetCollectionMgr()->GetAccountHeirlooms().size(), referencePlayer, PROGRESS_HIGHEST);
             break;
         case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:     // a la remise d'une quete mondiale
         case CRITERIA_TYPE_SURVEY_GAMEOBJECT:        // fouille archeologique reussie (objet de la trouvaille)
@@ -783,9 +792,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_UPGRADE_GARRISON:
         case CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
         case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_LEVEL:
-        case CRITERIA_TYPE_OWN_TOY:
-        case CRITERIA_TYPE_OWN_TOY_COUNT:
-        case CRITERIA_TYPE_OWN_HEIRLOOMS:
         case CRITERIA_TYPE_MANUAL_COMPLETE_CRITERIA:
         case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD:
         case CRITERIA_TYPE_DEFEAT_CREATURE_GROUP:
@@ -1212,6 +1218,9 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT:
     case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL:
     case CRITERIA_TYPE_WIN_RATED_BATTLEGROUND:
+    case CRITERIA_TYPE_OWN_TOY:
+    case CRITERIA_TYPE_OWN_TOY_COUNT:
+    case CRITERIA_TYPE_OWN_HEIRLOOMS:
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
     case CRITERIA_TYPE_CLEAR_DIGSITE:
     case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
@@ -1361,6 +1370,7 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
     case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
+    case CRITERIA_TYPE_OWN_TOY:
         if (!miscValue1 || (criteria->Entry->Asset.ID && miscValue1 != criteria->Entry->Asset.ID))
             return false;
         break;

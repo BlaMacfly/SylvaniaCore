@@ -89,6 +89,8 @@ bool CollectionMgr::AddToy(uint32 itemId, bool isFavourite /*= false*/)
     if (UpdateAccountToys(itemId, isFavourite))
     {
         _owner->GetPlayer()->AddDynamicValue(PLAYER_DYNAMIC_FIELD_TOYS, itemId);
+        _owner->GetPlayer()->UpdateCriteria(CRITERIA_TYPE_OWN_TOY, itemId);
+        _owner->GetPlayer()->UpdateCriteria(CRITERIA_TYPE_OWN_TOY_COUNT, 1);
         return true;
     }
 
@@ -217,6 +219,7 @@ void CollectionMgr::AddHeirloom(uint32 itemId, uint32 flags, Player* owner)
     {
         playerOwner->AddDynamicValue(PLAYER_DYNAMIC_FIELD_HEIRLOOMS, itemId);
         playerOwner->AddDynamicValue(PLAYER_DYNAMIC_FIELD_HEIRLOOM_FLAGS, flags);
+        playerOwner->UpdateCriteria(CRITERIA_TYPE_OWN_HEIRLOOMS, 1);
     }
 }
 

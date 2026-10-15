@@ -19497,6 +19497,8 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     }
 
     m_achievementMgr->CheckAllAchievementCriteria(this);
+    for (auto const& toy : GetSession()->GetCollectionMgr()->GetAccountToys())
+        UpdateCriteria(CRITERIA_TYPE_OWN_TOY, toy.first);
 
     // Add active emissary quests on player at login
     sWorldQuestMgr->AddEmissaryQuestsOnPlayerIfNeeded(this);
