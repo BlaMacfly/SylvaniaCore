@@ -259,7 +259,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectSummonObjectWild,                         //171 SPELL_EFFECT_SUMMON_OBJECT_PERSONNAL
     &Spell::EffectResurrectWithAura,                        //172 SPELL_EFFECT_RESURRECT_WITH_AURA
     &Spell::EffectUnlockGuildVaultTab,                      //173 SPELL_EFFECT_UNLOCK_GUILD_VAULT_TAB
-    &Spell::EffectNULL,                                     //174 SPELL_EFFECT_APPLY_AURA_ON_PET
+    &Spell::EffectApplyAura,                                //174 SPELL_EFFECT_APPLY_AURA_ON_PET
     &Spell::EffectUnused,                                   //175 SPELL_EFFECT_175  unused
     &Spell::EffectSanctuary,                                //176 SPELL_EFFECT_SANCTUARY_2
     &Spell::EffectNULL,                                     //177 SPELL_EFFECT_177

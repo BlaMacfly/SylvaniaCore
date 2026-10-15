@@ -210,7 +210,7 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleAuraModBaseResistancePCT,                  //142 SPELL_AURA_MOD_BASE_RESISTANCE_PCT
     &AuraEffect::HandleNULL,                                      //143 SPELL_AURA_MOD_RECOVERY_RATE
     &AuraEffect::HandleNoImmediateEffect,                         //144 SPELL_AURA_SAFE_FALL                         implemented in WorldSession::HandleMovementOpcodes
-    &AuraEffect::HandleNULL,                                      //145 used by 5 spells in 6.2.4 dbc but the meaning of this aura changed (it's used by mind control spells but isn't the control itself)
+    &AuraEffect::HandleAuraModIncreaseHealthPercent,              //145 vie en % (joueurs sous controle mental : Contact d'Y'Shaarj, Esprit infeste...), MOD_INCREASE_HEALTH_PERCENT2
     &AuraEffect::HandleNoImmediateEffect,                         //146 SPELL_AURA_ALLOW_TAME_PET_TYPE
     &AuraEffect::HandleModMechanicImmunityMask,                   //147 SPELL_AURA_MECHANIC_IMMUNITY_MASK
     &AuraEffect::HandleAuraRetainComboPoints,                     //148 SPELL_AURA_RETAIN_COMBO_POINTS
@@ -553,7 +553,7 @@ pAuraEffectHandler AuraEffectHandler[TOTAL_AURAS]=
     &AuraEffect::HandleModMovementforcesSpeedPercent,             //485 SPELL_AURA_MOD_MOVEMENT_FORCES_SPEED_PCT
     &AuraEffect::HandleNULL,                                      //486
     &AuraEffect::HandleNULL,                                      //487
-    &AuraEffect::HandleNULL,                                      //488
+    &AuraEffect::HandleAuraDisableGravity,                        //488 SPELL_AURA_DISABLE_GRAVITY (apesanteur)
     &AuraEffect::HandleNULL,                                      //489 SPELL_AURA_FORGET_LANGUAGE
     &AuraEffect::HandleSwitchTeam,                                //490 SPELL_AURA_SWITCH_TEAM
     &AuraEffect::HandleNoImmediateEffect,                         //491 SPELL_AURA_MOD_HONOR_GAIN_PCT_2 implemented in Player::RewardHonor
@@ -3020,8 +3020,22 @@ void AuraEffect::HandleAuraModStunAndDisableGravity(AuraApplication const* aurAp
     Unit* target = aurApp->GetTarget();
     target->SetControlled(apply, UNIT_STATE_STUNNED);
 
-    // ne pas reposer au sol tant qu'une autre aura du meme type le tient, ni une creature qui vole
-    if (!apply && (target->HasAuraType(GetAuraType()) || (target->GetTypeId() == TYPEID_UNIT && target->CanFly())))
+    // ne pas reposer au sol tant qu'une autre aura d'apesanteur le tient, ni une creature qui vole
+    if (!apply && (target->HasAuraType(SPELL_AURA_STRANGULATE) || target->HasAuraType(SPELL_AURA_488)
+        || (target->GetTypeId() == TYPEID_UNIT && target->CanFly())))
+        return;
+    target->SetDisableGravity(apply);
+}
+
+// Apesanteur (cages, Arret du temps, Oeil d'Aman'Thul...) : d'apres TrinityCore
+void AuraEffect::HandleAuraDisableGravity(AuraApplication const* aurApp, uint8 mode, bool apply) const
+{
+    if (!(mode & AURA_EFFECT_HANDLE_REAL))
+        return;
+
+    Unit* target = aurApp->GetTarget();
+    if (!apply && (target->HasAuraType(SPELL_AURA_STRANGULATE) || target->HasAuraType(SPELL_AURA_488)
+        || (target->GetTypeId() == TYPEID_UNIT && target->CanFly())))
         return;
     target->SetDisableGravity(apply);
 }
