@@ -34,6 +34,7 @@
 #include "SpellMgr.h"
 #include "SpellInfo.h"
 #include "VehicleDefines.h"
+#include "WodGarrison.h"
 
 Garrison::Garrison(Player* owner) : _garrisonType(), _owner(owner), _siteLevel(nullptr), _followerActivationsRemainingToday(1)
 {
@@ -235,6 +236,7 @@ bool Garrison::LoadFromDB()
 
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_GARRISON_WORKORDER);
     stmt->setUInt64(0, lowGuid);
+    stmt->setUInt8(1, _garrisonType);
     PreparedQueryResult workordersStmt = CharacterDatabase.Query(stmt);
 
     if (!garrisonStmt)
@@ -273,6 +275,11 @@ bool Garrison::LoadFromDB()
             follower.PacketInfo.CurrentBuildingID = fields[7].GetUInt32();
             follower.PacketInfo.CurrentMissionID = fields[8].GetUInt32();
             follower.PacketInfo.FollowerStatus = fields[9].GetUInt32();
+            follower.PacketInfo.Durability = fields[10].GetUInt32();
+            // troupe : vitalite (missions restantes) ; les lignes d'avant la colonne repartent au maximum
+            if (GarrFollowerEntry const* troop = sGarrFollowerStore.LookupEntry(followerId))
+                if (troop->Vitality && !follower.PacketInfo.Durability)
+                    follower.PacketInfo.Durability = troop->Vitality;
 
             if (!sGarrBuildingStore.LookupEntry(follower.PacketInfo.CurrentBuildingID))
                 follower.PacketInfo.CurrentBuildingID = 0;
@@ -433,6 +440,7 @@ void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
         stmt->setUInt32(index++, follower.PacketInfo.CurrentBuildingID);
         stmt->setUInt32(index++, follower.PacketInfo.CurrentMissionID);
         stmt->setUInt32(index++, follower.PacketInfo.FollowerStatus);
+        stmt->setUInt32(index++, follower.PacketInfo.Durability);
         trans->Append(stmt);
 
         uint8 slot = 0;
@@ -498,6 +506,7 @@ void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
         stmt->setUInt32(index++, workorder.ShipmentID);
         stmt->setUInt32(index++, workorder.CreationTime);
         stmt->setUInt32(index++, workorder.CompleteTime);
+        stmt->setUInt8(index++, uint8(_garrisonType));
 
         trans->Append(stmt);
     }
@@ -540,6 +549,7 @@ void Garrison::DeleteFromDB(CharacterDatabaseTransaction& trans, ObjectGuid::Low
 
     stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_GARRISON_WORKORDERS);
     stmt->setUInt64(0, guid);
+    stmt->setUInt8(1, garrType);
     trans->Append(stmt);
 }
 
@@ -641,8 +651,8 @@ void Garrison::AddShipmentFollower(uint32 garrFollowerId)
     follower.PacketInfo.ItemLevelWeapon = followerEntry->ItemLevelWeapon;
     follower.PacketInfo.ItemLevelArmor = followerEntry->ItemLevelArmor;
     follower.PacketInfo.AbilityID = sGarrisonMgr.RollFollowerAbilities(garrFollowerId, followerEntry, follower.PacketInfo.Quality, GetFaction(), true);
-    follower.PacketInfo.Durability = 2;
-    follower.PacketInfo.FollowerStatus = 24;
+    follower.PacketInfo.Durability = followerEntry->Vitality;
+    follower.PacketInfo.FollowerStatus = followerEntry->Vitality ? (FOLLOWER_STATUS_TROOP | FOLLOWER_STATUS_NO_XP_GAIN) : 0;
     addFollowerResult.Follower = follower.PacketInfo;
     _owner->SendDirectMessage(addFollowerResult.Write());
 
@@ -1058,45 +1068,9 @@ std::vector<Garrison::WorkOrder> Garrison::GetBuildingWorkOrders(uint32 plotInst
     return orders;
 }
 
-uint64 Garrison::StartWorkOrder(uint32 plotInstanceID, uint32 shipmentID)
+uint64 Garrison::StartWorkOrder(uint32 /*plotInstanceID*/, uint32 shipmentID)
 {
-    CharShipmentEntry const* charShipmentEntry = sCharShipmentStore.LookupEntry(shipmentID);
-
-    if (!charShipmentEntry)
-        return 0;
-
-    uint32 MaxCompleteTime = time(0);
-
-    for (uint32 I = 0; I < _workorders.size(); ++I)
-    {
-        if (_workorders[I].PlotInstanceID == plotInstanceID)
-            MaxCompleteTime = std::max<uint32>(MaxCompleteTime, _workorders[I].CompleteTime);
-    }
-
-    uint64 dbId = sGarrisonMgr.GenerateWorkorderDbId();
-    WorkOrder& workOrder = _workorders[dbId];;
-    workOrder.DatabaseID = dbId;
-    workOrder.PlotInstanceID = plotInstanceID;
-    workOrder.ShipmentID = shipmentID;
-    workOrder.CreationTime = MaxCompleteTime;
-    workOrder.CompleteTime = MaxCompleteTime + charShipmentEntry->Duration;
-    workOrder.ownerID = _owner->GetGUID().GetCounter();
-
-    CharacterDatabaseTransaction trans = CharacterDatabase.BeginTransaction();
-
-    uint8 index = 0;
-    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GARRISON_WORKORDER);
-    stmt->setUInt64(index++, workOrder.DatabaseID);
-    stmt->setUInt64(index++, _owner->GetGUID().GetCounter());
-    stmt->setUInt32(index++, workOrder.PlotInstanceID);
-    stmt->setUInt32(index++, workOrder.ShipmentID);
-    stmt->setUInt32(index++, workOrder.CreationTime);
-    stmt->setUInt32(index++, workOrder.CompleteTime);
-    trans->Append(stmt);
-
-    CharacterDatabase.CommitTransaction(trans);
-
-    return workOrder.DatabaseID;
+    return PlaceShipment(shipmentID, false);
 }
 
 void Garrison::DeleteWorkOrder(uint64 dbId)
@@ -1224,6 +1198,7 @@ void Garrison::CompleteMission(uint32 garrMissionId)
 
     bool canComplete = mission->PacketInfo.StartTime + mission->PacketInfo.MissionDuration < time(nullptr);
     bool success = false;
+    std::vector<uint64> deadTroops;
 
     // champions releves AVANT une eventuelle liberation (echec), pour le paquet de resultat
     std::vector<WorldPackets::Garrison::GarrMissionFollowerData> resultFollowers;
@@ -1247,6 +1222,18 @@ void Garrison::CompleteMission(uint32 garrMissionId)
             if (follower->RemoveSingleMissionAbilities())
                 follower->SendFollowerUpdate(_owner);
 
+        // troupes : une mission de moins ; a 0 la troupe disparait (apres le paquet de resultat)
+        for (Follower* follower : GetMissionFollowers(missionEntry->ID))
+        {
+            GarrFollowerEntry const* entry = follower->GetEntry();
+            if (!entry || !entry->Vitality)
+                continue;
+            if (follower->PacketInfo.Durability > 0)
+                --follower->PacketInfo.Durability;
+            if (!follower->PacketInfo.Durability)
+                deadTroops.push_back(follower->PacketInfo.DbID);
+        }
+
         // Echec : pas de coffre a ouvrir, donc pas de CalculateMissonBonusRoll -- les champions
         // restaient bloques sur la mission. On les libere ici.
         if (!success)
@@ -1269,6 +1256,16 @@ void Garrison::CompleteMission(uint32 garrMissionId)
     garrisonCompleteMissionResult.Followers = resultFollowers;
     garrisonCompleteMissionResult.Succeeded = success;
     _owner->SendDirectMessage(garrisonCompleteMissionResult.Write());
+
+    for (uint64 dbId : deadTroops)
+    {
+        _followers.erase(dbId);
+        WorldPackets::Garrison::GarrisonRemoveFollowerResult removed;
+        removed.FollowerDBID = dbId;
+        removed.GarrTypeID = int32(GetType());
+        removed.Result = GARRISON_SUCCESS;
+        _owner->SendDirectMessage(removed.Write());
+    }
 }
 
 void Garrison::CalculateMissonBonusRoll(uint32 garrMissionId)
@@ -1652,52 +1649,460 @@ void Garrison::Follower::SendFollowerUpdate(Player* player) const
 
 void Garrison::UpdateWorkOrders()
 {
-    if (!GetOwner()->IsInGarrison())
+    // les objets de recolte (type 45) sont poses dans le monde ; la recolte se fait a leur utilisation
+}
+
+
+// ---------------------------------------------------------------------------------------------
+// Commandes de travail (troupes du domaine de classe, cuisine de Nomi, batiments du fief).
+// Porte de LegionCore (Garrison::CreateShipment / PlaceShipment / CompleteShipments), adapte a nos
+// WorkOrder : avant, une commande pouvait etre lancee mais jamais recoltee, et le PNJ ne s'ouvrait pas.
+// ---------------------------------------------------------------------------------------------
+namespace
+{
+    // une file par type de batiment au fief (conteneurs Alliance et Horde distincts), sinon par conteneur
+    uint32 ShipmentQueueKey(CharShipmentContainerEntry const* container)
+    {
+        return container->GarrBuildingType ? (0x10000u | container->GarrBuildingType) : container->ID;
+    }
+
+    CharShipmentContainerEntry const* ShipmentContainerOf(uint32 shipmentId)
+    {
+        if (CharShipmentEntry const* shipment = sCharShipmentStore.LookupEntry(shipmentId))
+            return sCharShipmentContainerStore.LookupEntry(shipment->ShipmentContainerID);
+        return nullptr;
+    }
+
+    // fief : quete qui debloque les commandes du batiment (LegionCore getQuestIdReqForShipment)
+    uint32 ShipmentQuestForBuilding(uint32 siteId, uint32 buildingType)
+    {
+        bool alliance = siteId == 2;
+        switch (buildingType)
+        {
+            case 16: return alliance ? 36641 : 37568; // laboratoire d'alchimie
+            case 23: return alliance ? 36643 : 37575; // atelier de couture
+            case 17: return alliance ? 35168 : 37569; // forge
+            case 22: return alliance ? 36642 : 37574; // tannerie
+            case 21: return alliance ? 36644 : 37573; // joaillerie
+            case 18: return alliance ? 36645 : 37570; // enchantement
+            case 19: return alliance ? 36646 : 37571; // ingenierie
+            case 20: return alliance ? 36647 : 37572; // calligraphie
+            case 4:  return alliance ? 36189 : 36137; // scierie
+            case 6:  return alliance ? 37088 : 37062; // comptoir
+            default: return 0;
+        }
+    }
+
+    // commande propre a la quete du batiment, tant qu'elle n'est pas rendue (LegionCore getProgressShipment)
+    uint32 ShipmentForQuestInProgress(uint32 questId)
+    {
+        switch (questId)
+        {
+            case 36641: return 114; case 37568: return 122;
+            case 36643: return 120; case 37575: return 136;
+            case 35168: return 113; case 37569: return 123;
+            case 36642: return 119; case 37574: return 134;
+            case 36644: return 118; case 37573: return 131;
+            case 36645: return 115; case 37570: return 126;
+            case 36646: return 116; case 37571: return 128;
+            case 36647: return 117; case 37572: return 130;
+            default: return 0;
+        }
+    }
+
+    // talent de domaine (rang 3) qui remplace la troupe de base du conteneur par sa version superieure.
+    // Deduit des descriptions de GarrTalent.db2 (« Newly recruited X become Y ») ; LegionCore avait
+    // interverti les deux du demoniste.
+    uint32 TroopUpgradeTalent(uint32 containerId)
+    {
+        switch (containerId)
+        {
+            case 124: return 250; case 125: return 251; // moine
+            case 128: return 362; case 129: return 365; // demoniste
+            case 131: return 384; case 132: return 385; // mage
+            case 134: return 428; case 135: return 429; // chevalier de la mort
+            case 137: return 417; case 138: return 418; // chasseur de demons
+            case 140: return 351; case 141: return 352; // druide
+            case 143: return 373; case 144: return 374; // chasseur
+            case 146: return 395; case 147: return 396; // paladin
+            case 149: return 450; case 150: return 451; // pretre
+            case 152: return 439; case 153: return 440; // voleur
+            case 155: return 44;  case 156: return 43;  // chaman
+            case 158: return 406; case 159: return 407; // guerrier
+            default: return 0;
+        }
+    }
+
+    // commande d'introduction : la plus courte d'un conteneur (5 s, une seule a la fois), servie
+    // pendant la quete qui apprend a passer commande
+    CharShipmentEntry const* IntroShipment(std::vector<CharShipmentEntry const*> const& list)
+    {
+        if (list.size() < 2)
+            return nullptr;
+        CharShipmentEntry const* shortest = nullptr;
+        for (CharShipmentEntry const* entry : list)
+            if (!shortest || entry->Duration < shortest->Duration)
+                shortest = entry;
+        return shortest && shortest->Duration < 60 ? shortest : nullptr;
+    }
+}
+
+bool Garrison::HasClassHallTalent(uint32 garrTalentId) const
+{
+    for (WorldPackets::Garrison::GarrisonTalent const& talent : _talents)
+        if (uint32(talent.GarrTalentID) == garrTalentId && (talent.Flags & CLASS_HALL_TALENT_READY))
+            return true;
+    return false;
+}
+
+GarrShipment const* Garrison::GetShipmentForNpc(uint32 npcEntry) const
+{
+    GarrShipment const* shipment = sGarrisonMgr.GetShipmentByNpc(npcEntry, _owner->getClass(), _siteLevel ? _siteLevel->GarrSiteID : 0);
+    if (!shipment || shipment->Container->GarrTypeID != uint32(GetType()))
+        return nullptr;
+    return shipment;
+}
+
+uint32 Garrison::SelectShipment(GarrShipment const* shipment) const
+{
+    if (!shipment)
+        return 0;
+
+    // fief : tant que la quete du batiment n'est pas rendue, commande de la quete
+    if (shipment->Container->GarrTypeID == GARRISON_TYPE_GARRISON && _siteLevel)
+    {
+        if (uint32 questId = ShipmentQuestForBuilding(_siteLevel->GarrSiteID, shipment->Container->GarrBuildingType))
+        {
+            QuestStatus status = _owner->GetQuestStatus(questId);
+            if (status == QUEST_STATUS_NONE)
+                return 0;
+            if (status != QUEST_STATUS_REWARDED)
+                if (uint32 progress = ShipmentForQuestInProgress(questId))
+                    return progress;
+        }
+    }
+
+    if (shipment->ShipmentID)
+        return shipment->ShipmentID;
+
+    std::vector<CharShipmentEntry const*> const* list = sGarrisonMgr.GetContainerShipments(shipment->ContainerID);
+    if (!list || list->empty())
+        return 0;
+
+    QuestStatus questStatus = shipment->QuestReq ? _owner->GetQuestStatus(shipment->QuestReq) : QUEST_STATUS_REWARDED;
+    if (questStatus == QUEST_STATUS_NONE || questStatus == QUEST_STATUS_FAILED)
+        return 0;                                           // pas encore debloque
+
+    CharShipmentEntry const* intro = IntroShipment(*list);
+    if (intro && questStatus != QUEST_STATUS_REWARDED)
+        return intro->ID;
+
+    std::vector<CharShipmentEntry const*> candidates;
+    for (CharShipmentEntry const* entry : *list)
+        if (entry != intro)
+            candidates.push_back(entry);
+    if (candidates.empty())
+        return 0;
+
+    // troupes : version de base, ou superieure si le talent de domaine est appris
+    if (candidates.size() == 2 && candidates[0]->GarrFollowerID && candidates[1]->GarrFollowerID)
+    {
+        GarrFollowerEntry const* f0 = sGarrFollowerStore.LookupEntry(candidates[0]->GarrFollowerID);
+        GarrFollowerEntry const* f1 = sGarrFollowerStore.LookupEntry(candidates[1]->GarrFollowerID);
+        if (f0 && f1 && f0->Quality != f1->Quality)
+        {
+            CharShipmentEntry const* upgraded = f0->Quality > f1->Quality ? candidates[0] : candidates[1];
+            CharShipmentEntry const* base = upgraded == candidates[0] ? candidates[1] : candidates[0];
+            uint32 talent = TroopUpgradeTalent(shipment->ContainerID);
+            return (talent && HasClassHallTalent(talent)) ? upgraded->ID : base->ID;
+        }
+    }
+
+    // comptoir du fief : une commande par jour parmi celles du conteneur ; cuisine de Nomi : au hasard a la commande
+    if (shipment->Container->GarrBuildingType == 6)
+        return candidates[(time(nullptr) / DAY) % candidates.size()]->ID;
+    return candidates.front()->ID;
+}
+
+uint32 Garrison::GetShipmentQueueSize(CharShipmentContainerEntry const* container) const
+{
+    uint32 key = ShipmentQueueKey(container);
+    uint32 count = 0;
+    for (auto const& itr : _workorders)
+        if (CharShipmentContainerEntry const* c = ShipmentContainerOf(itr.second.ShipmentID))
+            if (ShipmentQueueKey(c) == key)
+                ++count;
+    return count;
+}
+
+uint32 Garrison::GetShipmentCapacity(GarrShipment const* shipment, CharShipmentEntry const* entry) const
+{
+    if (shipment->Container->GarrTypeID == GARRISON_TYPE_GARRISON)
+    {
+        WodGarrison const* wod = ToWodGarrison();
+        if (!wod)
+            return 0;
+        for (WodGarrison::Plot* plot : const_cast<WodGarrison*>(wod)->GetPlots())
+            if (plot->BuildingInfo.PacketInfo && plot->BuildingInfo.PacketInfo->Active)
+                if (GarrBuildingEntry const* building = sGarrBuildingStore.LookupEntry(plot->BuildingInfo.PacketInfo->GarrBuildingID))
+                    if (building->BuildingType == shipment->Container->GarrBuildingType)
+                        return building->ShipmentCapacity;
+        return 0;                                           // batiment absent ou inactif
+    }
+
+    return entry && entry->MaxShipments ? entry->MaxShipments : shipment->Container->BaseCapacity;
+}
+
+// troupes deja recrutees par ce conteneur : elles comptent dans le maximum (« 3 / 4 » dans la fenetre)
+uint32 Garrison::CountShipmentTroops(GarrShipment const* shipment) const
+{
+    std::unordered_set<uint32> troops;
+    if (std::vector<CharShipmentEntry const*> const* list = sGarrisonMgr.GetContainerShipments(shipment->ContainerID))
+        for (CharShipmentEntry const* e : *list)
+            if (e->GarrFollowerID)
+                troops.insert(e->GarrFollowerID);
+    if (troops.empty())
+        return 0;
+    return CountFollowers([&troops](Follower const& f) { return troops.count(f.PacketInfo.GarrFollowerID) != 0; });
+}
+
+Garrison* Garrison::GetForShipmentNpc(Player* player, uint32 npcEntry)
+{
+    for (GarrisonType type : { GARRISON_TYPE_CLASS_HALL, GARRISON_TYPE_GARRISON })
+        if (Garrison* garrison = player->GetGarrison(type))
+            if (garrison->GetShipmentForNpc(npcEntry))
+                return garrison;
+    return nullptr;
+}
+
+bool Garrison::OpenShipmentNpc(Creature* npc)
+{
+    GarrShipment const* shipment = npc ? GetShipmentForNpc(npc->GetEntry()) : nullptr;
+    if (!shipment || !SelectShipment(shipment))
+        return false;
+
+    WorldPackets::Garrison::GarrisonOpenShipmentNpcFromGossip packet;
+    packet.NpcGUID = npc->GetGUID();
+    packet.ShipmentContainerID = shipment->ContainerID;
+    _owner->SendDirectMessage(packet.Write());
+    return true;
+}
+
+void Garrison::SendShipmentInfo(ObjectGuid const& npcGuid)
+{
+    GarrShipment const* shipment = GetShipmentForNpc(npcGuid.GetEntry());
+    uint32 shipmentId = SelectShipment(shipment);
+    CharShipmentEntry const* entry = sCharShipmentStore.LookupEntry(shipmentId);
+    // recherche d'artefact 7.2 : fermee comme chez LegionCore (la connaissance d'artefact demarre au maximum chez nous)
+    bool success = shipment && entry && entry->DummyItemID != 146745;
+
+    WorldPacket data(SMSG_GET_SHIPMENT_INFO_RESPONSE, 1 + 4 * 4 + 32 * 4);
+    data.WriteBit(success);
+    data.FlushBits();
+
+    std::vector<WorkOrder const*> queue;
+    if (success)
+    {
+        uint32 key = ShipmentQueueKey(shipment->Container);
+        for (auto const& itr : _workorders)
+            if (CharShipmentContainerEntry const* c = ShipmentContainerOf(itr.second.ShipmentID))
+                if (ShipmentQueueKey(c) == key)
+                    queue.push_back(&itr.second);
+    }
+
+    data << uint32(success ? shipmentId : 0);
+    data << uint32(success ? GetShipmentCapacity(shipment, entry) : 0);
+    data << uint32(queue.size());
+    data << uint32(0);                                      // PlotInstanceID
+    for (WorkOrder const* order : queue)
+    {
+        data << uint32(order->ShipmentID);
+        data << uint64(order->DatabaseID);
+        data << uint64(0);                                  // champion assigne
+        data << uint32(order->CreationTime);
+        data << uint32(order->CompleteTime - order->CreationTime);
+        data << uint32(order->PlotInstanceID);              // type de batiment
+    }
+    _owner->SendDirectMessage(&data);
+}
+
+void Garrison::CreateShipment(ObjectGuid const& npcGuid, uint32 count)
+{
+    GarrShipment const* shipment = GetShipmentForNpc(npcGuid.GetEntry());
+    if (!shipment)
         return;
 
-    if (_workorders.size() > 0)
+    for (uint32 i = 0; i < std::max<uint32>(count, 1); ++i)
     {
-        for (auto const& p : _workorders)
+        uint32 shipmentId = SelectShipment(shipment);
+        // cuisine de Nomi : recette au hasard parmi les resultats possibles
+        if (shipmentId && !shipment->ShipmentID && shipment->Container->GarrTypeID == GARRISON_TYPE_CLASS_HALL)
+            if (std::vector<CharShipmentEntry const*> const* list = sGarrisonMgr.GetContainerShipments(shipment->ContainerID))
+            {
+                CharShipmentEntry const* intro = IntroShipment(*list);
+                std::vector<CharShipmentEntry const*> pool;
+                for (CharShipmentEntry const* e : *list)
+                    if (e != intro && !e->GarrFollowerID && e->DummyItemID && e->SpellID)
+                        pool.push_back(e);
+                if (pool.size() > 1 && (!intro || shipmentId != intro->ID))
+                    shipmentId = Trinity::Containers::SelectRandomContainerElement(pool)->ID;
+            }
+
+        CharShipmentEntry const* entry = sCharShipmentStore.LookupEntry(shipmentId);
+        if (!entry || entry->DummyItemID == 146745)
+            return;
+        if (GetShipmentQueueSize(shipment->Container) + CountShipmentTroops(shipment) >= GetShipmentCapacity(shipment, entry))
+            return;
+
+        // le sort de la commande porte l'effet 216 (creer la commande) ; ses composants sont exiges,
+        // son cout en monnaie (SpellReagentsCurrency) est preleve par l'effet
+        SpellInfo const* spell = sSpellMgr->GetSpellInfo(entry->SpellID);
+        if (!spell || !spell->HasEffect(SPELL_EFFECT_CREATE_SHIPMENT))
         {
-            WorkOrder const& workorder = p.second;
-            CharShipmentEntry const* charShipmentEntry = sCharShipmentStore.LookupEntry(workorder.ShipmentID);
-
-            if (charShipmentEntry == nullptr)
-                continue;
-
-            CharShipmentContainerEntry const* charShipmentContainerEntry = sCharShipmentContainerStore.LookupEntry(charShipmentEntry->ShipmentContainerID);
-
-            if (charShipmentContainerEntry == nullptr)
-                continue;
-
-
-
-            bool complete = false;
-            GarrisonClassHallPlotGOInfo const* GOInfo = sGarrisonMgr.GetPlotClassHallGOInfo(workorder.PlotInstanceID);
-            uint32 GobDisplayID = GOInfo->workDisplayId;
-            uint32 CurrentTimeStamp = time(0);
-            uint32 ShipmentsSize = (uint32)_workorders.size();
-
-            GameObject* workOrderGameObject = _owner->FindNearestGameObject(GOInfo->GameObjectId, 30.f);
-
-            if (!workOrderGameObject)
-                workOrderGameObject = _owner->SummonGameObject(GOInfo->GameObjectId, GOInfo->Pos, QuaternionData(), WEEK, true);
-
-            if (workorder.CompleteTime <= CurrentTimeStamp)
-                complete = true;
-
-            if (!complete)
-            {
-                workOrderGameObject->SetDisplayId(GobDisplayID);
-                workOrderGameObject->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_FREEZE_ANIMATION);
-            }
-            else
-            {
-                workOrderGameObject->SetDisplayId(GOInfo->completeDisplayId);
-                workOrderGameObject->SetFlag(GAMEOBJECT_FLAGS, GO_FLAG_FREEZE_ANIMATION);
-                workOrderGameObject->SetGoState(GO_STATE_READY);
-            }
+            if (!HasShipmentCurrencyCost(entry->SpellID))
+                return;
+            TakeShipmentCurrencyCost(entry->SpellID);
+            PlaceShipment(entry->ID, true);
+            continue;
         }
 
+        if (!HasShipmentCurrencyCost(entry->SpellID))
+            return;
+        _owner->CastSpell(_owner, spell, TriggerCastFlags(TRIGGERED_FULL_MASK & ~TRIGGERED_IGNORE_POWER_AND_REAGENT_COST));
+    }
+}
+
+bool Garrison::HasShipmentCurrencyCost(uint32 spellId) const
+{
+    for (SpellReagentsCurrencyEntry const* cost : sSpellReagentsCurrencyStore)
+        if (uint32(cost->SpellID) == spellId && cost->CurrencyTypesID && !_owner->HasCurrency(cost->CurrencyTypesID, cost->CurrencyCount))
+            return false;
+    return true;
+}
+
+void Garrison::TakeShipmentCurrencyCost(uint32 spellId)
+{
+    for (SpellReagentsCurrencyEntry const* cost : sSpellReagentsCurrencyStore)
+        if (uint32(cost->SpellID) == spellId && cost->CurrencyTypesID && cost->CurrencyCount)
+            _owner->ModifyCurrency(cost->CurrencyTypesID, -int32(cost->CurrencyCount));
+}
+
+uint64 Garrison::PlaceShipment(uint32 shipmentId, bool sendResult)
+{
+    CharShipmentEntry const* entry = sCharShipmentStore.LookupEntry(shipmentId);
+    CharShipmentContainerEntry const* container = entry ? sCharShipmentContainerStore.LookupEntry(entry->ShipmentContainerID) : nullptr;
+    if (!entry || !container || container->GarrTypeID != uint32(GetType()))
+        return 0;
+
+    // la file est sequentielle : la commande demarre a la fin de la derniere de son conteneur
+    uint32 key = ShipmentQueueKey(container);
+    uint32 start = uint32(time(nullptr));
+    for (auto const& itr : _workorders)
+        if (CharShipmentContainerEntry const* c = ShipmentContainerOf(itr.second.ShipmentID))
+            if (ShipmentQueueKey(c) == key)
+                start = std::max(start, itr.second.CompleteTime);
+
+    uint64 dbId = sGarrisonMgr.GenerateWorkorderDbId();
+    WorkOrder& order = _workorders[dbId];
+    order.DatabaseID = dbId;
+    order.PlotInstanceID = container->GarrBuildingType;
+    order.ShipmentID = shipmentId;
+    order.CreationTime = start;
+    order.CompleteTime = start + entry->Duration;
+    order.ownerID = _owner->GetGUID().GetCounter();
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_GARRISON_WORKORDER);
+    stmt->setUInt64(0, order.DatabaseID);
+    stmt->setUInt64(1, _owner->GetGUID().GetCounter());
+    stmt->setUInt32(2, order.PlotInstanceID);
+    stmt->setUInt32(3, order.ShipmentID);
+    stmt->setUInt32(4, order.CreationTime);
+    stmt->setUInt32(5, order.CompleteTime);
+    stmt->setUInt8(6, uint8(GetType()));
+    CharacterDatabase.Execute(stmt);
+
+    if (sendResult)
+    {
+        WorldPackets::Garrison::GarrisonCreateShipmentResponse response;
+        response.ShipmentID = dbId;
+        response.ShipmentRecID = shipmentId;
+        response.Result = GARRISON_SUCCESS;
+        _owner->SendDirectMessage(response.Write());
+    }
+    return dbId;
+}
+
+void Garrison::SendShipmentLandingPage() const
+{
+    WorldPackets::Garrison::GarrisonLandingPageShipmentInfo packet;
+    packet.GarrisonType = uint32(GetType());
+    for (auto const& itr : _workorders)
+    {
+        WorldPackets::Garrison::GarrisonShipment shipment;
+        shipment.ShipmentId = itr.second.DatabaseID;
+        shipment.ShipmentRecId = itr.second.ShipmentID;
+        shipment.CreationTime = itr.second.CreationTime;
+        shipment.ShipmentDuration = itr.second.CompleteTime - itr.second.CreationTime;
+        shipment.BuildingType = itr.second.PlotInstanceID;
+        packet.Shipments.push_back(shipment);
+    }
+    _owner->SendDirectMessage(packet.Write());
+}
+
+void Garrison::CompleteShipments(GameObject* go)
+{
+    CharShipmentContainerEntry const* container = sCharShipmentContainerStore.LookupEntry(go->GetGOInfo()->garrisonShipment.ShipmentContainer);
+    if (!container || container->GarrTypeID != uint32(GetType()))
+        return;
+
+    uint32 key = ShipmentQueueKey(container);
+    uint32 now = uint32(time(nullptr));
+    std::vector<uint64> done;
+    for (auto const& itr : _workorders)
+        if (itr.second.CompleteTime <= now)
+            if (CharShipmentContainerEntry const* c = ShipmentContainerOf(itr.second.ShipmentID))
+                if (ShipmentQueueKey(c) == key)
+                    done.push_back(itr.first);
+
+    // retirees de la file AVANT les recompenses : DeleteWorkOrder ne touche plus la liste en cours de parcours
+    for (uint64 dbId : done)
+    {
+        uint32 shipmentId = _workorders[dbId].ShipmentID;
+        DeleteWorkOrder(dbId);
+
+        CharShipmentEntry const* entry = sCharShipmentStore.LookupEntry(shipmentId);
+        if (!entry)
+            continue;
+
+        if (entry->OnCompleteSpellID)                       // credits de quete
+            _owner->CastSpell(_owner, entry->OnCompleteSpellID, true);
+        if (entry->GarrFollowerID)                          // troupe recrutee
+            AddShipmentFollower(entry->GarrFollowerID);
+
+        switch (entry->DummyItemID)                         // envois du fief (LegionCore)
+        {
+            case 0:
+                break;
+            case 116055:                                    // mine
+                _owner->AddItem(109119, 1);
+                _owner->AddItem(109118, 1);
+                break;
+            case 116054:                                    // jardin
+                _owner->AddItem(109125, 1);
+                _owner->AddItem(109124, 1);
+                break;
+            case 114677:
+            case 118111:
+                _owner->ModifyCurrency(824, 30);  // ressources du fief
+                break;
+            case 120204:                                    // fabrique de guerre
+                _owner->AddItem(113681, 1);
+                break;
+            default:
+                _owner->AddItem(entry->DummyItemID, 1);
+                break;
+        }
+
+        _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT, container->ID);
     }
 }

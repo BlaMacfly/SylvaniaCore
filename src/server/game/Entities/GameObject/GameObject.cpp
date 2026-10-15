@@ -16,6 +16,7 @@
  */
 
 #include "GameObject.h"
+#include "Garrison.h"
 #include "ArtifactPackets.h"
 #include "Battleground.h"
 #include "CellImpl.h"
@@ -1989,6 +1990,16 @@ void GameObject::Use(Unit* user)
             artifactForgeOpened.ArtifactGUID = item->GetGUID();
             artifactForgeOpened.ForgeGUID = GetGUID();
             player->SendDirectMessage(artifactForgeOpened.Write());
+            return;
+        }
+        case GAMEOBJECT_TYPE_GARRISON_SHIPMENT:         // caisse de troupes, resultats de cuisine, envois du fief
+        {
+            Player* player = user->ToPlayer();
+            if (!player)
+                return;
+            if (CharShipmentContainerEntry const* container = sCharShipmentContainerStore.LookupEntry(GetGOInfo()->garrisonShipment.ShipmentContainer))
+                if (Garrison* garrison = player->GetGarrison(GarrisonType(container->GarrTypeID)))
+                    garrison->CompleteShipments(this);
             return;
         }
         case GAMEOBJECT_TYPE_UI_LINK:

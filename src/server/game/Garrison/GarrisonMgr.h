@@ -67,6 +67,18 @@ struct GarrAbilities
 
 typedef std::map<GarrisonType, std::unique_ptr<Garrison>> PlayerGarrisonMap;
 
+// Commandes de travail : PNJ -> conteneur de commandes (table garrison_shipment, d'apres LegionCore)
+struct GarrShipment
+{
+    uint32 SiteID = 0;          // 0 = domaine de classe, 2 / 71 = fief Alliance / Horde
+    uint32 ContainerID = 0;
+    uint32 NpcEntry = 0;
+    uint32 QuestReq = 0;        // quete qui debloque les commandes (commande d'introduction tant qu'elle est en cours)
+    uint32 ShipmentID = 0;      // 0 = choisi parmi les commandes du conteneur
+    uint32 ClassReq = 0;        // masque de classes
+    CharShipmentContainerEntry const* Container = nullptr;
+};
+
 // Talent de domaine de classe (table garrison_class_hall_talent, issue de GarrTalent.db2)
 struct ClassHallTalentInfo
 {
@@ -124,12 +136,17 @@ public:
     void LoadClassHallTalents();
     GarrisonMissionRewardInfo const* GetMissionReward(uint32 missionId) const;
     void LoadMissionRewards();
+    void LoadShipments();
+    GarrShipment const* GetShipmentByNpc(uint32 npcEntry, uint8 classId, uint32 siteId) const;
+    std::vector<CharShipmentEntry const*> const* GetContainerShipments(uint32 containerId) const;
     uint32 GetClassByMissionType(uint32 missionType);
     uint32 GetFactionByMissionType(uint32 missionType);
 
 private:
     std::unordered_map<uint32, ClassHallTalentInfo> _classHallTalents;
     std::unordered_map<uint32, GarrisonMissionRewardInfo> _missionRewards;
+    std::unordered_map<uint32 /*npcEntry*/, std::vector<GarrShipment>> _shipmentsByNpc;
+    std::unordered_map<uint32 /*containerId*/, std::vector<CharShipmentEntry const*>> _shipmentsByContainer;
     void InitializeDbIdSequences();
     void LoadPlotFinalizeGOInfo();
     void LoadFollowerClassSpecAbilities();

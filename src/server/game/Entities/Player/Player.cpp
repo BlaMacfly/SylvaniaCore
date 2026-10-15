@@ -15414,6 +15414,15 @@ void Player::OnGossipSelect(WorldObject* source, uint32 optionIndex, uint32 menu
         return;
     }
 
+    // option « commande de travail » d'un recruteur de troupes / PNJ de fief : ouvre la fenetre des commandes
+    if (item->MenuItemIcon == GOSSIP_ICON_SHIPMENT && source->GetTypeId() == TYPEID_UNIT)
+        if (Garrison* garrison = Garrison::GetForShipmentNpc(this, source->GetEntry()))
+        {
+            PlayerTalkClass->SendCloseGossip();
+            garrison->OpenShipmentNpc(source->ToCreature());
+            return;
+        }
+
     switch (gossipOptionType)
     {
         case GOSSIP_OPTION_GOSSIP:

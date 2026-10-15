@@ -1131,6 +1131,9 @@ void HotfixDatabaseConnection::DoPrepareStatements()
         " FROM spell_range ORDER BY ID DESC", CONNECTION_SYNCH);
     PREPARE_LOCALE_STMT(HOTFIX_SEL_SPELL_RANGE, "SELECT ID, DisplayName_lang, DisplayNameShort_lang FROM spell_range_locale WHERE locale = ?", CONNECTION_SYNCH);
 
+    // SpellReagentsCurrency.db2
+    PrepareStatement(HOTFIX_SEL_SPELL_REAGENTS_CURRENCY, "SELECT ID, SpellID, CurrencyTypesID, CurrencyCount FROM spell_reagents_currency ORDER BY ID DESC", CONNECTION_SYNCH);
+
     // SpellReagents.db2
     PrepareStatement(HOTFIX_SEL_SPELL_REAGENTS, "SELECT ID, SpellID, Reagent1, Reagent2, Reagent3, Reagent4, Reagent5, Reagent6, Reagent7, Reagent8, "
         "ReagentCount1, ReagentCount2, ReagentCount3, ReagentCount4, ReagentCount5, ReagentCount6, ReagentCount7, ReagentCount8 FROM spell_reagents"

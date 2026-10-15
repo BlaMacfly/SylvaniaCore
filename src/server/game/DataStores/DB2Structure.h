@@ -3309,6 +3309,14 @@ struct SpellRangeEntry
 
 #define MAX_SPELL_REAGENTS 8
 
+struct SpellReagentsCurrencyEntry
+{
+    uint32 ID;
+    int32 SpellID;
+    uint16 CurrencyTypesID;
+    uint16 CurrencyCount;
+};
+
 struct SpellReagentsEntry
 {
     uint32 ID;

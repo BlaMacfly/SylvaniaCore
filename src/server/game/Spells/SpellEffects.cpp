@@ -301,7 +301,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectGrip,                                     //213 SPELL_EFFECT_GRIP
     &Spell::EffectCreateGarrison,                           //214 SPELL_EFFECT_CREATE_GARRISON
     &Spell::EffectNULL,                                     //215 SPELL_EFFECT_UPGRADE_CHARACTER_SPELLS
-    &Spell::EffectNULL,                                     //216 SPELL_EFFECT_CREATE_SHIPMENT
+    &Spell::EffectCreateShipment,                           //216 SPELL_EFFECT_CREATE_SHIPMENT
     &Spell::EffectNULL,                                     //217 SPELL_EFFECT_UPGRADE_GARRISON
     &Spell::EffectNULL,                                     //218 SPELL_EFFECT_218
     &Spell::EffectCreateConversation,                       //219 SPELL_EFFECT_CREATE_CONVERSATION
@@ -4404,7 +4404,7 @@ void Spell::EffectIncreaseCurrencyCap(SpellEffIndex /*effIndex*/)
 // Objets d'equipement de champion / de suivant : le client donne le modele du champion vise dans Misc[0] (comme LegionCore)
 void Spell::EffectModAssistantEquipmentLevel(SpellEffIndex /*effIndex*/)
 {
-    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 
     Player* player = m_caster->ToPlayer();
@@ -4433,7 +4433,7 @@ void Spell::EffectModAssistantEquipmentLevel(SpellEffIndex /*effIndex*/)
 // Tomes d'experience de champion : MiscValueB = type de suivant vise (0 = tous), comme LegionCore
 void Spell::EffectIncreaseFollowerExperience(SpellEffIndex /*effIndex*/)
 {
-    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 
     Player* player = m_caster->ToPlayer();
@@ -4456,7 +4456,7 @@ void Spell::EffectIncreaseFollowerExperience(SpellEffIndex /*effIndex*/)
 // Equipement des champions du domaine : MiscValue = capacite apprise, Misc[1] du client = capacite remplacee
 void Spell::EffectLearnFollowerAbility(SpellEffIndex /*effIndex*/)
 {
-    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
         return;
 
     Player* player = m_caster->ToPlayer();
@@ -4477,6 +4477,26 @@ void Spell::EffectLearnFollowerAbility(SpellEffIndex /*effIndex*/)
             follower->SendFollowerUpdate(player);
         return;
     }
+}
+
+// Commande de travail : MiscValue = CharShipment ; le cout en monnaie du sort (SpellReagentsCurrency) est preleve ici
+void Spell::EffectCreateShipment(SpellEffIndex /*effIndex*/)
+{
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
+        return;
+
+    Player* player = m_caster->ToPlayer();
+    if (!player)
+        return;
+
+    CharShipmentEntry const* entry = sCharShipmentStore.LookupEntry(effectInfo->MiscValue);
+    CharShipmentContainerEntry const* container = entry ? sCharShipmentContainerStore.LookupEntry(entry->ShipmentContainerID) : nullptr;
+    if (!container)
+        return;
+
+    if (Garrison* garrison = player->GetGarrison(GarrisonType(container->GarrTypeID)))
+        if (garrison->HasShipmentCurrencyCost(m_spellInfo->Id) && garrison->PlaceShipment(entry->ID, true))
+            garrison->TakeShipmentCurrencyCost(m_spellInfo->Id);
 }
 
 void Spell::EffectQuestComplete(SpellEffIndex /*effIndex*/)

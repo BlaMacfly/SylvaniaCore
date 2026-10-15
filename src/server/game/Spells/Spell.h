@@ -433,6 +433,7 @@ class TC_GAME_API Spell
         void EffectModAssistantEquipmentLevel(SpellEffIndex effIndex);
         void EffectIncreaseFollowerExperience(SpellEffIndex effIndex);
         void EffectLearnFollowerAbility(SpellEffIndex effIndex);
+        void EffectCreateShipment(SpellEffIndex effIndex);
         void EffectDuel(SpellEffIndex effIndex);
         void EffectStuck(SpellEffIndex effIndex);
         void EffectSummonPlayer(SpellEffIndex effIndex);

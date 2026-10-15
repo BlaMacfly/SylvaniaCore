@@ -62,6 +62,74 @@ void GarrisonMgr::LoadClassHallTalents()
     TC_LOG_INFO("server.loading", ">> Loaded %u class hall talents.", uint32(_classHallTalents.size()));
 }
 
+void GarrisonMgr::LoadShipments()
+{
+    _shipmentsByNpc.clear();
+    _shipmentsByContainer.clear();
+
+    for (CharShipmentEntry const* entry : sCharShipmentStore)
+        _shipmentsByContainer[entry->ShipmentContainerID].push_back(entry);
+    for (auto& itr : _shipmentsByContainer)
+        std::sort(itr.second.begin(), itr.second.end(), [](CharShipmentEntry const* a, CharShipmentEntry const* b) { return a->ID < b->ID; });
+
+    QueryResult result = WorldDatabase.Query("SELECT SiteID, ContainerID, NpcEntry, questReq, ShipmentID, classReq FROM garrison_shipment");
+    if (!result)
+    {
+        TC_LOG_ERROR("server.loading", ">> Loaded 0 garrison shipments. DB table `garrison_shipment` is empty.");
+        return;
+    }
+
+    uint32 count = 0;
+    do
+    {
+        Field* fields = result->Fetch();
+        GarrShipment data;
+        data.SiteID = fields[0].GetUInt32();
+        data.ContainerID = fields[1].GetUInt32();
+        data.NpcEntry = fields[2].GetUInt32();
+        data.QuestReq = fields[3].GetUInt32();
+        data.ShipmentID = fields[4].GetUInt32();
+        data.ClassReq = fields[5].GetUInt32();
+        data.Container = sCharShipmentContainerStore.LookupEntry(data.ContainerID);
+        if (!data.Container)
+        {
+            TC_LOG_ERROR("sql.sql", "Table `garrison_shipment` : conteneur %u absent de CharShipmentContainer.db2, ignore.", data.ContainerID);
+            continue;
+        }
+        if (data.ShipmentID && !sCharShipmentStore.LookupEntry(data.ShipmentID))
+        {
+            TC_LOG_ERROR("sql.sql", "Table `garrison_shipment` : commande %u absente de CharShipment.db2, ignoree.", data.ShipmentID);
+            continue;
+        }
+        _shipmentsByNpc[data.NpcEntry].push_back(data);
+        ++count;
+    } while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded %u garrison shipments.", count);
+}
+
+GarrShipment const* GarrisonMgr::GetShipmentByNpc(uint32 npcEntry, uint8 classId, uint32 siteId) const
+{
+    auto itr = _shipmentsByNpc.find(npcEntry);
+    if (itr == _shipmentsByNpc.end())
+        return nullptr;
+    for (GarrShipment const& shipment : itr->second)
+    {
+        if (shipment.ClassReq && classId && !(shipment.ClassReq & (1 << (classId - 1))))
+            continue;
+        if (shipment.SiteID && shipment.SiteID != siteId)
+            continue;
+        return &shipment;
+    }
+    return nullptr;
+}
+
+std::vector<CharShipmentEntry const*> const* GarrisonMgr::GetContainerShipments(uint32 containerId) const
+{
+    auto itr = _shipmentsByContainer.find(containerId);
+    return itr != _shipmentsByContainer.end() ? &itr->second : nullptr;
+}
+
 ClassHallTalentInfo const* GarrisonMgr::GetClassHallTalent(uint32 talentId) const
 {
     auto itr = _classHallTalents.find(talentId);
@@ -102,6 +170,7 @@ void GarrisonMgr::Initialize()
 {
     LoadClassHallTalents();
     LoadMissionRewards();
+    LoadShipments();
 
     for (GarrSiteLevelPlotInstEntry const* siteLevelPlotInst : sGarrSiteLevelPlotInstStore)
         _garrisonPlotInstBySiteLevel[siteLevelPlotInst->GarrSiteLevelID].push_back(siteLevelPlotInst);

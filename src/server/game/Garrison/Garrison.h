@@ -27,6 +27,7 @@
 #include <unordered_map>
 
 class ClassHall;
+class Creature;
 class GameObject;
 class GarrisonAI;
 class Map;
@@ -181,6 +182,23 @@ public:
     void DeleteWorkOrder(uint64 dbId);
     void RewardWorkOrder(uint32 shipmentContainerID);
     void UpdateWorkOrders();
+
+    // Commandes de travail (troupes du domaine, cuisine de Nomi, batiments du fief), d'apres LegionCore
+    static Garrison* GetForShipmentNpc(Player* player, uint32 npcEntry);
+    GarrShipment const* GetShipmentForNpc(uint32 npcEntry) const;
+    uint32 SelectShipment(GarrShipment const* shipment) const;
+    bool HasClassHallTalent(uint32 garrTalentId) const;
+    uint32 GetShipmentQueueSize(CharShipmentContainerEntry const* container) const;
+    uint32 GetShipmentCapacity(GarrShipment const* shipment, CharShipmentEntry const* entry) const;
+    uint32 CountShipmentTroops(GarrShipment const* shipment) const;
+    bool HasShipmentCurrencyCost(uint32 spellId) const;
+    void TakeShipmentCurrencyCost(uint32 spellId);
+    bool OpenShipmentNpc(Creature* npc);
+    void SendShipmentInfo(ObjectGuid const& npcGuid);
+    void CreateShipment(ObjectGuid const& npcGuid, uint32 count);
+    uint64 PlaceShipment(uint32 shipmentId, bool sendResult);
+    void SendShipmentLandingPage() const;
+    void CompleteShipments(GameObject* go);
 
     bool IsWodGarrison() const { return GetType() == GARRISON_TYPE_GARRISON; }
     WodGarrison* ToWodGarrison() { if (IsWodGarrison()) return reinterpret_cast<WodGarrison*>(this); else return nullptr; }

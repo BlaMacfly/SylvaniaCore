@@ -473,6 +473,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
             break;
         case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:     // a la remise d'une quete mondiale
         case CRITERIA_TYPE_SURVEY_GAMEOBJECT:        // fouille archeologique reussie (objet de la trouvaille)
+        case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT: // commande de travail recoltee
         case CRITERIA_TYPE_CLEAR_DIGSITE:            // site de fouilles epuise
         case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:    // talent de relique choisi (Creuset de la Lumiere du Neant)
         case CRITERIA_TYPE_START_GARRISON_MISSION:   // mission de fief lancee
@@ -781,7 +782,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
         case CRITERIA_TYPE_UPGRADE_GARRISON:
         case CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
-        case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
         case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_LEVEL:
         case CRITERIA_TYPE_OWN_TOY:
         case CRITERIA_TYPE_OWN_TOY_COUNT:
@@ -1214,6 +1214,7 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_WIN_RATED_BATTLEGROUND:
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
     case CRITERIA_TYPE_CLEAR_DIGSITE:
+    case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER:
     case CRITERIA_TYPE_SEND_EVENT_SCENARIO:
@@ -1359,6 +1360,7 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
     case CRITERIA_TYPE_START_ORDER_HALL_MISSION:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
+    case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
         if (!miscValue1 || (criteria->Entry->Asset.ID && miscValue1 != criteria->Entry->Asset.ID))
             return false;
         break;
