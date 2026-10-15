@@ -468,6 +468,9 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_ROLL_NEED:
         case CRITERIA_TYPE_ROLL_GREED:
         case CRITERIA_TYPE_QUEST_ABANDONED:
+        case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:     // a la remise d'une quete mondiale
+        case CRITERIA_TYPE_ENTER_AREA:               // en entrant dans l'aire (controle dans RequirementsSatisfied)
+        case CRITERIA_TYPE_LEAVE_AREA:
         case CRITERIA_TYPE_FLIGHT_PATHS_TAKEN:
         case CRITERIA_TYPE_ACCEPTED_SUMMONINGS:
         case CRITERIA_TYPE_LOOT_EPIC_ITEM:
@@ -521,6 +524,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_MONEY_FROM_VENDORS:
         case CRITERIA_TYPE_GOLD_SPENT_FOR_TALENTS:
         case CRITERIA_TYPE_MONEY_FROM_QUEST_REWARD:
+        case CRITERIA_TYPE_EARN_HONOR_XP:            // honneur gagne (quetes hebdomadaires JcJ)
         case CRITERIA_TYPE_GOLD_SPENT_FOR_TRAVELLING:
         case CRITERIA_TYPE_GOLD_SPENT_AT_BARBER:
         case CRITERIA_TYPE_GOLD_SPENT_FOR_MAIL:
@@ -764,8 +768,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
         case CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:
         case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
-        case CRITERIA_TYPE_ENTER_AREA:
-        case CRITERIA_TYPE_LEAVE_AREA:
         case CRITERIA_TYPE_UPGRADE_GARRISON_BUILDING:
         case CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
         case CRITERIA_TYPE_UPGRADE_GARRISON:
@@ -799,9 +801,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_ARTIFACT_TRAITS_UNLOCKED:
         case CRITERIA_TYPE_ORDER_HALL_TALENT_LEARNED:
         case CRITERIA_TYPE_ORDER_HALL_RECRUIT_TROOP:
-        case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:
         case CRITERIA_TYPE_GAIN_PARAGON_REPUTATION:
-        case CRITERIA_TYPE_EARN_HONOR_XP:
         case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
             break;                                   // Not implemented yet :(
         }
@@ -1202,6 +1202,9 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_APPEARANCE_UNLOCKED_BY_SLOT:
     case CRITERIA_TYPE_GAIN_PARAGON_REPUTATION:
     case CRITERIA_TYPE_EARN_HONOR_XP:
+    case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:
+    case CRITERIA_TYPE_ENTER_AREA:
+    case CRITERIA_TYPE_LEAVE_AREA:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER:
     case CRITERIA_TYPE_SEND_EVENT_SCENARIO:
@@ -1338,6 +1341,11 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
 {
     switch (CriteriaTypes(criteria->Entry->Type))
     {
+    case CRITERIA_TYPE_ENTER_AREA:
+    case CRITERIA_TYPE_LEAVE_AREA:
+        if (!miscValue1 || !DB2Manager::IsInArea(uint32(miscValue1), criteria->Entry->Asset.AreaID))
+            return false;
+        break;
     case CRITERIA_TYPE_ACCEPTED_SUMMONINGS:
     case CRITERIA_TYPE_COMPLETE_DAILY_QUEST:
     case CRITERIA_TYPE_CREATE_AUCTION:

@@ -7102,6 +7102,9 @@ void Player::RewardPlayerWithRewardPack(RewardPackEntry const* rewardPackEntry)
 
 void Player::AddHonorXP(uint32 xp)
 {
+    if (xp)
+        UpdateCriteria(CRITERIA_TYPE_EARN_HONOR_XP, xp);
+
     uint32 currentHonorXP = GetUInt32Value(PLAYER_FIELD_HONOR);
     uint32 nextHonorLevelXP = GetUInt32Value(PLAYER_FIELD_HONOR_NEXT_LEVEL);
     uint32 newHonorXP = currentHonorXP + xp;
@@ -7736,6 +7739,15 @@ void Player::UpdateArea(uint32 newAreaId)
     // FFA_PVP flags are area and not zone id dependent
     // so apply them accordingly
     m_area = sAreaMgr->GetArea(newAreaId);
+
+    // criteres « entrer dans / quitter une aire »
+    uint32 const oldAreaId = (oldArea && oldArea->GetEntry()) ? oldArea->GetEntry()->ID : 0;
+    if (oldAreaId != newAreaId)
+    {
+        if (oldAreaId)
+            UpdateCriteria(CRITERIA_TYPE_LEAVE_AREA, oldAreaId);
+        UpdateCriteria(CRITERIA_TYPE_ENTER_AREA, newAreaId);
+    }
 
     UpdateZone(oldArea ? oldArea->GetZone(): nullptr);
     m_zoneUpdateTimer = ZONE_UPDATE_INTERVAL;
@@ -16439,7 +16451,10 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
     }
 
     if (quest->IsWorldQuest())
+    {
         sWorldQuestMgr->RewardQuestForPlayer(this, quest->ID);
+        UpdateCriteria(CRITERIA_TYPE_COMPLETE_WORLD_QUEST, quest->ID);
+    }
 
     // honor reward
     if (uint32 honor = quest->CalculateHonorGain(getLevel()))
