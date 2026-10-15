@@ -316,7 +316,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectNULL,                                     //228 SPELL_EFFECT_228
     &Spell::EffectNULL,                                     //229 SPELL_EFFECT_SET_FOLLOWER_QUALITY
     &Spell::EffectNULL,                                     //230 SPELL_EFFECT_INCREASE_FOLLOWER_ITEM_LEVEL
-    &Spell::EffectNULL,                                     //231 SPELL_EFFECT_INCREASE_FOLLOWER_EXPERIENCE
+    &Spell::EffectIncreaseFollowerExperience,               //231 SPELL_EFFECT_INCREASE_FOLLOWER_EXPERIENCE
     &Spell::EffectNULL,                                     //232 SPELL_EFFECT_REMOVE_PHASE
     &Spell::EffectNULL,                                     //233 SPELL_EFFECT_RANDOMIZE_FOLLOWER_ABILITIES
     &Spell::EffectNULL,                                     //234 SPELL_EFFECT_234
@@ -329,7 +329,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectNULL,                                     //241 SPELL_EFFECT_241
     &Spell::EffectGiveArtifactPowerNoBonus,                 //242 SPELL_EFFECT_GIVE_ARTIFACT_POWER_NO_BONUS
     &Spell::EffectApplyEnchantIllusion,                     //243 SPELL_EFFECT_APPLY_ENCHANT_ILLUSION
-    &Spell::EffectNULL,                                     //244 SPELL_EFFECT_LEARN_FOLLOWER_ABILITY
+    &Spell::EffectLearnFollowerAbility,                     //244 SPELL_EFFECT_LEARN_FOLLOWER_ABILITY
     &Spell::EffectUpgradeHeirloom,                          //245 SPELL_EFFECT_UPGRADE_HEIRLOOM
     &Spell::EffectNULL,                                     //246 SPELL_EFFECT_FINISH_GARRISON_MISSION
     &Spell::EffectNULL,                                     //247 SPELL_EFFECT_ADD_GARRISON_MISSION
@@ -4424,6 +4424,55 @@ void Spell::EffectModAssistantEquipmentLevel(SpellEffIndex /*effIndex*/)
             follower->SendFollowerUpdate(player);
             player->UpdateCriteria(CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL, follower->GetItemLevel());
         }
+        return;
+    }
+}
+
+// Tomes d'experience de champion : MiscValueB = type de suivant vise (0 = tous), comme LegionCore
+void Spell::EffectIncreaseFollowerExperience(SpellEffIndex /*effIndex*/)
+{
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
+        return;
+
+    Player* player = m_caster->ToPlayer();
+    if (!player || damage <= 0)
+        return;
+
+    for (auto const& itr : player->GetGarrisons())
+    {
+        Garrison::Follower* follower = itr.second->GetFollowerByGarrFollowerId(m_misc.GarrFollower.Id);
+        if (!follower)
+            continue;
+
+        GarrFollowerEntry const* entry = follower->GetEntry();
+        if (entry && (!effectInfo->MiscValueB || uint32(effectInfo->MiscValueB) == entry->GarrFollowerTypeID))
+            follower->EarnXP(player, uint32(damage));
+        return;
+    }
+}
+
+// Equipement des champions du domaine : MiscValue = capacite apprise, Misc[1] du client = capacite remplacee
+void Spell::EffectLearnFollowerAbility(SpellEffIndex /*effIndex*/)
+{
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
+        return;
+
+    Player* player = m_caster->ToPlayer();
+    if (!player)
+        return;
+
+    GarrAbilityEntry const* ability = sGarrAbilityStore.LookupEntry(effectInfo->MiscValue);
+    if (!ability)
+        return;
+
+    for (auto const& itr : player->GetGarrisons())
+    {
+        Garrison::Follower* follower = itr.second->GetFollowerByGarrFollowerId(m_misc.GarrFollower.Id);
+        if (!follower)
+            continue;
+
+        if (follower->LearnEquipment(ability, m_misc.GarrFollower.AbilityId))
+            follower->SendFollowerUpdate(player);
         return;
     }
 }

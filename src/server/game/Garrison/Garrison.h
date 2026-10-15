@@ -45,6 +45,14 @@ public:
         bool ModItemLevel(GarrItemLevelUpgradeDataEntry const* upgrade, int32 value);
         bool HasAbility(uint32 garrAbilityId) const;
         void EarnXP(Player* owner, uint32 xp);
+        // equipement des champions du domaine (emplacements « Empty Equipment Slot » 414/415/855)
+        static bool IsEquipmentAbility(GarrAbilityEntry const* ability);
+        static bool IsEmptyEquipmentSlot(GarrAbilityEntry const* ability);
+        uint32 GetEquipmentSlotCount() const;
+        void UpdateEquipmentSlots();
+        bool CanLearnEquipment(GarrAbilityEntry const* ability, uint32 replacedAbilityId) const;
+        bool LearnEquipment(GarrAbilityEntry const* ability, uint32 replacedAbilityId);
+        bool RemoveSingleMissionAbilities();
         uint32 _EarnXP(uint32 xp);
         uint32 GetRequiredLevelUpXP() const;
         GarrFollowerEntry const* GetEntry() const;

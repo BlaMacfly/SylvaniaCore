@@ -431,6 +431,8 @@ class TC_GAME_API Spell
         void EffectPushAbiltyToActionBar(SpellEffIndex);
         void EffectAddComboPoints(SpellEffIndex effIndex);
         void EffectModAssistantEquipmentLevel(SpellEffIndex effIndex);
+        void EffectIncreaseFollowerExperience(SpellEffIndex effIndex);
+        void EffectLearnFollowerAbility(SpellEffIndex effIndex);
         void EffectDuel(SpellEffIndex effIndex);
         void EffectStuck(SpellEffIndex effIndex);
         void EffectSummonPlayer(SpellEffIndex effIndex);

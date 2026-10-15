@@ -290,6 +290,20 @@ std::list<GarrAbilityEntry const*> GarrisonMgr::RollFollowerAbilities(uint32 gar
     if (itr != _garrisonFollowerAbilities[faction].end())
         abilities = &itr->second;
 
+    // Champion du domaine : ses capacites sont fixes (GarrFollowerXAbility), rien n'est tire au sort.
+    // Le tirage WoD lui donnait des traits aleatoires du fief (et des emplacements vides) selon sa qualite.
+    if (follower->GarrFollowerTypeID == FOLLOWER_TYPE_CLASS_HALL)
+    {
+        if (abilities)
+            for (std::unordered_set<GarrAbilityEntry const*> const* list : { &abilities->Counters, &abilities->Traits })
+                for (GarrAbilityEntry const* ability : *list)
+                    if (!(ability->Flags & GARRISON_ABILITY_HORDE_ONLY && faction != GARRISON_FACTION_INDEX_HORDE)
+                        && !(ability->Flags & GARRISON_ABILITY_ALLIANCE_ONLY && faction != GARRISON_FACTION_INDEX_ALLIANCE))
+                        result.push_back(ability);
+        result.sort([](GarrAbilityEntry const* a, GarrAbilityEntry const* b) { return a->ID < b->ID; });
+        return result;
+    }
+
     std::list<GarrAbilityEntry const*> abilityList, forcedAbilities, traitList, forcedTraits;
     if (abilities)
     {

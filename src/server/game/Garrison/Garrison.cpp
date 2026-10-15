@@ -609,6 +609,7 @@ void Garrison::AddFollower(uint32 garrFollowerId)
     follower.PacketInfo.ItemLevelWeapon = followerEntry->ItemLevelWeapon;
     follower.PacketInfo.ItemLevelArmor = followerEntry->ItemLevelArmor;
     follower.PacketInfo.AbilityID = sGarrisonMgr.RollFollowerAbilities(garrFollowerId, followerEntry, follower.PacketInfo.Quality, GetFaction(), true);
+    follower.UpdateEquipmentSlots();    // champion du domaine rare ou epique : ses emplacements d'equipement
     addFollowerResult.Follower = follower.PacketInfo;
     _owner->SendDirectMessage(addFollowerResult.Write());
 
@@ -1241,6 +1242,11 @@ void Garrison::CompleteMission(uint32 garrMissionId)
         success = roll_chance_i(mission->PacketInfo.SuccessChance);
         mission->PacketInfo.MissionState = success ? GarrisonMission::State::Completed : GarrisonMission::State::Reward2Claimed;
 
+        // consommables de champion (« une seule mission ») : uses par cette mission
+        for (Follower* follower : GetMissionFollowers(missionEntry->ID))
+            if (follower->RemoveSingleMissionAbilities())
+                follower->SendFollowerUpdate(_owner);
+
         // Echec : pas de coffre a ouvrir, donc pas de CalculateMissonBonusRoll -- les champions
         // restaient bloques sur la mission. On les libere ici.
         if (!success)
@@ -1438,8 +1444,18 @@ void Garrison::Follower::EarnXP(Player* owner, uint32 xp)
 
     WorldPackets::Garrison::GarrisonFollowerChangeXP garrisonFollowerChangeXP;
     garrisonFollowerChangeXP.OldFollower = PacketInfo;
+    uint32 const oldQuality = PacketInfo.Quality;
     garrisonFollowerChangeXP.XP = _EarnXP(xp);
-    PacketInfo.AbilityID = sGarrisonMgr.RollFollowerAbilities(PacketInfo.GarrFollowerID, followerEntry, PacketInfo.Quality, owner->GetTeam() == HORDE ? GARRISON_FACTION_INDEX_HORDE : GARRISON_FACTION_INDEX_ALLIANCE, false);
+    // Les capacites etaient re-tirees a CHAQUE gain d'experience : traits changes au hasard apres chaque
+    // mission, equipement efface. Comme LegionCore : seulement quand la qualite change, et pour un champion
+    // du domaine (capacites fixes) on ouvre juste les emplacements d'equipement de la nouvelle qualite.
+    if (PacketInfo.Quality != oldQuality)
+    {
+        if (followerEntry->GarrFollowerTypeID == FOLLOWER_TYPE_CLASS_HALL)
+            UpdateEquipmentSlots();
+        else
+            PacketInfo.AbilityID = sGarrisonMgr.RollFollowerAbilities(PacketInfo.GarrFollowerID, followerEntry, PacketInfo.Quality, owner->GetTeam() == HORDE ? GARRISON_FACTION_INDEX_HORDE : GARRISON_FACTION_INDEX_ALLIANCE, false);
+    }
     garrisonFollowerChangeXP.NewFollower = PacketInfo;
     owner->SendDirectMessage(garrisonFollowerChangeXP.Write());
 }
@@ -1477,7 +1493,7 @@ uint32 Garrison::Follower::_EarnXP(uint32 xp)
     else
         ++PacketInfo.Quality;
 
-    return xp + _EarnXP(xp - XPToMax);
+    return XPToMax + _EarnXP(xp - XPToMax);
 }
 
 uint32 Garrison::Follower::GetRequiredLevelUpXP() const
@@ -1490,7 +1506,7 @@ uint32 Garrison::Follower::GetRequiredLevelUpXP() const
     {
         for (uint32 i = 0; i < sGarrFollowerLevelXPStore.GetNumRows(); ++i)
             if (GarrFollowerLevelXPEntry const* currentLevelData = sGarrFollowerLevelXPStore.LookupEntry(i))
-                if (currentLevelData->FollowerLevel == PacketInfo.FollowerLevel)
+                if (currentLevelData->FollowerLevel == PacketInfo.FollowerLevel && currentLevelData->GarrFollowerTypeId == followerEntry->GarrFollowerTypeID)
                     return currentLevelData->XpToNextLevel;
     }
     else
@@ -1503,6 +1519,97 @@ uint32 Garrison::Follower::GetRequiredLevelUpXP() const
     }
 
     return 0;
+}
+
+bool Garrison::Follower::IsEquipmentAbility(GarrAbilityEntry const* ability)
+{
+    // equipement et consommables des champions : ni capacite propre (CANNOT_REMOVE) ni specialisation
+    return ability && ability->GarrFollowerTypeID == FOLLOWER_TYPE_CLASS_HALL
+        && !(ability->Flags & (GARRISON_ABILITY_FLAG_CANNOT_REMOVE | GARRISON_ABILITY_FLAG_IS_SPECIALIZATION));
+}
+
+bool Garrison::Follower::IsEmptyEquipmentSlot(GarrAbilityEntry const* ability)
+{
+    return ability && (ability->Flags & GARRISON_ABILITY_FLAG_IS_EMPTY_SLOT);
+}
+
+uint32 Garrison::Follower::GetEquipmentSlotCount() const
+{
+    GarrFollowerEntry const* entry = GetEntry();
+    if (!entry)
+        return 0;
+
+    for (GarrFollowerQualityEntry const* quality : sGarrFollowerQualityStore)
+        if (quality->GarrFollowerTypeId == entry->GarrFollowerTypeID && quality->Quality == PacketInfo.Quality)
+            return quality->TraitCount;
+    return 0;
+}
+
+void Garrison::Follower::UpdateEquipmentSlots()
+{
+    GarrFollowerEntry const* entry = GetEntry();
+    if (!entry || entry->GarrFollowerTypeID != FOLLOWER_TYPE_CLASS_HALL)
+        return;
+
+    uint32 used = 0;
+    for (GarrAbilityEntry const* ability : PacketInfo.AbilityID)
+        if (IsEquipmentAbility(ability) && !(ability->Flags & GARRISON_ABILITY_FLAG_SINGLE_MISSION_DURATION))
+            ++used;
+
+    static uint32 const EmptySlots[] = { 414, 415, 855 };   // « Empty Equipment Slot » (GarrAbility.db2)
+    for (uint32 i = used; i < GetEquipmentSlotCount() && i < std::extent<decltype(EmptySlots)>::value; ++i)
+        if (GarrAbilityEntry const* empty = sGarrAbilityStore.LookupEntry(EmptySlots[i]))
+            PacketInfo.AbilityID.push_back(empty);
+}
+
+bool Garrison::Follower::CanLearnEquipment(GarrAbilityEntry const* ability, uint32 replacedAbilityId) const
+{
+    GarrFollowerEntry const* entry = GetEntry();
+    if (!IsEquipmentAbility(ability) || !entry || entry->GarrFollowerTypeID != ability->GarrFollowerTypeID || HasAbility(ability->ID))
+        return false;
+
+    if (ability->Flags & GARRISON_ABILITY_FLAG_SINGLE_MISSION_DURATION)
+        return true;
+
+    for (GarrAbilityEntry const* current : PacketInfo.AbilityID)
+        if ((replacedAbilityId && current->ID == replacedAbilityId && IsEquipmentAbility(current)) || IsEmptyEquipmentSlot(current))
+            return true;
+    return false;
+}
+
+bool Garrison::Follower::LearnEquipment(GarrAbilityEntry const* ability, uint32 replacedAbilityId)
+{
+    if (!CanLearnEquipment(ability, replacedAbilityId))
+        return false;
+
+    // consommable d'une seule mission : en plus des emplacements, retire a la fin de la mission
+    if (ability->Flags & GARRISON_ABILITY_FLAG_SINGLE_MISSION_DURATION)
+    {
+        PacketInfo.AbilityID.push_back(ability);
+        return true;
+    }
+
+    // l'emplacement designe par le client (glisser sur un objet deja porte), sinon le premier emplacement vide
+    auto slot = PacketInfo.AbilityID.end();
+    if (replacedAbilityId)
+        slot = std::find_if(PacketInfo.AbilityID.begin(), PacketInfo.AbilityID.end(), [replacedAbilityId](GarrAbilityEntry const* a)
+        {
+            return a->ID == replacedAbilityId && IsEquipmentAbility(a);
+        });
+    if (slot == PacketInfo.AbilityID.end())
+        slot = std::find_if(PacketInfo.AbilityID.begin(), PacketInfo.AbilityID.end(), &IsEmptyEquipmentSlot);
+    if (slot == PacketInfo.AbilityID.end())
+        return false;
+
+    *slot = ability;
+    return true;
+}
+
+bool Garrison::Follower::RemoveSingleMissionAbilities()
+{
+    auto before = PacketInfo.AbilityID.size();
+    PacketInfo.AbilityID.remove_if([](GarrAbilityEntry const* a) { return a->Flags & GARRISON_ABILITY_FLAG_SINGLE_MISSION_DURATION && IsEquipmentAbility(a); });
+    return PacketInfo.AbilityID.size() != before;
 }
 
 bool Garrison::Follower::HasAbility(uint32 garrAbilityId) const

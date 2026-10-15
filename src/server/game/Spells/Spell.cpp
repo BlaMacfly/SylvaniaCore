@@ -45,6 +45,7 @@
 #include "SpellHistory.h"
 #include "SpellInfo.h"
 #include "SpellMgr.h"
+#include "Garrison.h"
 #include "SpellPackets.h"
 #include "SpellScript.h"
 #include "TemporarySummon.h"
@@ -6043,6 +6044,39 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                     if (param1)
                         *param1 = talent->SpellID;
                     return SPELL_FAILED_CANT_UNTALENT;
+                }
+                break;
+            }
+            case SPELL_EFFECT_ADD_COMBO_POINTS:            // 7.x : niveau d'objet d'un champion
+            case SPELL_EFFECT_INCREASE_FOLLOWER_EXPERIENCE:
+            case SPELL_EFFECT_LEARN_FOLLOWER_ABILITY:
+            {
+                Player* player = m_caster->ToPlayer();
+                if (!player)
+                    return SPELL_FAILED_BAD_TARGETS;
+                Garrison::Follower* follower = nullptr;
+                for (auto const& itr : player->GetGarrisons())
+                    if ((follower = itr.second->GetFollowerByGarrFollowerId(m_misc.GarrFollower.Id)))
+                        break;
+                if (!follower)
+                    return SPELL_FAILED_BAD_TARGETS;
+                if (follower->PacketInfo.CurrentMissionID)
+                    return SPELL_FAILED_GARRISON_FOLLOWER_ON_MISSION;
+                if (effect->Effect == SPELL_EFFECT_INCREASE_FOLLOWER_EXPERIENCE && !follower->GetRequiredLevelUpXP())
+                    return SPELL_FAILED_GARRISON_FOLLOWER_MAX_QUALITY;
+                if (effect->Effect == SPELL_EFFECT_LEARN_FOLLOWER_ABILITY)
+                {
+                    GarrAbilityEntry const* ability = sGarrAbilityStore.LookupEntry(effect->MiscValue);
+                    if (!ability)
+                        return SPELL_FAILED_BAD_TARGETS;
+                    if (follower->HasAbility(ability->ID))
+                        return SPELL_FAILED_GARRISON_FOLLOWER_HAS_ABILITY;
+                    if (ability->Flags & GARRISON_ABILITY_FLAG_SINGLE_MISSION_DURATION)
+                        for (GarrAbilityEntry const* current : follower->PacketInfo.AbilityID)
+                            if (current->Flags & GARRISON_ABILITY_FLAG_SINGLE_MISSION_DURATION && Garrison::Follower::IsEquipmentAbility(current))
+                                return SPELL_FAILED_GARRISON_FOLLOWER_HAS_SINGLE_MISSION_ABILITY;
+                    if (!follower->CanLearnEquipment(ability, m_misc.GarrFollower.AbilityId))
+                        return SPELL_FAILED_BAD_TARGETS;
                 }
                 break;
             }
