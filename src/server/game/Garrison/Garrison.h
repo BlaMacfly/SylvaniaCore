@@ -199,6 +199,8 @@ public:
     uint64 PlaceShipment(uint32 shipmentId, bool sendResult);
     void SendShipmentLandingPage() const;
     void CompleteShipments(GameObject* go);
+    uint32 CountPendingShipments(CharShipmentContainerEntry const* container) const;
+    uint32 FinishShipments(CharShipmentContainerEntry const* container, uint32 count);
 
     bool IsWodGarrison() const { return GetType() == GARRISON_TYPE_GARRISON; }
     WodGarrison* ToWodGarrison() { if (IsWodGarrison()) return reinterpret_cast<WodGarrison*>(this); else return nullptr; }

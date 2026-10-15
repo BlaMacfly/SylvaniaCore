@@ -3297,8 +3297,6 @@ void ObjectMgr::LoadGarrssionMissionReward()
 {
     uint32 oldMSTime = getMSTime();
 
-    for (std::vector<GarrssionMissionReward>::iterator i = GarrssionMissionRewardMap.begin(); i != GarrssionMissionRewardMap.end(); ++i)
-        delete& i;
     GarrssionMissionRewardMap.clear();
     //                                                  0             1         2          3 
     QueryResult result = WorldDatabase.Query("SELECT MissionId, RewardType, RewardId, RewardCount  FROM garrssion_mission_reward");

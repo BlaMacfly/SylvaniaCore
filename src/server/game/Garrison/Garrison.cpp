@@ -2049,6 +2049,56 @@ void Garrison::SendShipmentLandingPage() const
     _owner->SendDirectMessage(packet.Write());
 }
 
+uint32 Garrison::CountPendingShipments(CharShipmentContainerEntry const* container) const
+{
+    uint32 key = ShipmentQueueKey(container);
+    uint32 now = uint32(time(nullptr));
+    uint32 count = 0;
+    for (auto const& itr : _workorders)
+        if (itr.second.CompleteTime > now)
+            if (CharShipmentContainerEntry const* c = ShipmentContainerOf(itr.second.ShipmentID))
+                if (ShipmentQueueKey(c) == key)
+                    ++count;
+    return count;
+}
+
+// commande urgente : les N premieres commandes en cours sont terminees, la suite de la file avance d'autant
+uint32 Garrison::FinishShipments(CharShipmentContainerEntry const* container, uint32 count)
+{
+    uint32 key = ShipmentQueueKey(container);
+    uint32 now = uint32(time(nullptr));
+    std::vector<WorkOrder*> pending;
+    for (auto& itr : _workorders)
+        if (itr.second.CompleteTime > now)
+            if (CharShipmentContainerEntry const* c = ShipmentContainerOf(itr.second.ShipmentID))
+                if (ShipmentQueueKey(c) == key)
+                    pending.push_back(&itr.second);
+    std::sort(pending.begin(), pending.end(), [](WorkOrder const* a, WorkOrder const* b) { return a->CompleteTime < b->CompleteTime; });
+
+    uint32 finished = 0, saved = 0;
+    for (WorkOrder* order : pending)
+    {
+        if (finished < count)
+        {
+            saved = order->CompleteTime - now;
+            order->CreationTime = std::min(order->CreationTime, now);
+            order->CompleteTime = now;
+            ++finished;
+        }
+        else
+        {
+            order->CreationTime = order->CreationTime > saved ? order->CreationTime - saved : 0;
+            order->CompleteTime -= saved;
+        }
+        CharacterDatabase.PExecute("UPDATE character_garrison_work_order SET creation_time = %u, complete_time = %u WHERE id = " UI64FMTD,
+            order->CreationTime, order->CompleteTime, uint64(order->DatabaseID));
+    }
+
+    if (finished)
+        SendShipmentLandingPage();
+    return finished;
+}
+
 void Garrison::CompleteShipments(GameObject* go)
 {
     CharShipmentContainerEntry const* container = sCharShipmentContainerStore.LookupEntry(go->GetGOInfo()->garrisonShipment.ShipmentContainer);

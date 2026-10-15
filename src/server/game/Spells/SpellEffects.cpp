@@ -333,7 +333,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectUpgradeHeirloom,                          //245 SPELL_EFFECT_UPGRADE_HEIRLOOM
     &Spell::EffectNULL,                                     //246 SPELL_EFFECT_FINISH_GARRISON_MISSION
     &Spell::EffectNULL,                                     //247 SPELL_EFFECT_ADD_GARRISON_MISSION
-    &Spell::EffectNULL,                                     //248 SPELL_EFFECT_FINISH_SHIPMENT
+    &Spell::EffectFinishShipment,                           //248 SPELL_EFFECT_FINISH_SHIPMENT
     &Spell::EffectNULL,                                     //249 SPELL_EFFECT_FORCE_EQUIP_ITEM
     &Spell::EffectNULL,                                     //250 SPELL_EFFECT_TAKE_SCREENSHOT
     &Spell::EffectNULL,                                     //251 SPELL_EFFECT_SET_GARRISON_CACHE_SIZE
@@ -4497,6 +4497,21 @@ void Spell::EffectCreateShipment(SpellEffIndex /*effIndex*/)
     if (Garrison* garrison = player->GetGarrison(GarrisonType(container->GarrTypeID)))
         if (garrison->HasShipmentCurrencyCost(m_spellInfo->Id) && garrison->PlaceShipment(entry->ID, true))
             garrison->TakeShipmentCurrencyCost(m_spellInfo->Id);
+}
+
+// Commande urgente : MiscValue = conteneur de commandes, BasePoints = nombre de commandes terminees
+void Spell::EffectFinishShipment(SpellEffIndex /*effIndex*/)
+{
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT)
+        return;
+
+    Player* player = m_caster->ToPlayer();
+    CharShipmentContainerEntry const* container = sCharShipmentContainerStore.LookupEntry(effectInfo->MiscValue);
+    if (!player || !container)
+        return;
+
+    if (Garrison* garrison = player->GetGarrison(GarrisonType(container->GarrTypeID)))
+        garrison->FinishShipments(container, uint32(std::max(damage, 1)));
 }
 
 void Spell::EffectQuestComplete(SpellEffIndex /*effIndex*/)

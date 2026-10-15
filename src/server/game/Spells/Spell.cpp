@@ -6047,6 +6047,15 @@ SpellCastResult Spell::CheckCast(bool strict, uint32* param1 /*= nullptr*/, uint
                 }
                 break;
             }
+            case SPELL_EFFECT_FINISH_SHIPMENT:
+            {
+                Player* player = m_caster->ToPlayer();
+                CharShipmentContainerEntry const* container = sCharShipmentContainerStore.LookupEntry(effect->MiscValue);
+                Garrison* garrison = (player && container) ? player->GetGarrison(GarrisonType(container->GarrTypeID)) : nullptr;
+                if (!garrison || !garrison->CountPendingShipments(container))
+                    return SPELL_FAILED_BAD_TARGETS;
+                break;
+            }
             case SPELL_EFFECT_ADD_COMBO_POINTS:            // 7.x : niveau d'objet d'un champion
             case SPELL_EFFECT_INCREASE_FOLLOWER_EXPERIENCE:
             case SPELL_EFFECT_LEARN_FOLLOWER_ABILITY:
