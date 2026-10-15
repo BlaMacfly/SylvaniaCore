@@ -1187,6 +1187,9 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
         _owner->ModifyCurrency(missionEntry->CurrencyID, -static_cast<int32>(missionCost));
 
     SendStartMissionResult(true, mission, &Followers);
+
+    // criteres « lancer une mission » (campagnes de domaine, quetes navales)
+    _owner->UpdateCriteria(GetType() == GARRISON_TYPE_CLASS_HALL ? CRITERIA_TYPE_START_ORDER_HALL_MISSION : CRITERIA_TYPE_START_GARRISON_MISSION, garrMissionId);
 }
 
 void Garrison::SendStartMissionResult(bool success, Mission* mission /*= nullptr*/, std::vector<uint64 /*DbID*/>* Followers /*= nullptr*/)
@@ -1247,7 +1250,10 @@ void Garrison::CompleteMission(uint32 garrMissionId)
         // Rien ne mettait ce critere a jour : les etapes Â« mission Â» des campagnes de
         // domaine (ex. chasseur 42523/42525/42384/42402) etaient impossibles a valider.
         if (success)
+        {
             _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_MISSION, missionEntry->ID);
+            _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT, missionEntry->ID);
+        }
     }
 
     WorldPackets::Garrison::GarrisonCompleteMissionResult garrisonCompleteMissionResult;
