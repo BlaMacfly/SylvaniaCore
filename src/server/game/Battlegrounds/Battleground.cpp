@@ -939,6 +939,7 @@ void Battleground::EndBattleground(uint32 winner)
                 }
 
                 player->UpdateCriteria(CRITERIA_TYPE_WIN_BG, 1);
+                player->UpdateCriteria(CRITERIA_TYPE_WIN_RATED_BATTLEGROUND, 1); // 7.x : « gagner n'importe quel champ de bataille »
                 if (!guildAwarded)
                 {
                     guildAwarded = true;

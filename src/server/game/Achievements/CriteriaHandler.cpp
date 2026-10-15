@@ -472,6 +472,8 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
             SetCriteriaProgress(criteria, 1, referencePlayer, PROGRESS_HIGHEST);
             break;
         case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:     // a la remise d'une quete mondiale
+        case CRITERIA_TYPE_SURVEY_GAMEOBJECT:        // fouille archeologique reussie (objet de la trouvaille)
+        case CRITERIA_TYPE_CLEAR_DIGSITE:            // site de fouilles epuise
         case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:    // talent de relique choisi (Creuset de la Lumiere du Neant)
         case CRITERIA_TYPE_START_GARRISON_MISSION:   // mission de fief lancee
         case CRITERIA_TYPE_START_ORDER_HALL_MISSION: // mission de domaine lancee
@@ -541,6 +543,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_TOTAL_HEALING_RECEIVED:
         case CRITERIA_TYPE_USE_LFD_TO_GROUP_WITH_PLAYERS:
         case CRITERIA_TYPE_WIN_BG:
+        case CRITERIA_TYPE_WIN_RATED_BATTLEGROUND:   // 7.x : n'importe quel champ de bataille gagne
         case CRITERIA_TYPE_COMPLETE_BATTLEGROUND:
         case CRITERIA_TYPE_DAMAGE_DONE:
         case CRITERIA_TYPE_HEALING_DONE:
@@ -762,7 +765,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_CRAFT_ITEMS_GUILD:
         case CRITERIA_TYPE_CATCH_FROM_POOL:
         case CRITERIA_TYPE_BUY_GUILD_BANK_SLOTS:
-        case CRITERIA_TYPE_WIN_RATED_BATTLEGROUND:
         case CRITERIA_TYPE_REACH_BG_RATING:
         case CRITERIA_TYPE_COMPLETE_QUESTS_GUILD:
         case CRITERIA_TYPE_HONORABLE_KILLS_GUILD:
@@ -784,8 +786,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_OWN_TOY:
         case CRITERIA_TYPE_OWN_TOY_COUNT:
         case CRITERIA_TYPE_OWN_HEIRLOOMS:
-        case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
-        case CRITERIA_TYPE_CLEAR_DIGSITE:
         case CRITERIA_TYPE_MANUAL_COMPLETE_CRITERIA:
         case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD:
         case CRITERIA_TYPE_DEFEAT_CREATURE_GROUP:
@@ -1211,6 +1211,9 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_START_ORDER_HALL_MISSION:
     case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT:
     case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL:
+    case CRITERIA_TYPE_WIN_RATED_BATTLEGROUND:
+    case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
+    case CRITERIA_TYPE_CLEAR_DIGSITE:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER:
     case CRITERIA_TYPE_SEND_EVENT_SCENARIO:
@@ -1355,6 +1358,7 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
     case CRITERIA_TYPE_START_GARRISON_MISSION:
     case CRITERIA_TYPE_START_ORDER_HALL_MISSION:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
+    case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
         if (!miscValue1 || (criteria->Entry->Asset.ID && miscValue1 != criteria->Entry->Asset.ID))
             return false;
         break;

@@ -4204,6 +4204,7 @@ void Spell::EffectSummonSurveyTools(SpellEffIndex /*effIndex*/)
             }
 
             player->SummonGameObject(FindGoEntry, *player, QuaternionData(), 0);
+            player->UpdateCriteria(CRITERIA_TYPE_SURVEY_GAMEOBJECT, FindGoEntry);
 
             // Currency Gain
             if (player->getRace() == RACE_DWARF)
@@ -4232,6 +4233,7 @@ void Spell::EffectSummonSurveyTools(SpellEffIndex /*effIndex*/)
             }
             else
             {
+                player->UpdateCriteria(CRITERIA_TYPE_CLEAR_DIGSITE, digsiteId ? digsiteId : 1);
                 sArchaeologyMgr->ChangeDigsite(player, memId);
             }
 
