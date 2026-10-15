@@ -16122,6 +16122,9 @@ void Player::AddQuest(Quest const* quest, Object* questGiver)
     // meme raison que dans RewardQuest : accepter une quete change son statut et donc
     // l eligibilite des entrees spell_area qui en dependent. [fix Sylvania]
     UpdateAreaDependentAuras();
+
+    // objectifs d'etat (champions au niveau d'objet requis) : deja remplis a l'acceptation
+    UpdateCriteria(CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL);
 }
 
 void Player::ForceCompleteQuest(uint32 quest_id)

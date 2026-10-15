@@ -468,6 +468,9 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_ROLL_NEED:
         case CRITERIA_TYPE_ROLL_GREED:
         case CRITERIA_TYPE_QUEST_ABANDONED:
+        case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL: // etat : les champions requis sont au niveau (modificateur 184)
+            SetCriteriaProgress(criteria, 1, referencePlayer, PROGRESS_HIGHEST);
+            break;
         case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:     // a la remise d'une quete mondiale
         case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:    // talent de relique choisi (Creuset de la Lumiere du Neant)
         case CRITERIA_TYPE_START_GARRISON_MISSION:   // mission de fief lancee
@@ -777,7 +780,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_UPGRADE_GARRISON:
         case CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
         case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
-        case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL:
         case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_LEVEL:
         case CRITERIA_TYPE_OWN_TOY:
         case CRITERIA_TYPE_OWN_TOY_COUNT:
@@ -1208,6 +1210,7 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_START_GARRISON_MISSION:
     case CRITERIA_TYPE_START_ORDER_HALL_MISSION:
     case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT:
+    case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER:
     case CRITERIA_TYPE_SEND_EVENT_SCENARIO:
@@ -1926,14 +1929,12 @@ bool CriteriaHandler::AdditionalRequirementsConditionSatisfied(ModifierTreeNode 
         if (!referencePlayer)
             return false;
 
+        // au moins Asset champions au niveau d'objet SecondaryAsset (type de champion TertiaryAsset) : « 6 champions a 900 »
+        uint32 count = 0;
         for (auto const& garrison : referencePlayer->GetGarrisons())
-        {
-            Garrison::Follower const* follower = garrison.second->GetFollower(miscValue1);
-            if (follower && follower->GetItemLevel() >= reqValue)
-                return true;
-        }
+            count += garrison.second->CountFollowersWithItemLevel(uint32(tree->Entry->SecondaryAsset), uint32(tree->Entry->TertiaryAsset));
 
-        return false;
+        return count >= reqValue;
     }
     case CRITERIA_ADDITIONAL_CONDITION_HONOR_LEVEL: // 193
         if (!referencePlayer || referencePlayer->GetHonorLevel() != reqValue)

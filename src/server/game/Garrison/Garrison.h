@@ -33,6 +33,7 @@ class Map;
 class Player;
 class WodGarrison;
 struct GarrSiteLevelEntry;
+struct GarrItemLevelUpgradeDataEntry;
 
 class TC_GAME_API Garrison
 {
@@ -40,6 +41,8 @@ public:
     struct Follower
     {
         uint32 GetItemLevel() const;
+        // fixer / augmenter le niveau d'objet de l'arme ou de l'armure (GarrItemLevelUpgradeData), plafonne ; vrai si change
+        bool ModItemLevel(GarrItemLevelUpgradeDataEntry const* upgrade, int32 value);
         bool HasAbility(uint32 garrAbilityId) const;
         void EarnXP(Player* owner, uint32 xp);
         uint32 _EarnXP(uint32 xp);
@@ -106,6 +109,9 @@ public:
     void AddFollower(uint32 garrFollowerId);
     void AddShipmentFollower(uint32 garrFollowerId);
     Follower* GetFollower(uint64 dbId);
+    Follower* GetFollowerByGarrFollowerId(uint32 garrFollowerId);
+    // nombre de champions au moins a ce niveau d'objet (modificateur de critere 184)
+    uint32 CountFollowersWithItemLevel(uint32 itemLevel, uint32 followerTypeId = 0) const;
     template<typename Predicate>
     uint32 CountFollowers(Predicate&& predicate) const
     {

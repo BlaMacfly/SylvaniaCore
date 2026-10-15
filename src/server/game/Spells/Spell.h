@@ -430,6 +430,7 @@ class TC_GAME_API Spell
         void EffectSanctuary(SpellEffIndex effIndex);
         void EffectPushAbiltyToActionBar(SpellEffIndex);
         void EffectAddComboPoints(SpellEffIndex effIndex);
+        void EffectModAssistantEquipmentLevel(SpellEffIndex effIndex);
         void EffectDuel(SpellEffIndex effIndex);
         void EffectStuck(SpellEffIndex effIndex);
         void EffectSummonPlayer(SpellEffIndex effIndex);

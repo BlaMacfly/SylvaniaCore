@@ -1363,6 +1363,68 @@ Map* Garrison::FindMap() const
     return sMapMgr->FindMap(_siteLevel->MapID, _owner->GetGUID().GetCounter());
 }
 
+Garrison::Follower* Garrison::GetFollowerByGarrFollowerId(uint32 garrFollowerId)
+{
+    for (auto& itr : _followers)
+        if (itr.second.PacketInfo.GarrFollowerID == garrFollowerId)
+            return &itr.second;
+    return nullptr;
+}
+
+uint32 Garrison::CountFollowersWithItemLevel(uint32 itemLevel, uint32 followerTypeId /*= 0*/) const
+{
+    uint32 count = 0;
+    for (auto const& itr : _followers)
+    {
+        if (followerTypeId)
+        {
+            GarrFollowerEntry const* entry = itr.second.GetEntry();
+            if (!entry || entry->GarrFollowerTypeID != followerTypeId)
+                continue;
+        }
+        if (itr.second.GetItemLevel() >= itemLevel)
+            ++count;
+    }
+    return count;
+}
+
+bool Garrison::Follower::ModItemLevel(GarrItemLevelUpgradeDataEntry const* upgrade, int32 value)
+{
+    GarrFollowerEntry const* entry = GetEntry();
+    if (!upgrade || !entry || value <= 0)
+        return false;
+    if (upgrade->FollowerTypeID && upgrade->FollowerTypeID != int32(entry->GarrFollowerTypeID))
+        return false;
+
+    uint32 maxItemLevel = upgrade->MaxItemLevel > 0 ? uint32(upgrade->MaxItemLevel) : 0;
+    if (GarrFollowerTypeEntry const* type = sGarrFollowerTypeStore.LookupEntry(entry->GarrFollowerTypeID))
+        if (!maxItemLevel || maxItemLevel > type->MaxItemLevel)
+            maxItemLevel = type->MaxItemLevel;
+    if (upgrade->MinItemLevel > 0 && GetItemLevel() < uint32(upgrade->MinItemLevel))
+        return false;
+
+    uint32 weapon = PacketInfo.ItemLevelWeapon, armor = PacketInfo.ItemLevelArmor;
+    switch (upgrade->Operation)
+    {
+        case 0: weapon = uint32(value); break;
+        case 1: armor = uint32(value); break;
+        case 2: weapon += uint32(value); break;
+        case 3: armor += uint32(value); break;
+        default: return false;
+    }
+    if (maxItemLevel)
+    {
+        weapon = std::min(weapon, maxItemLevel);
+        armor = std::min(armor, maxItemLevel);
+    }
+    if (weapon == PacketInfo.ItemLevelWeapon && armor == PacketInfo.ItemLevelArmor)
+        return false;
+
+    PacketInfo.ItemLevelWeapon = weapon;
+    PacketInfo.ItemLevelArmor = armor;
+    return true;
+}
+
 uint32 Garrison::Follower::GetItemLevel() const
 {
     return (PacketInfo.ItemLevelWeapon + PacketInfo.ItemLevelArmor) / 2;

@@ -2104,6 +2104,23 @@ struct GarrFollowerQualityLoadInfo
     }
 };
 
+struct GarrItemLevelUpgradeDataLoadInfo
+{
+    static DB2LoadInfo const* Instance()
+    {
+        static DB2FieldMeta const fields[] =
+        {
+            { false, FT_INT, "ID" },
+            { true, FT_INT, "Operation" },
+            { true, FT_INT, "MinItemLevel" },
+            { true, FT_INT, "MaxItemLevel" },
+            { true, FT_INT, "FollowerTypeID" },
+        };
+        static DB2LoadInfo const loadInfo(&fields[0], std::extent<decltype(fields)>::value, GarrItemLevelUpgradeDataMeta::Instance(), HOTFIX_SEL_GARR_ITEM_LEVEL_UPGRADE_DATA);
+        return &loadInfo;
+    }
+};
+
 struct GarrFollowerTypeLoadInfo
 {
     static DB2LoadInfo const* Instance()

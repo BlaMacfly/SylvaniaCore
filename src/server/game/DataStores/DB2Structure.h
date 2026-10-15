@@ -1424,6 +1424,15 @@ struct GarrFollowerXAbilityEntry
     uint16 GarrFollowerID;
 };
 
+struct GarrItemLevelUpgradeDataEntry
+{
+    uint32 ID;
+    int32 Operation;                // 0 fixer l'arme, 1 fixer l'armure, 2 augmenter l'arme, 3 augmenter l'armure
+    int32 MinItemLevel;
+    int32 MaxItemLevel;
+    int32 FollowerTypeID;
+};
+
 struct GarrFollowerTypeEntry
 {
     uint32 ID;

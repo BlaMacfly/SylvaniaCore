@@ -165,7 +165,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectScriptEffect,                             // 77 SPELL_EFFECT_SCRIPT_EFFECT
     &Spell::EffectUnused,                                   // 78 SPELL_EFFECT_ATTACK
     &Spell::EffectSanctuary,                                // 79 SPELL_EFFECT_SANCTUARY
-    &Spell::EffectAddComboPoints,                           // 80 SPELL_EFFECT_ADD_COMBO_POINTS
+    &Spell::EffectModAssistantEquipmentLevel,               // 80 SPELL_EFFECT_MOD_ASSISTANT_EQUIPMENT_LEVEL (7.x : niveau d'objet d'un champion)
     &Spell::EffectPushAbiltyToActionBar,                    // 81 SPELL_EFFECT_PUSH_ABILITY_TO_ACTION_BAR
     &Spell::EffectNULL,                                     // 82 SPELL_EFFECT_BIND_SIGHT
     &Spell::EffectDuel,                                     // 83 SPELL_EFFECT_DUEL
@@ -4397,6 +4397,35 @@ void Spell::EffectIncreaseCurrencyCap(SpellEffIndex /*effIndex*/)
 
     if (Player* player = unitTarget->ToPlayer())
         player->IncreaseCurrencyCap(effectInfo->MiscValue, uint32(damage));
+}
+
+// Objets d'equipement de champion / de suivant : le client donne le modele du champion vise dans Misc[0] (comme LegionCore)
+void Spell::EffectModAssistantEquipmentLevel(SpellEffIndex /*effIndex*/)
+{
+    if (effectHandleMode != SPELL_EFFECT_HANDLE_HIT_TARGET)
+        return;
+
+    Player* player = m_caster->ToPlayer();
+    if (!player)
+        return;
+
+    GarrItemLevelUpgradeDataEntry const* upgrade = sGarrItemLevelUpgradeDataStore.LookupEntry(effectInfo->MiscValue);
+    if (!upgrade)
+        return;
+
+    for (auto const& itr : player->GetGarrisons())
+    {
+        Garrison::Follower* follower = itr.second->GetFollowerByGarrFollowerId(uint32(m_misc.Raw.Data[0]));
+        if (!follower)
+            continue;
+
+        if (follower->ModItemLevel(upgrade, damage))
+        {
+            follower->SendFollowerUpdate(player);
+            player->UpdateCriteria(CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_ITEM_LEVEL, follower->GetItemLevel());
+        }
+        return;
+    }
 }
 
 void Spell::EffectQuestComplete(SpellEffIndex /*effIndex*/)
