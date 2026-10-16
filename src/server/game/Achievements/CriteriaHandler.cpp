@@ -1376,9 +1376,10 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
     {
         if (!miscValue1)
             return false;
-        if (criteria->Entry->ModifierTreeId && !criteria->Modifier)
+        if (criteria->Entry->ModifierTreeId)
         {
-            // arbres absents de notre ModifierTree.db2 (valeurs du fichier officiel, niveaux des descriptions 7.3.5)
+            // leurs feuilles sont des expressions d etat du monde (type 67) et le groupe de guilde (61), que nous
+            // n evaluons pas (considerees remplies) : conditions officielles codees ici (niveaux des descriptions 7.3.5)
             uint32 level = 0;
             bool guild = false;
             switch (criteria->Entry->ModifierTreeId)
