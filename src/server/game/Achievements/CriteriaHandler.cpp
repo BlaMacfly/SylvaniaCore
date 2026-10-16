@@ -483,6 +483,8 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:     // a la remise d'une quete mondiale
         case CRITERIA_TYPE_SURVEY_GAMEOBJECT:        // fouille archeologique reussie (objet de la trouvaille)
         case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT: // commande de travail recoltee
+        case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:  // donjon termine avec une cle mythique (carte en Asset)
+        case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD: // cle mythique terminee (conditions : niveau, temps, guilde)
         case CRITERIA_TYPE_CLEAR_DIGSITE:            // site de fouilles epuise
         case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:    // talent de relique choisi (Creuset de la Lumiere du Neant)
         case CRITERIA_TYPE_START_GARRISON_MISSION:   // mission de fief lancee
@@ -793,9 +795,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
         case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_LEVEL:
         case CRITERIA_TYPE_MANUAL_COMPLETE_CRITERIA:
-        case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD:
         case CRITERIA_TYPE_DEFEAT_CREATURE_GROUP:
-        case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:
         case CRITERIA_TYPE_COOK_RECIPES_GUILD:
         case CRITERIA_TYPE_RELEASE_SPIRIT:
         case CRITERIA_TYPE_GARRISON_COMPLETE_DUNGEON_ENCOUNTER:
@@ -1224,6 +1224,8 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
     case CRITERIA_TYPE_CLEAR_DIGSITE:
     case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
+    case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:
+    case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_COMPLETE_DUNGEON_ENCOUNTER:
     case CRITERIA_TYPE_SEND_EVENT_SCENARIO:
@@ -1365,6 +1367,36 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
         if (!miscValue1 || !DB2Manager::IsInArea(uint32(miscValue1), criteria->Entry->Asset.AreaID))
             return false;
         break;
+    // cle mythique : miscValue1 = carte, miscValue2 = niveau de la cle, miscValue3 = 1 dans le temps | 2 groupe de guilde
+    case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:
+        if (!miscValue1 || (criteria->Entry->Asset.MapID && criteria->Entry->Asset.MapID != miscValue1))
+            return false;
+        break;
+    case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD:
+    {
+        if (!miscValue1)
+            return false;
+        if (criteria->Entry->ModifierTreeId && !criteria->Modifier)
+        {
+            // arbres absents de notre ModifierTree.db2 (valeurs du fichier officiel, niveaux des descriptions 7.3.5)
+            uint32 level = 0;
+            bool guild = false;
+            switch (criteria->Entry->ModifierTreeId)
+            {
+                case 42538: level = 2; break;                // Keystone Initiate
+                case 42540: level = 5; break;                // Keystone Challenger
+                case 42542: level = 10; break;               // Keystone Conqueror
+                case 42544: level = 15; break;               // Keystone Master
+                case 45643: level = 2; guild = true; break;  // ... Guild Run
+                case 45646: level = 5; guild = true; break;
+                case 45649: level = 10; guild = true; break;
+                default: return false;                       // premier du royaume et autres : pas d'ici
+            }
+            if (miscValue2 < level || !(miscValue3 & 1) || (guild && !(miscValue3 & 2)))
+                return false;
+        }
+        break;
+    }
     case CRITERIA_TYPE_START_GARRISON_MISSION:
     case CRITERIA_TYPE_START_ORDER_HALL_MISSION:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:

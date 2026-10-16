@@ -26,6 +26,8 @@
 #include "DatabaseEnv.h"
 #include "GameObject.h"
 #include "Group.h"
+#include "Guild.h"
+#include "GuildMgr.h"
 #include "InstancePackets.h"
 #include "InstanceScenario.h"
 #include "LFGMgr.h"
@@ -42,6 +44,7 @@
 #include "ScriptReloadMgr.h"
 #include "World.h"
 #include "WorldSession.h"
+#include <set>
 #include <sstream>
 #include <cstdarg>
 #include "SpellMgr.h"
@@ -1611,6 +1614,11 @@ void InstanceScript::CompleteChallengeMode()
 
     std::map<ObjectGuid::LowType /*guild*/, uint32> guildCounter;
 
+    // groupe de guilde : au moins 3 membres de la meme guilde (comme le coffre de guilde plus bas)
+    std::map<ObjectGuid::LowType /*guild*/, uint32> guildMembers;
+    DoOnPlayers([&](Player* player) { if (player->GetGuildId()) ++guildMembers[player->GetGuildId()]; });
+    std::set<ObjectGuid::LowType> creditedGuilds;
+
     DoOnPlayers([&](Player* player)
         {
             sChallengeModeMgr->Reward(player, _challengeModeLevel);
@@ -1642,7 +1650,13 @@ void InstanceScript::CompleteChallengeMode()
             SendChallengeModeMapStatsUpdate(player, challengeData->ChallengeLevel, challengeData->RecordTime);
             //player->GetSession()->SendChallengeModeMapStatsUpdate(mapChallengeModeEntry->ID);
 
-            player->UpdateCriteria(CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE, instance->GetId(), _challengeModeLevel);
+            uint64 runFlags = (mythicIncrement ? 1 : 0) | ((player->GetGuildId() && guildMembers[player->GetGuildId()] >= 3) ? 2 : 0);
+            player->UpdateCriteria(CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE, instance->GetId(), _challengeModeLevel, runFlags);
+            player->UpdateCriteria(CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD, instance->GetId(), _challengeModeLevel, runFlags);
+            // hauts faits de guilde « Keystone ... Guild Run » : une fois par guilde
+            if ((runFlags & 2) && creditedGuilds.insert(player->GetGuildId()).second)
+                if (Guild* guild = sGuildMgr->GetGuildById(player->GetGuildId()))
+                    guild->UpdateCriteria(CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD, instance->GetId(), _challengeModeLevel, runFlags, nullptr, player);
 
             player->RemoveAura(ChallengersBurden);
         });
