@@ -1013,8 +1013,9 @@ namespace Trinity
     struct TC_GAME_API WorldObjectSpellLineTargetCheck : public WorldObjectSpellAreaTargetCheck
     {
         WorldObjectSpellLineTargetCheck(float range, Unit* caster,
-            SpellInfo const* spellInfo, SpellTargetCheckTypes selectionType, std::vector<Condition*>* condList);
+            SpellInfo const* spellInfo, SpellTargetCheckTypes selectionType, std::vector<Condition*>* condList, Position const* dst = nullptr);
         bool operator()(WorldObject* target);
+        Position _linePosition;                     // depart de la ligne, oriente vers la destination s'il y en a une
     };
 
     struct TC_GAME_API WorldObjectSpellTrajTargetCheck : public WorldObjectSpellAreaTargetCheck

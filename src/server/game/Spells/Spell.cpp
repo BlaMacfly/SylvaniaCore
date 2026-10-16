@@ -1266,10 +1266,21 @@ void Spell::SelectImplicitConeTargets(SpellEffIndex effIndex, SpellImplicitTarge
 
 void Spell::SelectImplicitLineTargets(SpellEffIndex effIndex, SpellImplicitTargetInfo const& targetType, uint32 effMask)
 {
-    if (targetType.GetReferenceType() != TARGET_REFERENCE_TYPE_CASTER)
+    // ligne depuis le lanceur, vers la destination ou la cible quand la reference en designe une (TrinityCore)
+    Position const* lineDest = nullptr;
+    switch (targetType.GetReferenceType())
     {
-        ASSERT(false && "Spell::SelectImplicitLineTargets: received not implemented target reference type");
-        return;
+        case TARGET_REFERENCE_TYPE_CASTER:
+            break;
+        case TARGET_REFERENCE_TYPE_DEST:
+            if (m_targets.HasDst())
+                lineDest = m_targets.GetDstPos();
+            break;
+        case TARGET_REFERENCE_TYPE_TARGET:
+            lineDest = m_targets.GetUnitTarget();
+            break;
+        default:
+            return;
     }
     std::list<WorldObject*> targets;
     SpellTargetObjectTypes objectType = targetType.GetObjectType();
@@ -1279,7 +1290,7 @@ void Spell::SelectImplicitLineTargets(SpellEffIndex effIndex, SpellImplicitTarge
 
     if (uint32 containerTypeMask = GetSearcherTypeMask(objectType, GetEffect(effIndex)->ImplicitTargetConditions))
     {
-        Trinity::WorldObjectSpellLineTargetCheck check(radius, m_caster, m_spellInfo, selectionType, GetEffect(effIndex)->ImplicitTargetConditions);
+        Trinity::WorldObjectSpellLineTargetCheck check(radius, m_caster, m_spellInfo, selectionType, GetEffect(effIndex)->ImplicitTargetConditions, lineDest);
         Trinity::WorldObjectListSearcher<Trinity::WorldObjectSpellLineTargetCheck> searcher(m_caster, targets, check, containerTypeMask);
         SearchTargets<Trinity::WorldObjectListSearcher<Trinity::WorldObjectSpellLineTargetCheck> >(searcher, containerTypeMask, m_caster, m_caster, radius);
         CallScriptObjectAreaTargetSelectHandlers(targets, effIndex, targetType);
@@ -1514,6 +1525,26 @@ void Spell::SelectImplicitCasterDestTargets(SpellEffIndex effIndex, SpellImplici
                         if (dist > objSize)
                             dist = objSize + (dist - objSize) * float(rand_norm());
                         break;
+                    case TARGET_UNK_137:                // direction de deplacement du lanceur
+                    {
+                        bool forward = m_caster->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_FORWARD);
+                        bool backward = m_caster->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_BACKWARD);
+                        bool left = m_caster->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_STRAFE_LEFT);
+                        bool right = m_caster->m_movementInfo.HasMovementFlag(MOVEMENTFLAG_STRAFE_RIGHT);
+                        if (forward && backward)
+                            forward = backward = false;
+                        if (left && right)
+                            left = right = false;
+                        if (backward)
+                            angle = left ? float(3 * M_PI / 4) : right ? float(-3 * M_PI / 4) : float(M_PI);
+                        else if (left)
+                            angle = forward ? float(M_PI / 4) : float(M_PI / 2);
+                        else if (right)
+                            angle = forward ? float(-M_PI / 4) : float(-M_PI / 2);
+                        else
+                            angle = 0.0f;
+                        break;
+                    }
                     case TARGET_DEST_CASTER_FRONT_LEFT:
                     case TARGET_DEST_CASTER_BACK_LEFT:
                     case TARGET_DEST_CASTER_FRONT_RIGHT:
@@ -8592,14 +8623,16 @@ bool WorldObjectSpellConeTargetCheck::operator()(WorldObject* target)
 }
 
 WorldObjectSpellLineTargetCheck::WorldObjectSpellLineTargetCheck(float range, Unit* caster,
-    SpellInfo const* spellInfo, SpellTargetCheckTypes selectionType, std::vector<Condition*>* condList)
-    : WorldObjectSpellAreaTargetCheck(range, caster, caster, caster, spellInfo, selectionType, condList)
+    SpellInfo const* spellInfo, SpellTargetCheckTypes selectionType, std::vector<Condition*>* condList, Position const* dst)
+    : WorldObjectSpellAreaTargetCheck(range, caster, caster, caster, spellInfo, selectionType, condList), _linePosition(caster->GetPosition())
 {
+    if (dst && caster->GetExactDist2d(dst) > 0.1f)
+        _linePosition.SetOrientation(caster->GetAngle(dst));
 }
 
 bool WorldObjectSpellLineTargetCheck::operator()(WorldObject* target)
 {
-    if (!_caster->HasInLine(target, _caster->GetObjectSize()))
+    if (!_linePosition.HasInLine(target, _caster->GetObjectSize()))
         return false;
 
     return WorldObjectSpellAreaTargetCheck::operator ()(target);
