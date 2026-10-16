@@ -8850,16 +8850,18 @@ void Unit::UpdateSpeed(UnitMoveType mtype)
 
             if (mtype == MOVE_RUN)
             {
-                // aura 373 SPELL_AURA_MOD_SPEED_NO_CONTROL : deplacement force (charge/dash),
-                // remplace entierement la vitesse dirigee par le joueur (ne fait pas que la plancher).
-                // Montant en POURCENTAGE (cf. Roll moine 107427/109131 : 175/275 -> x2.75/x3.75),
-                // contrairement a l aura 437 dont le montant est une valeur absolue en yards/s.
-                // Prioritaire sur le plancher 437 (sinon rien ne capait l acceleration joueur
-                // pendant un dash type Fel Rush). [porte d ArgusCore aa54261d]
+                // aura 373 SPELL_AURA_MOD_SPEED_NO_CONTROL : plancher en pourcentage (montant / 100), pas un
+                // ecrasement : Fel Rush 197923 porte aussi 437 = 66 yd/s (~943 %), et Roll 107427 porte 305 = 275
+                // avec 373 = 175 ; les deux planchers sont independants, on garde le plus haut.
+                // [ArgusCore 63842625 + f31e8063, corrige leur aa54261d que nous avions porte]
                 if (int32 lockedSpeedMod = GetMaxPositiveAuraModifier(SPELL_AURA_MOD_SPEED_NO_CONTROL))
-                    speed = 1.0f + lockedSpeedMod / 100.0f;
+                {
+                    float minSpeed = lockedSpeedMod / 100.0f;
+                    if (speed < minSpeed)
+                        speed = minSpeed;
+                }
                 // force minimum speed rate @ aura 437 SPELL_AURA_MOD_MINIMUM_SPEED_RATE
-                else if (int32 minSpeedMod = GetMaxPositiveAuraModifier(SPELL_AURA_MOD_MINIMUM_SPEED_RATE))
+                if (int32 minSpeedMod = GetMaxPositiveAuraModifier(SPELL_AURA_MOD_MINIMUM_SPEED_RATE))
                 {
                     float minSpeed = minSpeedMod / (IsControlledByPlayer() ? playerBaseMoveSpeed[mtype] : baseMoveSpeed[mtype]);
                     if (speed < minSpeed)

@@ -107,6 +107,7 @@ enum ShatteredSoulsSpells
     SPELL_DH_FIERY_DEMISE_DEBUFF = 212818,
     SPELL_DH_COVER_OF_DARKNESS = 227635,
     SPELL_DH_METAMORPHOSIS_VENGEANCE = 187827,
+    SPELL_DH_LINGERING_ORDEAL = 238046,
 };
 
 // Ebonbolt - 214634
@@ -874,7 +875,7 @@ public:
                 return false;
 
             if (eventInfo.GetDamageInfo()->GetSpellInfo()->Id == SPELL_PRIEST_MIND_BLAST || eventInfo.GetDamageInfo()->GetSpellInfo()->Id == 15407 ||
-                eventInfo.GetDamageInfo()->GetSpellInfo()->Id == 73510)
+                eventInfo.GetDamageInfo()->GetSpellInfo()->Id == 73510 || eventInfo.GetDamageInfo()->GetSpellInfo()->Id == 205448) // Void Bolt (infobulle 194179)
                 return true;
 
             return false;
@@ -1463,8 +1464,20 @@ public:
             if (!caster)
                 return;
 
-             int32 duration = aurEff->GetAmount() * IN_MILLISECONDS;
-            if (Aura* aur = caster->AddAura(SPELL_DH_METAMORPHOSIS_VENGEANCE, caster))
+             // une Metamorphose deja active est prolongee, pas ramenee a 5 s ; Lingering Ordeal (238046) ajoute
+            // son montant en ms (reprise de la version DestinyCore/LegionCore de ce script)
+            int32 duration = aurEff->GetAmount() * IN_MILLISECONDS;
+            if (AuraEffect const* ordeal = caster->GetAuraEffect(SPELL_DH_LINGERING_ORDEAL, EFFECT_0))
+                duration += ordeal->GetAmount();
+
+            if (Aura* meta = caster->GetAura(SPELL_DH_METAMORPHOSIS_VENGEANCE))
+            {
+                int32 newDuration = meta->GetDuration() + duration;
+                if (newDuration > meta->GetMaxDuration())
+                    meta->SetMaxDuration(newDuration);
+                meta->SetDuration(newDuration);
+            }
+            else if (Aura* aur = caster->AddAura(SPELL_DH_METAMORPHOSIS_VENGEANCE, caster))
             {
                 aur->SetMaxDuration(duration);
                 aur->RefreshDuration();
