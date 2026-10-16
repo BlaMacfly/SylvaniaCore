@@ -136,6 +136,9 @@ class boss_magtheridon : public CreatureScript
                 events.SetPhase(PHASE_BANISH);
                 _channelersCount = 5;
                 events.ScheduleEvent(EVENT_TAUNT, Minutes(4), Minutes(5));
+                // SONDE TEMPORAIRE (17/10/2026) : « Magtheridon ne se libere jamais ».
+                TC_LOG_ERROR("misc", "MAGTHDBG Reset de Magtheridon (instance %u) : %u invocation(s), phase BANISH=%u",
+                    me->GetInstanceId(), uint32(summons.size()), uint32(events.IsInPhase(PHASE_BANISH) ? 1 : 0));
             }
 
             void CombatStart()
@@ -173,6 +176,9 @@ class boss_magtheridon : public CreatureScript
 
             void DoAction(int32 action) override
             {
+                TC_LOG_ERROR("misc", "MAGTHDBG DoAction %d recu par Magtheridon (instance %u) : phase BANISH=%u PHASE_1=%u",
+                    action, me->GetInstanceId(), uint32(events.IsInPhase(PHASE_BANISH) ? 1 : 0), uint32(events.IsInPhase(PHASE_1) ? 1 : 0));
+
                 if (action == ACTION_START_CHANNELERS_EVENT && events.IsInPhase(PHASE_BANISH))
                 {
                     events.SetPhase(PHASE_1);
@@ -328,11 +334,17 @@ class npc_hellfire_channeler : public CreatureScript
                 _events.Reset();
                 DoCastSelf(SPELL_SHADOW_GRASP_C);
                 me->SetReactState(REACT_DEFENSIVE);
+                TC_LOG_ERROR("misc", "MAGTHDBG Reset d un canaliseur (instance %u, en combat=%u)",
+                    me->GetInstanceId(), uint32(me->IsInCombat() ? 1 : 0));
             }
 
             void EnterCombat(Unit* /*who*/) override
             {
                 me->InterruptNonMeleeSpells(false);
+
+                Creature* magtheridonDbg = _instance->GetCreature(DATA_MAGTHERIDON);
+                TC_LOG_ERROR("misc", "MAGTHDBG Canaliseur en combat (instance %u) : Magtheridon %s",
+                    me->GetInstanceId(), magtheridonDbg ? (magtheridonDbg->IsAIEnabled ? "trouve, IA active" : "trouve, IA INACTIVE") : "INTROUVABLE");
 
                 if (Creature* magtheridon = _instance->GetCreature(DATA_MAGTHERIDON))
                     magtheridon->AI()->DoAction(ACTION_START_CHANNELERS_EVENT);
