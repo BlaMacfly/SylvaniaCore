@@ -30,6 +30,8 @@
 #include "Log.h"
 #include "MapManager.h"
 #include "ObjectMgr.h"
+#include "ConditionMgr.h"
+#include "QuestDef.h"
 #include "Player.h"
 #include "ReputationMgr.h"
 #include "ScriptMgr.h"
@@ -483,6 +485,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_COMPLETE_WORLD_QUEST:     // a la remise d'une quete mondiale
         case CRITERIA_TYPE_SURVEY_GAMEOBJECT:        // fouille archeologique reussie (objet de la trouvaille)
         case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT: // commande de travail recoltee
+        case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT: // mascotte capturee (zone : condition 41 de l'arbre)
         case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:  // donjon termine avec une cle mythique (carte en Asset)
         case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD: // cle mythique terminee (conditions : niveau, temps, guilde)
         case CRITERIA_TYPE_CLEAR_DIGSITE:            // site de fouilles epuise
@@ -788,7 +791,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_BE_KICKED_FROM_LFR:
         case CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
         case CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:
-        case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
         case CRITERIA_TYPE_UPGRADE_GARRISON_BUILDING:
         case CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
         case CRITERIA_TYPE_UPGRADE_GARRISON:
@@ -1223,6 +1225,7 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_OWN_HEIRLOOMS:
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
     case CRITERIA_TYPE_CLEAR_DIGSITE:
+    case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT:
     case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
     case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:
     case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD:
@@ -1762,6 +1765,67 @@ bool CriteriaHandler::AdditionalRequirementsConditionSatisfied(ModifierTreeNode 
 
     switch (CriteriaAdditionalCondition(reqType))
     {
+    // --- conditions jusque-la non evaluees (donc considerees remplies), d'apres TrinityCore master
+    case CRITERIA_ADDITIONAL_CONDITION_SOURCE_PLAYER_CONDITION: // 2
+    {
+        PlayerConditionEntry const* condition = sPlayerConditionStore.LookupEntry(reqValue);
+        if (!referencePlayer || !condition || !ConditionMgr::IsPlayerMeetingCondition(referencePlayer, condition))
+            return false;
+        break;
+    }
+    case CRITERIA_ADDITIONAL_CONDITION_SOURCE_IS_ALIVE: // 16
+        if (!referencePlayer || referencePlayer->isDead())
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_GUILD_REPUTATION: // 62 (faction de guilde 1168)
+        if (!referencePlayer || referencePlayer->GetReputationMgr().GetReputation(1168) < int32(reqValue))
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_TARGET_LEVEL_GREATER: // 70
+        if (!unit || unit->getLevel() < reqValue)
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_HAS_ACHIEVEMENT_ON_CHARACTER: // 87
+        if (!referencePlayer || !referencePlayer->HasAchieved(reqValue))
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_ACTIVE_EXPANSION: // 92
+        if (sWorld->getIntConfig(CONFIG_EXPANSION) < reqValue)
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_ITEM_COUNT: // 105 (Asset = objet, SecondaryAsset = nombre)
+        if (!referencePlayer || referencePlayer->GetItemCount(reqValue, false) < uint32(tree->Entry->SecondaryAsset))
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_CURRENCY_AMOUNT: // 119 (Asset = monnaie, SecondaryAsset = montant)
+        if (!referencePlayer || !referencePlayer->HasCurrency(reqValue, uint32(tree->Entry->SecondaryAsset)))
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_RATED_BATTLEGROUND: // 63
+    {
+        Battleground const* bg = referencePlayer ? referencePlayer->GetBattleground() : nullptr;
+        if (!bg || !bg->isBattleground() || !bg->isRated())
+            return false;
+        break;
+    }
+    case CRITERIA_ADDITIONAL_CONDITION_MODIFIER_TREE: // 73 : l'arbre designe doit etre satisfait
+    {
+        ModifierTreeNode const* next = sCriteriaMgr->GetModifierTree(reqValue);
+        if (!next || next == tree)
+            return false;
+        return AdditionalRequirementsSatisfied(next, miscValue1, 0, unit, referencePlayer);
+    }
+    case CRITERIA_ADDITIONAL_CONDITION_SOURCE_PVP_FACTION_INDEX: // 116 : 0 Horde, 1 Alliance
+        if (!referencePlayer || uint32(referencePlayer->GetTeam() == HORDE ? 0 : 1) != reqValue)
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_QUEST_INFO_ID: // 206 (miscValue1 = quete rendue)
+    {
+        Quest const* quest = sObjectMgr->GetQuestTemplate(uint32(miscValue1));
+        if (!quest || quest->GetQuestInfoID() != reqValue)
+            return false;
+        break;
+    }
     case CRITERIA_ADDITIONAL_CONDITION_ITEM_LEVEL: // 3
     {
         // miscValue1 is itemid
@@ -1911,6 +1975,10 @@ bool CriteriaHandler::AdditionalRequirementsConditionSatisfied(ModifierTreeNode 
         break;
     }
 
+    case CRITERIA_ADDITIONAL_CONDITION_SOURCE_ZONE: // 41
+        if (!referencePlayer || referencePlayer->GetZoneId() != reqValue)
+            return false;
+        break;
     case CRITERIA_ADDITIONAL_CONDITION_IS_ON_QUEST: // 84
         if (!referencePlayer->HasQuest(reqValue))
             return false;

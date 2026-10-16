@@ -1350,6 +1350,7 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
                     player->UpdateCriteria(CRITERIA_TYPE_ADD_BATTLE_PET_JOURNAL, speciesInfo->CreatureID);
                     player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_SPECIFIC_BATTLEPET, speciesInfo->ID, 0, speciesInfo->ID);
                     player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE, 1, Pets[Teams[currentTeamID]->CapturedPet]->Quality, speciesInfo->ID);
+                    player->UpdateCriteria(CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT, speciesInfo->ID);
                 }
 
                 /// Quest progress for 12 x Got One!
