@@ -31,6 +31,7 @@
 #include "MapManager.h"
 #include "ObjectMgr.h"
 #include "ConditionMgr.h"
+#include "PetBattle.h"
 #include "QuestDef.h"
 #include "Player.h"
 #include "ReputationMgr.h"
@@ -1819,6 +1820,34 @@ bool CriteriaHandler::AdditionalRequirementsConditionSatisfied(ModifierTreeNode 
         if (!referencePlayer || uint32(referencePlayer->GetTeam() == HORDE ? 0 : 1) != reqValue)
             return false;
         break;
+    case CRITERIA_ADDITIONAL_CONDITION_BATTLEPET_MASTER_PET_TAMER: // 81 : adversaire (dresseur ou mascotte sauvage)
+        if (!unit || unit->GetEntry() != reqValue)
+            return false;
+        break;
+    case CRITERIA_ADDITIONAL_CONDITION_BATTLEPET_SPECIES_IN_SLOT: // 151 : au moins Asset mascottes de l'espece SecondaryAsset
+    case CRITERIA_ADDITIONAL_CONDITION_BATTLEPET_TYPE_IN_SLOT:    // 152 : au moins Asset mascottes du type SecondaryAsset
+    {
+        if (!referencePlayer)
+            return false;
+        uint32 count = 0;
+        std::shared_ptr<BattlePet>* team = referencePlayer->GetBattlePetCombatTeam();
+        for (uint8 i = 0; team && i < MAX_PETBATTLE_SLOTS; ++i)
+        {
+            if (!team[i])
+                continue;
+            if (reqType == CRITERIA_ADDITIONAL_CONDITION_BATTLEPET_SPECIES_IN_SLOT)
+            {
+                if (team[i]->Species == uint32(tree->Entry->SecondaryAsset))
+                    ++count;
+            }
+            else if (BattlePetSpeciesEntry const* species = sBattlePetSpeciesStore.LookupEntry(team[i]->Species))
+                if (species->PetTypeEnum == uint32(tree->Entry->SecondaryAsset))
+                    ++count;
+        }
+        if (count < reqValue)
+            return false;
+        break;
+    }
     case CRITERIA_ADDITIONAL_CONDITION_QUEST_INFO_ID: // 206 (miscValue1 = quete rendue)
     {
         Quest const* quest = sObjectMgr->GetQuestTemplate(uint32(miscValue1));

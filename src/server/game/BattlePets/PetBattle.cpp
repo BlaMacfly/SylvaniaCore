@@ -1317,7 +1317,10 @@ void PetBattle::Finish(uint32 winnerTeamID, bool aborted, bool ignoreAbandonPena
             if (winnerTeamID == currentTeamID)
             {
                 auto speciesInfo = sDB2Manager.GetSpeciesByCreatureID(InitialWildPetGUID.GetEntry());
-                player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_WIN, speciesInfo ? speciesInfo->ID : 0, BattleType != PETBATTLE_TYPE_PVE, 0);
+                Unit* opponent = nullptr;
+                if (BattleType == PETBATTLE_TYPE_PVE)
+                    opponent = ObjectAccessor::GetCreature(*player, PveBattleType == PVE_PETBATTLE_TRAINER ? Teams[PETBATTLE_PVE_TEAM_ID]->OwnerGuid : InitialWildPetGUID);
+                player->UpdateCriteria(CRITERIA_TYPE_BATTLEPET_WIN, speciesInfo ? speciesInfo->ID : 0, BattleType != PETBATTLE_TYPE_PVE, 0, opponent);
                 if (speciesInfo)
                     player->QuestObjectiveSatisfy(speciesInfo->ID, 1, QUEST_OBJECTIVE_DEFEATBATTLEPET, InitialWildPetGUID);
             }
