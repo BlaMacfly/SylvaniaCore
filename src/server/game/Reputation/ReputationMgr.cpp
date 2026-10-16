@@ -440,6 +440,7 @@ void ReputationMgr::ModifyParagonReputation(FactionEntry const* factionEntry, in
                 itr->second.needSend = true;
                 itr->second.needSave = true;
                 _player->AddQuestAndCheckCompletion(quest, nullptr);
+                _player->UpdateCriteria(CRITERIA_TYPE_GAIN_PARAGON_REPUTATION, paragonFaction->ID);
             }
         }
     }

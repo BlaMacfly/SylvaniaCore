@@ -487,6 +487,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_SURVEY_GAMEOBJECT:        // fouille archeologique reussie (objet de la trouvaille)
         case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT: // commande de travail recoltee
         case CRITERIA_TYPE_CAPTURE_BATTLE_PET_CREDIT: // mascotte capturee (zone : condition 41 de l'arbre)
+        case CRITERIA_TYPE_GAIN_PARAGON_REPUTATION:  // cache de parangon gagnee (faction de parangon en Asset)
         case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE:  // donjon termine avec une cle mythique (carte en Asset)
         case CRITERIA_TYPE_COMPLETE_CHALLENGE_MODE_GUILD: // cle mythique terminee (conditions : niveau, temps, guilde)
         case CRITERIA_TYPE_CLEAR_DIGSITE:            // site de fouilles epuise
@@ -813,7 +814,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_ARTIFACT_TRAITS_UNLOCKED:
         case CRITERIA_TYPE_ORDER_HALL_TALENT_LEARNED:
         case CRITERIA_TYPE_ORDER_HALL_RECRUIT_TROOP:
-        case CRITERIA_TYPE_GAIN_PARAGON_REPUTATION:
             break;                                   // Not implemented yet :(
         }
 
@@ -1408,6 +1408,7 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
     case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
     case CRITERIA_TYPE_OWN_TOY:
+    case CRITERIA_TYPE_GAIN_PARAGON_REPUTATION:
         if (!miscValue1 || (criteria->Entry->Asset.ID && miscValue1 != criteria->Entry->Asset.ID))
             return false;
         break;
@@ -1848,6 +1849,21 @@ bool CriteriaHandler::AdditionalRequirementsConditionSatisfied(ModifierTreeNode 
             return false;
         break;
     }
+    case CRITERIA_ADDITIONAL_CONDITION_GARRISON_FOLLOWER_TYPE: // 187 : type du suivant recrute (miscValue1 = son numero en base)
+    {
+        bool found = false;
+        if (referencePlayer)
+            for (auto const& garrison : referencePlayer->GetGarrisons())
+                if (Garrison::Follower const* follower = garrison.second->GetFollower(miscValue1))
+                    if (GarrFollowerEntry const* entry = follower->GetEntry())
+                    {
+                        found = entry->GarrFollowerTypeID == reqValue;
+                        break;
+                    }
+        if (!found)
+            return false;
+        break;
+    }
     case CRITERIA_ADDITIONAL_CONDITION_QUEST_INFO_ID: // 206 (miscValue1 = quete rendue)
     {
         Quest const* quest = sObjectMgr->GetQuestTemplate(uint32(miscValue1));
@@ -2033,10 +2049,16 @@ bool CriteriaHandler::AdditionalRequirementsConditionSatisfied(ModifierTreeNode 
         if (!referencePlayer)
             return false;
 
+        // le suivant recrute (miscValue1) ou, sans suivant designe, n'importe lequel a le trait (TrinityCore)
         for (auto const& garrison : referencePlayer->GetGarrisons())
         {
-            Garrison::Follower const* follower = garrison.second->GetFollower(miscValue1);
-            if (follower && follower->PacketInfo.GarrFollowerID == reqValue)
+            if (miscValue1)
+            {
+                Garrison::Follower const* follower = garrison.second->GetFollower(miscValue1);
+                if (follower && follower->HasAbility(reqValue))
+                    return true;
+            }
+            else if (garrison.second->CountFollowers([reqValue](Garrison::Follower const& f) { return f.HasAbility(reqValue); }))
                 return true;
         }
 
@@ -2047,10 +2069,16 @@ bool CriteriaHandler::AdditionalRequirementsConditionSatisfied(ModifierTreeNode 
         if (!referencePlayer)
             return false;
 
+        // qualite au moins egale (TrinityCore), du suivant recrute ou de n'importe lequel
         for (auto const& garrison : referencePlayer->GetGarrisons())
         {
-            Garrison::Follower const* follower = garrison.second->GetFollower(miscValue1);
-            if (follower && follower->PacketInfo.Quality == reqValue)
+            if (miscValue1)
+            {
+                Garrison::Follower const* follower = garrison.second->GetFollower(miscValue1);
+                if (follower && follower->PacketInfo.Quality >= reqValue)
+                    return true;
+            }
+            else if (garrison.second->CountFollowers([reqValue](Garrison::Follower const& f) { return f.PacketInfo.Quality >= reqValue; }))
                 return true;
         }
 
