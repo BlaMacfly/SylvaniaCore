@@ -293,7 +293,11 @@ Position const MalygosPositions[MAX_MALYGOS_POS] =
 };
 
 Position const AlexstraszaSpawnPos  = { 854.551f, 1225.31f, 300.901f, 0.0f }; // Alexstrasza's spawn position
-Position const HeartOfMagicSpawnPos = { 755.351f, 1298.31f, 223.909f, 0.0f }; // Heart of Magic spawn position
+// Coeur de magie et coffre a hauteur de la plateforme (positions AzerothCore) : la plateforme reste
+// detruite et les joueurs sont encore sur leurs drakes. Le PNJ du coffre (32448) est a z = 220,
+// ~46 m sous eux : le coffre et le Coeur y apparaissaient hors de vue (signalement du 16/10/2026).
+Position const HeartOfMagicSpawnPos = { 773.98f, 1275.97f, 266.254f, 0.0f }; // Heart of Magic spawn position
+Position const AlexstraszaGiftSpawnPos = { 773.98f, 1285.97f, 266.254f, 0.0f }; // Alexstrasza's Gift spawn position
 
 #define TEN_MINUTES         (10*MINUTE*IN_MILLISECONDS)
 
@@ -2420,9 +2424,9 @@ class spell_alexstrasza_gift_beam_visual : public SpellScriptLoader
                 if (Creature* target = GetTarget()->ToCreature())
                 {
                     if (target->GetMap()->GetDifficultyID() == DIFFICULTY_10_N)
-                        _alexstraszaGift = target->SummonGameObject(GO_ALEXSTRASZA_S_GIFT_10, *target, QuaternionData(), 0);
+                        _alexstraszaGift = target->SummonGameObject(GO_ALEXSTRASZA_S_GIFT_10, AlexstraszaGiftSpawnPos, QuaternionData(), 0);
                     else if (target->GetMap()->GetDifficultyID() == DIFFICULTY_25_N)
-                        _alexstraszaGift = target->SummonGameObject(GO_ALEXSTRASZA_S_GIFT_25, *target, QuaternionData(), 0);
+                        _alexstraszaGift = target->SummonGameObject(GO_ALEXSTRASZA_S_GIFT_25, AlexstraszaGiftSpawnPos, QuaternionData(), 0);
                 }
             }
 
@@ -2431,7 +2435,8 @@ class spell_alexstrasza_gift_beam_visual : public SpellScriptLoader
                 if (Creature* target = GetTarget()->ToCreature())
                     if (InstanceScript* instance = GetCaster()->GetInstanceScript())
                     {
-                        _alexstraszaGift->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
+                        if (_alexstraszaGift)
+                            _alexstraszaGift->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
                         if (GameObject* heartMagic = target->GetMap()->GetGameObject(instance->GetGuidData(DATA_HEART_OF_MAGIC_GUID)))
                         {
                             heartMagic->RemoveFlag(GAMEOBJECT_FLAGS, GO_FLAG_NOT_SELECTABLE);
