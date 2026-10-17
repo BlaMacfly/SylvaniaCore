@@ -149,6 +149,16 @@ class instance_violet_hold_assault : public InstanceMapScript
                 }
             }
 
+            // Etape en cours du scenario terminee ? Sans scenario pour la difficulte (aucune ligne
+            // `scenarios` pour la carte 1544 jusqu'au 17/10/2026) ou sans arbre de criteres, l'appel
+            // direct dereferencait un pointeur nul et faisait planter tout le serveur.
+            bool IsCurrentStageDone()
+            {
+                InstanceScenario* scenario = instance->ToInstanceMap()->GetInstanceScenario();
+                CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(_criteriaToFind);
+                return scenario && tree && scenario->CheckCompletedCriteriaTree(tree, nullptr);
+            }
+
             void OnUnitDeath(Unit* unit) override
             {
                 if (!unit)
@@ -161,8 +171,7 @@ class instance_violet_hold_assault : public InstanceMapScript
                     case NPC_PORTAL_FELGUARD:
                     case NPC_PORTAL_INQUISITOR:
                     {
-                        CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(_criteriaToFind);
-                        if (!instance->ToInstanceMap()->GetInstanceScenario()->CheckCompletedCriteriaTree(tree, nullptr))
+                        if (!IsCurrentStageDone())
                             _events.ScheduleEvent(EVENT_INIT_ROUND, Seconds(20));
                         break;                                            
                     }
@@ -178,8 +187,7 @@ class instance_violet_hold_assault : public InstanceMapScript
                     case NPC_SHADOWY_OVERFIEND:
                     {
                         _eliteDead++;
-                        CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(_criteriaToFind);
-                        if (!instance->ToInstanceMap()->GetInstanceScenario()->CheckCompletedCriteriaTree(tree, nullptr))
+                        if (!IsCurrentStageDone())
                         {
                             if (_firstBoss != 0 && _eliteDead >= 3)
                             {
@@ -408,8 +416,7 @@ class instance_violet_hold_assault : public InstanceMapScript
                     {
                         case EVENT_CHECK_CRITERIA:
                         {
-                            CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(_criteriaToFind);
-                            if (instance->ToInstanceMap()->GetInstanceScenario()->CheckCompletedCriteriaTree(tree, nullptr))
+                            if (IsCurrentStageDone())
                             {
                                 _events.Reset();
                             
