@@ -159,6 +159,24 @@ class instance_violet_hold_assault : public InstanceMapScript
                 return scenario && tree && scenario->CheckCompletedCriteriaTree(tree, nullptr);
             }
 
+            // Portail de vague au hasard parmi les portails vivants (identifiants : les pointeurs bruts
+            // pouvaient pointer sur une creature retiree de la carte). Liste vide : on les cherche sur la carte.
+            Creature* SelectPortal()
+            {
+                if (_portals.empty())
+                    for (auto const& pair : instance->GetCreatureBySpawnIdStore())
+                        if (pair.second->GetEntry() == NPC_PORTAL_LEGION)
+                            _portals.push_back(pair.second->GetGUID());
+
+                std::vector<Creature*> alive;
+                for (ObjectGuid const& guid : _portals)
+                    if (Creature* portal = instance->GetCreature(guid))
+                        if (portal->IsAlive())
+                            alive.push_back(portal);
+
+                return alive.empty() ? nullptr : Trinity::Containers::SelectRandomContainerElement(alive);
+            }
+
             void OnUnitDeath(Unit* unit) override
             {
                 if (!unit)
@@ -256,9 +274,10 @@ class instance_violet_hold_assault : public InstanceMapScript
 
                 if (roll_chance_f(50)) // Spawn a Normal Squadron
                 {
-                    Creature* keeper = portal->SummonCreature(PortalKeepers[urand(0,3)], portal->GetPosition(), TEMPSUMMON_DEAD_DESPAWN, 10000);
-                    keeper->GetMotionMaster()->MovePoint(0, keeper->GetNearPosition(5,0));
-                    portal->GetAI()->DoAction(1); // ACTION_SPAWN_MINION
+                    if (Creature* keeper = portal->SummonCreature(PortalKeepers[urand(0,3)], portal->GetPosition(), TEMPSUMMON_DEAD_DESPAWN, 10000))
+                        keeper->GetMotionMaster()->MovePoint(0, keeper->GetNearPosition(5,0));
+                    if (portal->IsAIEnabled)
+                        portal->GetAI()->DoAction(1); // ACTION_SPAWN_MINION
                 }
                 else // Spawn a Elite Squadron
                 {
@@ -381,7 +400,7 @@ class instance_violet_hold_assault : public InstanceMapScript
                     return;
                 
                 if (creature->GetEntry() == NPC_PORTAL_LEGION)
-                    _portals.push_back(creature);
+                    _portals.push_back(creature->GetGUID());
                 
                 switch (creature->GetEntry())
                 {
@@ -434,9 +453,17 @@ class instance_violet_hold_assault : public InstanceMapScript
 
                         case EVENT_INIT_ROUND:
                         {
-                            Creature* portal = Trinity::Containers::SelectRandomContainerElement(_portals);
-                            if (portal)
-                                portal->CastSpell(portal, 201901, true);
+                            // Liste vide = urand(0, -1) et lecture hors du tableau : plantage du serveur a la
+                            // premiere vague (17/10/2026, deux fois). On choisit parmi les portails vivants.
+                            Creature* portal = SelectPortal();
+                            if (!portal)
+                            {
+                                TC_LOG_ERROR("misc", "VHADBG Assaut sur le Fort Pourpre (instance %u) : aucun portail %u vivant, %u connu(s) ; vague reportee",
+                                    instance->GetInstanceId(), uint32(NPC_PORTAL_LEGION), uint32(_portals.size()));
+                                _events.ScheduleEvent(EVENT_INIT_ROUND, Seconds(5));
+                                break;
+                            }
+                            portal->CastSpell(portal, 201901, true);
                             SpawnPortalMinions(portal);
                             break;
                         }
@@ -513,7 +540,7 @@ class instance_violet_hold_assault : public InstanceMapScript
                 uint32 _firstBoss, _secondBoss, _commanderEntry;
                 bool _eventInitiated;
                 EventMap _events;
-                std::vector<Creature*> _portals;
+                std::vector<ObjectGuid> _portals;
                 std::vector<NpcInfo> _guids;
         };
 

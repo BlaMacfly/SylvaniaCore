@@ -14,3 +14,10 @@ INSERT INTO `scenarios` (`map`,`difficulty`,`scenario_A`,`scenario_H`,`zoneid`) 
 (1544, 2, 1029, 1029, 0),
 (1544, 23, 1251, 1251, 0);
 -- Retour arriere : DELETE FROM `scenarios` WHERE `map` = 1544 AND `difficulty` IN (1, 2, 23);
+
+-- 17/10/2026 12h38 : nouveau plantage a la premiere vague (liste de portails vide, corrige en C++).
+-- Le portail de vague (102279) n'avait aucun script : instance_violet_hold_assault lui envoie
+-- DoAction(1) (ACTION_SPAWN_MINION) pour faire sortir les sbires, que seul npc_vha_demon_portal
+-- (violet_hold.cpp) traite ; ce script n'etait rattache a aucune creature.
+UPDATE `creature_template` SET `ScriptName` = 'npc_vha_demon_portal' WHERE `entry` = 102279;
+-- Retour arriere : UPDATE `creature_template` SET `ScriptName` = '' WHERE `entry` = 102279;
