@@ -100,35 +100,40 @@ enum Spells
     SPELL_DEATH                 = 42566       //not correct spell
 };
 
+// Positions de la carte 1004 (Monastere ecarlate refait a MoP) : le donjon d'evenement 285 s'y joue
+// en 7.x. Les anciennes etaient celles du vieux Cimetiere (carte 189) et faisaient voler le Cavalier
+// dans le vide (signalement du 24/10/2026). Trajet = parcours de LegionCore-Reforged (waypoint 23682 :
+// monticule -> 1094 606 -> 1108 620 -> 1096 634 -> atterrissage 1086.24 627.44), interpole sur les 21
+// points qu'attend MovementInform (actions aux points 0, 1, 6, 19 et 20).
 Position const FlightPoint[]=
 {
-    {1754.00f, 1346.00f, 17.50f},
-    {1765.00f, 1347.00f, 19.00f},
-    {1784.00f, 1346.80f, 25.40f},
-    {1803.30f, 1347.60f, 33.00f},
-    {1824.00f, 1350.00f, 42.60f},
-    {1838.80f, 1353.20f, 49.80f},
-    {1852.00f, 1357.60f, 55.70f},
-    {1861.30f, 1364.00f, 59.40f},
-    {1866.30f, 1374.80f, 61.70f},
-    {1864.00f, 1387.30f, 63.20f},
-    {1854.80f, 1399.40f, 64.10f},
-    {1844.00f, 1406.90f, 64.10f},
-    {1824.30f, 1411.40f, 63.30f},
-    {1801.00f, 1412.30f, 60.40f},
-    {1782.00f, 1410.10f, 55.50f},
-    {1770.50f, 1405.20f, 50.30f},
-    {1765.20f, 1400.70f, 46.60f},
-    {1761.40f, 1393.40f, 41.70f},
-    {1759.10f, 1386.70f, 36.60f},
-    {1757.80f, 1378.20f, 29.00f},
-    {1758.00f, 1367.00f, 19.51f}
+    {1089.40f, 612.17f, 3.00f},
+    {1090.83f, 610.25f, 5.18f},
+    {1092.27f, 608.32f, 7.36f},
+    {1093.70f, 606.40f, 9.54f},
+    {1095.80f, 607.80f, 10.26f},
+    {1098.08f, 610.08f, 10.58f},
+    {1100.36f, 612.36f, 10.91f},
+    {1102.65f, 614.65f, 11.24f},
+    {1104.93f, 616.93f, 11.56f},
+    {1107.21f, 619.21f, 11.89f},
+    {1106.66f, 621.57f, 11.55f},
+    {1104.59f, 623.97f, 10.86f},
+    {1102.53f, 626.38f, 10.18f},
+    {1100.47f, 628.78f, 9.49f},
+    {1098.41f, 631.19f, 8.80f},
+    {1096.35f, 633.60f, 8.12f},
+    {1093.88f, 632.58f, 7.13f},
+    {1091.33f, 630.86f, 6.09f},
+    {1088.79f, 629.15f, 5.04f},
+    {1086.24f, 627.44f, 4.00f},
+    {1086.24f, 627.44f, -0.05f}
 };
 
 Position const Spawn[]=
 {
-    {1776.27f, 1348.74f, 19.20f},       //spawn point for pumpkin shrine mob
-    {1765.28f, 1347.46f, 17.55f}     //spawn point for smoke
+    {1105.11f, 610.36f, -0.43f},        //spawn point for pumpkin shrine mob (flammes, LegionCore)
+    {1088.97f, 611.83f, 0.07f}          //spawn point for smoke (monticule 186314)
 };
 
 static char const* Text[]=
@@ -884,13 +889,39 @@ class go_loosely_turned_soil : public GameObjectScript
 public:
     go_loosely_turned_soil() : GameObjectScript("go_loosely_turned_soil") { }
 
-    bool OnGossipHello(Player* player, GameObject* /*go*/) override
+    bool OnGossipHello(Player* player, GameObject* go) override
     {
-        if (InstanceScript* instance = player->GetInstanceScript())
+        InstanceScript* instance = player->GetInstanceScript();
+
+        // Donjon d'evenement de la recherche de groupe (difficulte 19) : personne n'y donne la quete
+        // d'appel, le monticule appelle donc le Cavalier lui-meme (comme LegionCore-Reforged).
+        if (instance && go->GetMap()->GetDifficultyID() == DIFFICULTY_EVENT_DUNGEON)
+        {
+            if (instance->GetBossState(DATA_HORSEMAN_EVENT) == IN_PROGRESS || instance->GetBossState(DATA_HORSEMAN_EVENT) == DONE)
+                return true;
+
+            if (go->FindNearestCreature(HH_MOUNTED, 200.0f))
+                return true;
+
+            SummonHorseman(player, go);
+            return true;
+        }
+
+        if (instance)
             if (instance->GetBossState(DATA_HORSEMAN_EVENT) == IN_PROGRESS || player->GetQuestStatus(QUEST_CALL_THE_HEADLESS_HORSEMAN) != QUEST_STATUS_COMPLETE)
                 return true;
 
         return false;
+    }
+
+    static void SummonHorseman(Player* player, GameObject* go)
+    {
+        player->AreaExploredOrEventHappens(11405);
+        if (Creature* horseman = go->SummonCreature(HH_MOUNTED, FlightPoint[20], TEMPSUMMON_MANUAL_DESPAWN, 0))
+        {
+            ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->PlayerGUID = player->GetGUID();
+            ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->FlyMode();
+        }
     }
 
     bool OnQuestReward(Player* player, GameObject* go, Quest const* /*quest*/, uint32 /*opt*/) override
@@ -899,12 +930,7 @@ public:
             if (instance->GetBossState(DATA_HORSEMAN_EVENT) == IN_PROGRESS)
                 return false;
 
-        player->AreaExploredOrEventHappens(11405);
-        if (Creature* horseman = go->SummonCreature(HH_MOUNTED, FlightPoint[20], TEMPSUMMON_MANUAL_DESPAWN, 0))
-        {
-            ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->PlayerGUID = player->GetGUID();
-            ENSURE_AI(boss_headless_horseman::boss_headless_horsemanAI, horseman->AI())->FlyMode();
-        }
+        SummonHorseman(player, go);
         return true;
     }
 };
