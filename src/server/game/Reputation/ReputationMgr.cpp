@@ -357,7 +357,14 @@ bool ReputationMgr::SetOneFactionReputation(FactionEntry const* factionEntry, in
         {
             // int32 *= float cause one point loss?
             if (!paragon)                                   // le gain d'origine a deja subi le taux
-                standing = int32(floor((float)standing * sWorld->getRate(RATE_REPUTATION_GAIN) + 0.5f));
+            {
+                // Le taux personnel (PNJ Klauss) remplace celui du royaume, pour les gains seulement :
+                // une perte de reputation garde le taux du royaume.
+                float rate = sWorld->getRate(RATE_REPUTATION_GAIN);
+                if (standing > 0 && _player->GetPersonnalRepRate())
+                    rate = _player->GetPersonnalRepRate();
+                standing = int32(floor((float)standing * rate + 0.5f));
+            }
             standing += itr->second.Standing + BaseRep;
         }
 

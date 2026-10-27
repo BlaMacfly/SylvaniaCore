@@ -1513,6 +1513,7 @@ CREATE TABLE `characters` (
   `actionBars` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `grantableLevels` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `xpRate` tinyint(3) unsigned NOT NULL DEFAULT '1',
+  `repRate` tinyint(3) unsigned NOT NULL DEFAULT '0',
   `deleteInfos_Account` int(10) unsigned DEFAULT NULL,
   `deleteInfos_Name` varchar(12) DEFAULT NULL,
   `deleteDate` int(10) unsigned DEFAULT NULL,

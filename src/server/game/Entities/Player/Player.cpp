@@ -376,6 +376,7 @@ Player::Player(WorldSession* session) : Unit(true), m_sceneMgr(this), _vignetteM
     _lastTargetedGO = 0;
 
     _PersonnalXpRate = 0;
+    _PersonnalRepRate = 0;
 
     memset(_voidStorageItems, 0, VOID_STORAGE_MAX_SLOT * sizeof(VoidStorageItem*));
 
@@ -18861,6 +18862,7 @@ bool Player::LoadFromDB(ObjectGuid guid, CharacterDatabaseQueryHolder const& hol
     SetByteValue(PLAYER_FIELD_BYTES, PLAYER_FIELD_BYTES_OFFSET_ACTION_BAR_TOGGLES, fields[68].GetUInt8());
 
     _PersonnalXpRate = fields[72].GetUInt8();
+    _PersonnalRepRate = fields[79].GetUInt8();
     m_fishingSteps = fields[73].GetUInt8();
 
     InitDisplayIds();
@@ -27041,6 +27043,16 @@ void Player::SetPersonnalXpRate(float personnalXPRate)
 
     CharacterDatabasePreparedStatement* statement = CharacterDatabase.GetPreparedStatement(CHAR_UPD_XP_RATE);
     statement->setFloat(0, personnalXPRate);
+    statement->setUInt64(1, GetGUID().GetCounter());
+    CharacterDatabase.Execute(statement);
+}
+
+void Player::SetPersonnalRepRate(float personnalRepRate)
+{
+    _PersonnalRepRate = personnalRepRate;
+
+    CharacterDatabasePreparedStatement* statement = CharacterDatabase.GetPreparedStatement(CHAR_UPD_REP_RATE);
+    statement->setUInt8(0, uint8(personnalRepRate));
     statement->setUInt64(1, GetGUID().GetCounter());
     CharacterDatabase.Execute(statement);
 }

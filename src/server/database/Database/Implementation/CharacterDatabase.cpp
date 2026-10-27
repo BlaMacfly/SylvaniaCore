@@ -84,7 +84,7 @@ void CharacterDatabaseConnection::DoPrepareStatements()
                      "resettalents_time, primarySpecialization, trans_x, trans_y, trans_z, trans_o, transguid, extra_flags, stable_slots, at_login, zone, online, death_expire_time, taxi_path, dungeonDifficulty, "
                      "totalKills, todayKills, yesterdayKills, chosenTitle, watchedFaction, drunk, "
                      "health, power1, power2, power3, power4, power5, power6, instance_id, activeTalentGroup, lootSpecId, exploredZones, knownTitles, actionBars, grantableLevels, raidDifficulty, legacyRaidDifficulty, xpRate, fishingSteps, "
-                     "honor, honorLevel, prestigeLevel, honorRestState, honorRestBonus "
+                     "honor, honorLevel, prestigeLevel, honorRestState, honorRestBonus, repRate "
                      "FROM characters c LEFT JOIN character_fishingsteps cfs ON c.`guid` = cfs.`guid` WHERE c.`guid` = ?", CONNECTION_ASYNC);
 
     PrepareStatement(CHAR_SEL_GROUP_MEMBER, "SELECT `guid` FROM group_member WHERE memberGuid = ?", CONNECTION_BOTH);
@@ -776,6 +776,7 @@ void CharacterDatabaseConnection::DoPrepareStatements()
 
     // Custom
     PrepareStatement(CHAR_UPD_XP_RATE, "UPDATE characters SET xpRate = ? WHERE `guid` = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_UPD_REP_RATE, "UPDATE characters SET repRate = ? WHERE `guid` = ?", CONNECTION_ASYNC);
 
     // Logs
     PrepareStatement(CHAR_LOG_GM_COMMAND, "INSERT INTO `log_gm` (`id`, `date`, "

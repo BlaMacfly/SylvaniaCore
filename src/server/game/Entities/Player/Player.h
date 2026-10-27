@@ -2641,6 +2641,10 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         float GetPersonnalXpRate() { return _PersonnalXpRate; }
         void SetPersonnalXpRate(float PersonnalXpRate);
 
+        // Taux de reputation personnel (PNJ Klauss) : 0 = taux du royaume (Rate.Reputation.Gain)
+        float GetPersonnalRepRate() const { return _PersonnalRepRate; }
+        void SetPersonnalRepRate(float personnalRepRate);
+
         void OnCombatExit();
 
         /*
@@ -3123,6 +3127,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
 
         uint32 _lastTargetedGO;
         float _PersonnalXpRate;
+        float _PersonnalRepRate;
 
         uint32 _activeCheats;
 
