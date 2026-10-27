@@ -6669,11 +6669,22 @@ ReputationRank Player::GetReputationRank(uint32 faction) const
 }
 
 // Calculate total reputation percent player gain with quest/creature level
+// SPELL_AURA_MOD_REPUTATION_GAIN : MiscValue 0 = toutes les factions (Diplomatie, M. Popularite...),
+// sinon la seule faction visee (ex. 240979 Reputable : +30 % Armees de Legionfall, effets 2045 et 2091).
+// Sans ce filtre, Reputable donnait +60 % de reputation partout.
+int32 Player::GetReputationGainAuraModifier(uint32 factionId) const
+{
+    return GetTotalAuraModifier(SPELL_AURA_MOD_REPUTATION_GAIN, [factionId](AuraEffect const* aurEff) -> bool
+    {
+        return !aurEff->GetMiscValue() || uint32(aurEff->GetMiscValue()) == factionId;
+    });
+}
+
 int32 Player::CalculateReputationGain(ReputationSource source, uint32 creatureOrQuestLevel, int32 rep, int32 faction, bool noQuestBonus)
 {
     float percent = 100.0f;
 
-    float repMod = noQuestBonus ? 0.0f : float(GetTotalAuraModifier(SPELL_AURA_MOD_REPUTATION_GAIN));
+    float repMod = noQuestBonus ? 0.0f : float(GetReputationGainAuraModifier(faction));
 
     // faction specific auras only seem to apply to kills
     if (source == REPUTATION_SOURCE_KILL)

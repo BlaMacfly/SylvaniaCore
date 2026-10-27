@@ -3687,7 +3687,7 @@ void Guild::RewardReputation(Player* player, float val)
         if (FactionEntry const* factionEntry = sFactionStore.LookupEntry(GUILD_REPUTATION_ID))
         {
             // Or just multipla
-            AddPct(val, player->GetTotalAuraModifier(SPELL_AURA_MOD_REPUTATION_GAIN));
+            AddPct(val, player->GetReputationGainAuraModifier(GUILD_REPUTATION_ID));
             player->GetReputationMgr().ModifyReputation(factionEntry, val);
             member->SetReputation(player->GetReputationMgr().GetReputation(GUILD_REPUTATION_ID));
         }

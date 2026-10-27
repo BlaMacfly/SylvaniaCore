@@ -2222,6 +2222,7 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void RewardReputation(Quest const* quest);
         void RewardGuildReputation(Quest const* quest);
 
+        int32 GetReputationGainAuraModifier(uint32 factionId) const;
         int32 CalculateReputationGain(ReputationSource source, uint32 creatureOrQuestLevel, int32 rep, int32 faction, bool noQuestBonus = false);
 
         PlayerStorage* GetStorage() const { return m_playerStorage; }
