@@ -6777,11 +6777,50 @@ void Player::RewardReputation(Unit* victim, float rate)
     if (GetChampioningFaction())
     {
         // support for: Championing - http://www.wowwiki.com/Championing
+        // Infobulles des sorts : donjons seulement (pas les raids) ; tabards du Norfendre -> donjons
+        // du Norfendre, de Cataclysm -> donjons de Cataclysm, capitales et Pandarens -> tous les donjons.
+        // L'ancien test TargetLevel == 80 excluait tout donjon normal (TargetLevel 0 en 7.3.5).
         Map const* map = GetMap();
         if (map->IsNonRaidDungeon())
+        {
+            int32 requiredExpansion = -1;
+            switch (GetChampioningFaction())
+            {
+                case 1106: case 1098: case 1090: case 1091:
+                    requiredExpansion = EXPANSION_WRATH_OF_THE_LICH_KING;
+                    break;
+                case 1173: case 1135: case 1158: case 1171: case 1174: case 1172:
+                    requiredExpansion = EXPANSION_CATACLYSM;
+                    break;
+                default:
+                    break;
+            }
+
+            // Extension du donjon : celle de la recherche de groupe (Mortemines heroiques = Cataclysm),
+            // a defaut celle de la carte.
+            int32 dungeonExpansion = map->GetEntry() ? int32(map->GetEntry()->Expansion()) : -1;
             if (LFGDungeonsEntry const* dungeon = DB2Manager::GetLfgDungeon(map->GetId(), map->GetDifficultyID()))
-                if (dungeon->TargetLevel == 80)
-                    ChampioningFaction = GetChampioningFaction();
+                dungeonExpansion = dungeon->ExpansionLevel;
+
+            if (requiredExpansion < 0 || dungeonExpansion == requiredExpansion)
+                ChampioningFaction = GetChampioningFaction();
+        }
+    }
+
+    // Monstres de donjon sans faction par defaut (donjons de Cataclysm et de Pandarie) : ils ne
+    // rapportent qu'au porteur d'un tabard.
+    if (!Rep->RepFaction1 && !Rep->RepFaction2)
+    {
+        if (!ChampioningFaction)
+            return;
+
+        if (FactionEntry const* championEntry = sFactionStore.LookupEntry(ChampioningFaction))
+        {
+            int32 donerep = CalculateReputationGain(REPUTATION_SOURCE_KILL, victim->GetLevelForTarget(this), Rep->RepValue1, ChampioningFaction);
+            donerep = int32(donerep * rate);
+            GetReputationMgr().ModifyReputation(championEntry, donerep, GetReputationMgr().GetRank(championEntry) > Rep->ReputationMaxCap1);
+        }
+        return;
     }
 
     uint32 team = GetTeam();
