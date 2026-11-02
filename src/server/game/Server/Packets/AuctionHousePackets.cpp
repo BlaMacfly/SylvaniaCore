@@ -232,7 +232,12 @@ void WorldPackets::AuctionHouse::AuctionListItems::Read()
     _worldPacket >> MaxLevel;
     _worldPacket >> Quality;
     _worldPacket >> SortCount;
+    // Mascottes connues (comme TrinityCore 7.3.5) : ce champ n'etait pas lu, tout ce qui suit etait
+    // decale (nom recherche, filtres de type) et l'hotel des ventes renvoyait toujours la meme liste.
+    KnownPets.resize(_worldPacket.read<uint32>());
     _worldPacket >> MaxPetLevel;
+    for (std::size_t i = 0; i < KnownPets.size(); ++i)
+        _worldPacket >> KnownPets[i];
 
     Name = _worldPacket.ReadString(_worldPacket.ReadBits(8));
     ClassFilters.resize(_worldPacket.ReadBits(3));

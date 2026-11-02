@@ -172,7 +172,7 @@ typedef std::map<uint32, LFGQueue> LfgQueueContainer;
 typedef std::array<LfgQueueContainer, TEAM_MAX> LfgQueueTeamContainer;
 typedef std::multimap<uint32, LfgReward const*> LfgRewardContainer;
 typedef std::pair<LfgRewardContainer::const_iterator, LfgRewardContainer::const_iterator> LfgRewardContainerBounds;
-typedef std::map<uint8, LfgDungeonSet> LfgCachedDungeonContainer;
+typedef std::map<uint32, LfgDungeonSet> LfgCachedDungeonContainer; // uint32 : les tirages aleatoires depassent 255 (1045, 1046...)
 typedef std::map<ObjectGuid, LfgAnswer> LfgAnswerContainer;
 typedef std::map<ObjectGuid, LfgRoleCheck> LfgRoleCheckContainer;
 typedef std::map<uint32, LfgProposal> LfgProposalContainer;
@@ -313,7 +313,7 @@ struct LFGDungeonData
     uint8 type;
     uint8 subtype;
     uint8 expansion;
-    uint8 randomId;
+    uint32 randomId;                                // uint8 tronquait : 1045 (Legion normal) et 789 (Draenor heroique) donnaient 21
     uint8 minlevel;
     uint8 maxlevel;
     Difficulty difficulty;

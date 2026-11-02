@@ -1340,6 +1340,15 @@ void InstanceScript::UpdateEncounterState(EncounterCreditType type, uint32 credi
                 if (Group* grp = player->GetGroup())
                     if (grp->isLFGGroup())
                     {
+                        // La rencontre finale vaut pour toutes les difficultes de la carte, mais ne porte
+                        // qu'un identifiant de donjon (le normal) : un groupe inscrit en heroique (autre
+                        // identifiant) n'etait jamais recompense. On termine le donjon du groupe s'il se
+                        // joue sur cette carte.
+                        uint32 groupDungeonId = sLFGMgr->GetDungeon(grp->GetGUID());
+                        if (lfg::LFGDungeonData const* groupDungeon = sLFGMgr->GetLFGDungeon(groupDungeonId))
+                            if (groupDungeon->map == instance->GetId())
+                                dungeonId = groupDungeonId;
+
                         sLFGMgr->FinishDungeon(grp->GetGUID(), dungeonId);
                         return;
                     }

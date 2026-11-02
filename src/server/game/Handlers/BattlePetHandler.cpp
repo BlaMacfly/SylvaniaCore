@@ -528,6 +528,17 @@ void WorldSession::HandlePetBattleInput(WorldPackets::BattlePet::PetBattleInput&
 
     if (packet.Round + 1 != petBattle->Turn)
     {
+        // Action envoyee pour un tour deja joue (touche pressee deux fois, ou pendant l'animation :
+        // le tour est parti au premier appui). On l'ignore ; avant, elle faisait abandonner le combat.
+        if (int64(packet.Round) + 1 < int64(petBattle->Turn) && packet.MoveType >= PETBATTLE_ACTION_CAST && packet.MoveType <= PETBATTLE_ACTION_CATCH)
+        {
+            TC_LOG_INFO("server", "PetBattle: %s, action %u pour le tour %d ignoree (tour courant %u)",
+                _player->GetName().c_str(), uint32(packet.MoveType), packet.Round, petBattle->Turn);
+            return;
+        }
+
+        TC_LOG_INFO("server", "PetBattle: %s abandonne (action %u, tour %d, tour courant %u)",
+            _player->GetName().c_str(), uint32(packet.MoveType), packet.Round, petBattle->Turn);
         sPetBattleSystem->ForfeitBattle(petBattle->ID, _player->GetGUID(), packet.IgnoreAbandonPenalty);
         return;
     }
