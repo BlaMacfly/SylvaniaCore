@@ -1052,6 +1052,10 @@ public:
             _spiritOfUdaloGUID.Clear();
             _spiritOfOlumGUID.Clear();
             _isTeleportToMinions = false;
+            // Akama must not sustain the Council encounter while waiting for Illidan.
+            // His scripted immortality and disabled evade would otherwise keep it alive.
+            me->SetReactState(REACT_PASSIVE);
+            me->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
         }
 
         void sGossipSelect(Player* player, uint32 /*menuId*/, uint32 gossipListId) override
@@ -1077,6 +1081,11 @@ public:
 
         bool CanAIAttack(Unit const* who) const override
         {
+            // Only participate in Illidans encounter, never in the Council or trash.
+            if (_instance->GetBossState(DATA_ILLIDAN_STORMRAGE) != IN_PROGRESS)
+                return false;
+            if (who->GetEntry() != NPC_ILLIDAN_STORMRAGE && who->GetEntry() != NPC_ILLIDARI_ELITE)
+                return false;
             if (_events.IsInPhase(PHASE_MINIONS) && who->GetEntry() == NPC_ILLIDAN_STORMRAGE)
                 return false;
             return ScriptedAI::CanAIAttack(who);
@@ -1122,6 +1131,8 @@ public:
                     _events.ScheduleEvent(EVENT_FREE, Seconds(14));
                     break;
                 case ACTION_START_ENCOUNTER:
+                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+                    me->SetReactState(REACT_DEFENSIVE);
                     DoZoneInCombat();
                     _events.ScheduleEvent(EVENT_HEALING_POTION, Seconds(1));
                     break;
