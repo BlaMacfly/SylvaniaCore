@@ -718,7 +718,7 @@ public:
                         if (!creature)
                             continue;
 
-                        creature->RemoveFlag(UNIT_NPC_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                        creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                         if (creature->GetAI())
                             creature->GetAI()->DoAction(TYPE_SET_SUNS_SELECTABLE);
                     }
@@ -799,7 +799,7 @@ public:
                     sun_triggers.push_back(creature->GetGUID());
                     break;
                 case CREATURE_SUN:
-                    creature->SetFlag(UNIT_NPC_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                    creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                     suns.push_back(creature->GetGUID());
                     break;
                 case CREATURE_ZAO_SUNSEEKER:
@@ -811,7 +811,6 @@ public:
                     break;
                 case CREATURE_SCROLL:
                     scroll = creature->GetGUID();
-                    creature->SetFlag(UNIT_NPC_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                     creature->CastSpell(creature, SPELL_SCROLL_FLOOR, false);
                     creature->CastSpell(creature, SPELL_JADE_ENERGY_2, false);
                     creature->CastSpell(creature, SPELL_GROW_LOW, false);
@@ -1059,7 +1058,6 @@ public:
                 creature->Respawn();
                 if (creature->GetAI())
                     creature->GetAI()->Reset();
-                creature->SetFlag(UNIT_NPC_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 creature->CastSpell(creature, SPELL_SCROLL_FLOOR, false);
                 creature->CastSpell(creature, SPELL_JADE_ENERGY_2, false);
                 creature->CastSpell(creature, SPELL_GROW_LOW, false);

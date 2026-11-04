@@ -412,14 +412,14 @@ struct boss_garothi_worldbreaker : public BossAI
                     if (Creature* decimator = instance->GetCreature(DATA_DECIMATOR))
                     {
                         instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, decimator, 2);
-                        decimator->SetFlag(UNIT_NPC_FLAGS, UNIT_FLAG_IN_COMBAT);
-                        decimator->RemoveFlag(UNIT_NPC_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
+                        decimator->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
+                        decimator->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                     }
 
                     if (Creature* annihilator = instance->GetCreature(DATA_ANNIHILATOR))
                     {
                         instance->SendEncounterUnit(ENCOUNTER_FRAME_ENGAGE, annihilator, 2);
-                        annihilator->SetFlag(UNIT_NPC_FLAGS, UNIT_FLAG_IN_COMBAT);
+                        annihilator->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IN_COMBAT);
                         annihilator->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                     }
                     break;
@@ -496,13 +496,13 @@ struct boss_garothi_worldbreaker : public BossAI
          if (Creature* decimator = instance->GetCreature(DATA_DECIMATOR))
          {
              instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, decimator);
-             decimator->SetFlag(UNIT_NPC_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_UNK_31);
+             decimator->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_UNK_31);
          }
 
          if (Creature* annihilator = instance->GetCreature(DATA_ANNIHILATOR))
          {
              instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, annihilator);
-             annihilator->SetFlag(UNIT_NPC_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_UNK_31);
+             annihilator->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_UNK_31);
          }
      }
 };
