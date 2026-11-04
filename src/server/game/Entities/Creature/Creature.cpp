@@ -942,6 +942,10 @@ bool Creature::Create(ObjectGuid::LowType guidlow, Map* map, uint32 entry, float
     if (!CreateFromProto(guidlow, entry, data, vehId))
         return false;
 
+    // Toute creature a son identifiant de butin, invoquee ou non : sans lui, les corps invoques partagent
+    // l'identifiant vide et le ramassage en zone confond leurs butins (objets "deja ramasses").
+    loot.SetGUID(ObjectGuid::Create<HighGuid::LootObject>(map->GetId(), entry, map->GenerateLowGuid<HighGuid::LootObject>()));
+
     switch (GetCreatureTemplate()->rank)
     {
         case CREATURE_ELITE_RARE:
@@ -1591,8 +1595,6 @@ bool Creature::LoadCreatureFromDB(ObjectGuid::LowType spawnId, Map* map, bool ad
 
     // checked at creature_template loading
     m_defaultMovementType = MovementGeneratorType(data->movementType);
-
-    loot.SetGUID(ObjectGuid::Create<HighGuid::LootObject>(data->mapid, data->id, GetMap()->GenerateLowGuid<HighGuid::LootObject>()));
 
     if (addToMap && !GetMap()->AddToMap(this))
         return false;

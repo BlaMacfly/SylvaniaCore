@@ -1,0 +1,261 @@
+-- Temple noir : fin du raid, repris de TrinityCore (TDB 1200). Le combat d'Illidan n'avait ni trajets, ni scripts de sorts.
+
+-- Apparitions fantomes relevees a l'ecoute : ces creatures sont invoquees par les scripts, ici elles etaient posees en permanence.
+-- Doom Blossom (23123) lancait ses Traits de l'ombre sans arret, Parasitic Shadowfiend (23498) attaquait, etc.
+-- Akama (23089) est invoque par Illidan (creature_summon_groups) ; Illidan DB Target (23070) par le script.
+DELETE FROM `creature` WHERE `map` = 564 AND `id` IN (23123,23124,23254,23369,23429,23436,23451,23498,23070,23089);
+
+-- Invocations : Akama par Illidan, les esprits par Akama
+DELETE FROM `creature_summon_groups` WHERE `summonerId` IN (22917, 23089);
+INSERT INTO `creature_summon_groups` (`summonerId`,`summonerType`,`groupId`,`entry`,`position_x`,`position_y`,`position_z`,`orientation`,`summonType`,`summonTime`) VALUES
+(22917,0,1,23089,748.521,236.631,353.079,2.37365,8,0),
+(23089,0,1,23410,751.456,311.011,312.19,0,8,0),
+(23089,0,1,23411,751.644,297.223,312.208,0,8,0);
+
+-- Trajets d'Akama : salle du Conseil, escalier, salle d'Illidan...
+DELETE FROM `script_spline_chain_meta` WHERE `entry` = 23089;
+DELETE FROM `script_spline_chain_waypoints` WHERE `entry` = 23089;
+INSERT INTO `script_spline_chain_meta` (`entry`,`chainId`,`splineId`,`expectedDuration`,`msUntilNext`,`velocity`) VALUES
+(23089,1,0,3297,2391,0),
+(23089,1,1,2744,0,0),
+(23089,2,0,5077,3297,0),
+(23089,2,1,5259,3656,0),
+(23089,2,2,4364,3640,0),
+(23089,2,3,3825,2422,0),
+(23089,2,4,3466,2422,0),
+(23089,2,5,2911,1235,0),
+(23089,2,6,2798,1203,0),
+(23089,2,7,2172,0,0),
+(23089,3,0,4686,3640,0),
+(23089,3,1,3261,2453,0),
+(23089,3,2,3415,2438,0),
+(23089,3,3,4631,3641,0),
+(23089,3,4,2627,0,0),
+(23089,4,0,6925,0,0),
+(23089,5,0,5893,0,0),
+(23089,6,0,9319,0,0),
+(23089,7,0,4704,0,0);
+INSERT INTO `script_spline_chain_waypoints` (`entry`,`chainId`,`splineId`,`wpId`,`x`,`y`,`z`) VALUES
+(23089,1,0,0,609.772,308.456,271.826),
+(23089,1,0,1,610.931,308.292,272.007),
+(23089,1,0,2,625.681,307.042,271.757),
+(23089,1,0,3,628.431,307.042,271.757),
+(23089,1,0,4,630.181,307.042,271.757),
+(23089,1,0,5,631.681,306.792,271.757),
+(23089,1,0,6,642.591,305.629,271.688),
+(23089,1,1,0,633.37,306.423,271.66),
+(23089,1,1,1,642.818,305.845,271.931),
+(23089,1,1,2,660.765,305.766,271.702),
+(23089,2,0,0,660.765,305.766,271.702),
+(23089,2,0,1,664.953,321.875,271.948),
+(23089,2,0,2,665.703,324.875,271.948),
+(23089,2,0,3,673.142,354.983,271.694),
+(23089,2,1,0,668.704,337.334,271.689),
+(23089,2,1,1,673.441,355.172,271.792),
+(23089,2,1,2,680.941,363.172,271.792),
+(23089,2,1,3,681.941,363.922,271.792),
+(23089,2,1,4,691.691,374.672,271.792),
+(23089,2,1,5,694.191,377.422,271.792),
+(23089,2,1,6,696.679,380.01,271.895),
+(23089,2,2,0,685.401,368.018,271.679),
+(23089,2,2,1,691.885,374.696,272.087),
+(23089,2,2,2,694.385,377.196,272.087),
+(23089,2,2,3,696.885,379.946,272.337),
+(23089,2,2,4,699.385,379.446,272.337),
+(23089,2,2,5,704.135,378.446,274.587),
+(23089,2,2,6,714.885,375.946,277.837),
+(23089,2,2,7,719.635,374.696,280.087),
+(23089,2,2,8,721.369,374.374,280.995),
+(23089,2,3,0,715.075,375.81,277.752),
+(23089,2,3,1,719.933,374.659,280.345),
+(23089,2,3,2,721.683,374.409,281.345),
+(23089,2,3,3,725.933,368.159,284.845),
+(23089,2,3,4,728.183,364.659,287.845),
+(23089,2,3,5,732.683,358.659,291.845),
+(23089,2,3,6,736.792,352.507,296.439),
+(23089,2,4,0,729.86,362.335,289.175),
+(23089,2,4,1,732.962,358.541,292.237),
+(23089,2,4,2,736.962,352.541,296.737),
+(23089,2,4,3,737.712,350.791,297.737),
+(23089,2,4,4,741.712,344.041,301.737),
+(23089,2,4,5,745.564,336.746,306.299),
+(23089,2,5,0,741.177,344.629,301.122),
+(23089,2,5,1,741.909,343.927,301.904),
+(23089,2,5,2,745.659,336.677,306.404),
+(23089,2,5,3,747.659,326.427,309.404),
+(23089,2,5,4,749.141,319.226,311.686),
+(23089,2,6,0,745.883,335.182,306.718),
+(23089,2,6,1,747.936,326.16,309.399),
+(23089,2,6,2,749.186,319.41,311.899),
+(23089,2,6,3,749.436,318.41,312.399),
+(23089,2,6,4,751.488,308.638,312.08),
+(23089,2,7,0,748.248,323.598,310.072),
+(23089,2,7,1,749.514,319.249,311.871),
+(23089,2,7,2,749.764,317.999,312.371),
+(23089,2,7,3,751.764,308.999,312.371),
+(23089,2,7,4,755.514,304.999,312.371),
+(23089,2,7,5,755.78,304.401,312.17),
+(23089,3,0,0,755.78,304.401,312.17),
+(23089,3,0,1,759.859,303.606,312.721),
+(23089,3,0,2,770.359,301.106,312.721),
+(23089,3,0,3,779.609,299.106,319.971),
+(23089,3,0,4,781.359,298.606,319.971),
+(23089,3,0,5,786.359,297.606,319.971),
+(23089,3,0,6,787.359,297.356,319.971),
+(23089,3,0,7,798.938,294.311,319.773),
+(23089,3,1,0,788.58,296.733,319.761),
+(23089,3,1,1,799.06,294.204,320.069),
+(23089,3,1,2,798.56,289.204,320.319),
+(23089,3,1,3,797.541,276.174,330.377),
+(23089,3,2,0,798.042,282.677,325.06),
+(23089,3,2,1,797.593,276.201,330.762),
+(23089,3,2,2,795.343,262.951,341.512),
+(23089,3,2,3,794.593,258.701,341.512),
+(23089,3,2,4,793.644,254.724,341.464),
+(23089,3,3,0,795.286,263.763,340.531),
+(23089,3,3,1,795.054,262.638,341.826),
+(23089,3,3,2,794.304,258.388,341.826),
+(23089,3,3,3,793.554,254.638,341.826),
+(23089,3,3,4,792.554,254.138,341.826),
+(23089,3,3,5,787.804,251.388,341.826),
+(23089,3,3,6,783.554,249.138,341.826),
+(23089,3,3,7,773.054,242.888,349.076),
+(23089,3,3,8,766.304,238.888,353.826),
+(23089,3,3,9,764.821,238.013,353.621),
+(23089,3,4,0,772.127,242.249,349.374),
+(23089,3,4,1,766.032,239.027,353.954),
+(23089,3,4,2,764.782,238.277,353.704),
+(23089,3,4,3,760.282,237.777,353.454),
+(23089,3,4,4,750.282,236.277,353.204),
+(23089,3,4,5,748.436,235.805,353.034),
+(23089,4,0,0,748.436,235.805,353.034),
+(23089,4,0,1,747.831,249.376,353.265),
+(23089,4,0,2,747.581,252.876,353.265),
+(23089,4,0,3,747.331,257.376,353.265),
+(23089,4,0,4,747.331,260.876,353.265),
+(23089,4,0,5,746.831,277.126,353.265),
+(23089,4,0,6,746.081,293.126,353.265),
+(23089,4,0,7,745.581,302.876,353.265),
+(23089,4,0,8,745.225,304.946,352.996),
+(23089,5,0,0,745.225,304.946,352.996),
+(23089,5,0,1,744.747,320.384,353.252),
+(23089,5,0,2,744.497,331.884,353.252),
+(23089,5,0,3,744.497,348.384,353.252),
+(23089,5,0,4,744.247,349.634,353.252),
+(23089,5,0,5,744.247,352.134,353.252),
+(23089,5,0,6,743.997,362.634,353.252),
+(23089,5,0,7,743.769,363.821,353.007),
+(23089,6,0,0,752.277,369.94,353.158),
+(23089,6,0,1,753.945,368.689,353.209),
+(23089,6,0,2,762.695,361.689,353.709),
+(23089,6,0,3,763.945,360.689,353.959),
+(23089,6,0,4,764.945,359.689,352.959),
+(23089,6,0,5,780.195,347.189,341.709),
+(23089,6,0,6,780.445,346.689,341.709),
+(23089,6,0,7,792.195,320.189,320.209),
+(23089,6,0,8,794.695,314.939,320.209),
+(23089,6,0,9,796.195,311.439,320.209),
+(23089,6,0,10,799.113,304.437,319.76),
+(23089,7,0,0,753.047,369.302,353.127),
+(23089,7,0,1,751.769,369.248,353.312),
+(23089,7,0,2,739.519,368.748,353.062),
+(23089,7,0,3,723.269,367.998,353.062),
+(23089,7,0,4,722.769,367.498,353.062),
+(23089,7,0,5,715.769,369.498,353.062),
+(23089,7,0,6,714.519,368.248,353.062);
+
+-- Textes : le script numerote les repliques comme TrinityCore, les notres etaient decalees ou absentes
+DELETE FROM `creature_text` WHERE `CreatureID` IN (22917,23089,23197,23410,23411);
+DELETE FROM `creature_text_locale` WHERE `CreatureID` IN (22917,23089,23197,23410,23411);
+INSERT INTO `creature_text` (`CreatureID`,`GroupID`,`ID`,`Text`,`Type`,`Language`,`Probability`,`Emote`,`Duration`,`Sound`,`BroadcastTextId`,`TextRange`,`comment`) VALUES
+(22917,0,0,'Come, my minions. Deal with this traitor as he deserves!',14,0,100,0,0,11465,21251,0,'Illidan SAY_ILLIDAN_MINION'),
+(22917,1,0,'Who shall be next to taste my blades?',14,0,100,0,0,11473,21499,0,'Illidan SAY_ILLIDAN_KILL'),
+(22917,1,1,'This is too easy!',14,0,100,0,0,11472,21498,0,'Illidan SAY_ILLIDAN_KILL'),
+(22917,2,0,'I will not be touched by rabble such as you!',14,0,100,0,0,11479,21252,0,'Illidan SAY_ILLIDAN_TAKEOFF'),
+(22917,3,0,'Behold the Flames of Azzinoth!',14,0,100,0,0,11480,21275,0,'Illidan SAY_ILLIDAN_SUMMONFLAMES'),
+(22917,4,0,'Stare into the eyes of the Betrayer!',14,0,100,0,0,11481,21497,0,'Illidan SAY_ILLIDAN_EYE_BLAST'),
+(22917,5,0,'Behold the power... of the demon within!',14,0,100,0,0,11475,21066,0,'Illidan SAY_ILLIDAN_MORPH'),
+(22917,6,0,'You\'ve wasted too much time, mortals. Now you shall fall.',14,0,100,0,0,11474,22036,0,'Illidan SAY_ILLIDAN_ENRAGE'),
+(22917,7,0,'Feel the hatred of ten thousand years!',14,0,100,0,0,11467,21501,0,'Illidan SAY_ILLIDAN_TAUNT'),
+(22917,7,1,'Give in to your fear!',14,0,100,0,0,11468,0,0,'Illidan SAY_ILLIDAN_TAUNT'),
+(22917,7,2,'You know nothing of power!',14,0,100,0,0,11469,21500,0,'Illidan SAY_ILLIDAN_TAUNT'),
+(22917,7,3,'Such arrogance!',14,0,100,0,0,11471,21338,0,'Illidan SAY_ILLIDAN_TAUNT'),
+(22917,8,0,'Akama. Your duplicity is hardly surprising. I should have slaughtered you and your malformed brethren long ago.',14,0,100,6,0,11463,20867,0,'Illidan SAY_ILLIDAN_DUPLICITY'),
+(22917,9,0,'Boldly said. But I remain... unconvinced.',14,0,100,6,0,11464,20868,0,'Illidan SAY_ILLIDAN_UNCONVINCED'),
+(22917,10,0,'You are not prepared!',14,0,100,406,0,11466,20884,0,'Illidan SAY_ILLIDAN_PREPARED'),
+(22917,11,0,'Is this it, mortals? Is this all the fury you can muster?',14,0,100,0,0,11476,21068,0,'Illidan SAY_ILLIDAN_SHADOW_PRISON'),
+(22917,12,0,'Maiev... How is it even possible?',14,0,100,1,0,11477,21069,0,'Illidan SAY_ILLIDAN_CONFRONT_MAIEV'),
+(22917,13,0,'Feel the hatred of ten thousand years!',14,0,100,0,0,11470,21501,0,'Illidan SAY_ILLIDAN_FRENZY'),
+(22917,14,0,'You have won... Maiev. But the huntress... is nothing without the hunt. You... are nothing... without me.',14,0,100,0,0,11478,21506,0,'Illidan SAY_ILLIDAN_DEFEATED'),
+(23089,0,0,'This door is all that stands between us and the Betrayer.  Stand aside, friends.',12,0,100,1,0,0,21563,0,'SAY_AKAMA_DOOR'),
+(23089,1,0,'I cannot do this alone...',12,0,100,274,0,0,21548,0,'SAY_AKAMA_ALONE'),
+(23089,2,0,'I thank you for your aid, brothers.  Our people will be redeemed!',12,0,100,66,0,0,21554,0,'SAY_AKAMA_SALUTE'),
+(23089,3,0,'Be wary, friends. The Betrayer meditates in the court just beyond.',12,0,100,0,0,11388,21555,0,'SAY_AKAMA_BETRAYER'),
+(23089,4,0,'We\'ve come to end your reign, Illidan. My people, and all of Outland, shall be free!',14,0,100,25,0,11389,20893,0,'SAY_AKAMA_FREE'),
+(23089,5,0,'The time has come! The moment is at hand!',14,0,100,22,0,11380,20894,0,'SAY_AKAMA_TIME_HAS_COME'),
+(23089,6,0,'I will deal with these mongrels! Strike now, friends! Strike at the Betrayer!',14,0,100,22,0,11390,21250,0,'SAY_AKAMA_MINIONS'),
+(23089,7,0,'The Light will bless these dismal halls once again.... I swear it.',14,0,100,1,0,11387,21514,0,'SAY_AKAMA_LIGHT'),
+(23089,8,0,'Let us finish what we\'ve started.  I will lead you to Illidan\'s abode once you\'ve recovered your strength.',12,0,100,1,0,0,21520,0,'SAY_AKAMA_FINISH'),
+(23197,0,0,'That is for Naisha!',14,0,100,0,0,11493,21489,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_TAUNT'),
+(23197,0,1,'Bleed as I have bled!',14,0,100,0,0,11494,0,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_TAUNT'),
+(23197,0,3,'Meet your end, demon!',14,0,100,0,0,11500,0,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_TAUNT'),
+(23197,1,0,'Their fury pales before mine, Illidan. We have some unsettled business between us.',14,0,100,6,0,11491,21070,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_APPEAR'),
+(23197,2,0,'My long hunt is finally over. Today, Justice will be done!',14,0,100,5,0,11492,21071,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_JUSTICE'),
+(23197,3,0,'There shall be no prison for you this time!',14,0,100,0,0,11495,22208,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_TRAP'),
+(23197,4,0,'%s falls to the floor.',16,0,100,0,0,0,21317,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_DOWN'),
+(23197,5,0,'It is finished. You are beaten.',14,0,100,0,0,11496,21507,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_FINISHED'),
+(23197,6,0,'He\'s right. I feel nothing... I am... nothing.',14,0,100,0,0,11497,21508,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_OUTRO'),
+(23197,7,0,'Farewell, champions.',14,0,100,0,0,11498,21509,0,'Maiev Shadowsong SAY_MAIEV_SHADOWSONG_FAREWELL'),
+(23410,0,0,'You are not alone, Akama.',12,0,100,0,0,0,21545,0,'SAY_SPIRIT_ALONE'),
+(23411,0,0,'Your people will always be with you!',12,0,100,0,0,0,21546,0,'SAY_SPIRIT_ALONE');
+
+-- Dialogue d'Akama : deux etapes, textes officiels (BroadcastText 20903 et 21522) ; l'etat de l'instance choisit la bonne
+DELETE FROM `gossip_menu_option` WHERE `MenuId` = 8638;
+INSERT INTO `gossip_menu_option` (`MenuId`,`OptionIndex`,`OptionIcon`,`OptionText`,`OptionBroadcastTextId`,`OptionType`,`OptionNpcFlag`,`VerifiedBuild`) VALUES
+(8638,0,0,'We\'re ready to face Illidan.',20903,1,1,0),
+(8638,1,0,'I\'m ready, Akama.',21522,1,1,0);
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 15 AND `SourceGroup` = 8638;
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`,`SourceGroup`,`SourceEntry`,`SourceId`,`ElseGroup`,`ConditionTypeOrReference`,`ConditionTarget`,`ConditionValue1`,`ConditionValue2`,`ConditionValue3`,`NegativeCondition`,`ErrorType`,`ErrorTextId`,`ScriptName`,`Comment`) VALUES
+(15,8638,0,0,0,13,0,10,1,0,0,0,0,'','Akama - Option 0 : avant la porte (DATA_AKAMA = AKAMA_INTRO)'),
+(15,8638,1,0,0,13,0,10,2,0,0,0,0,'','Akama - Option 1 : salle d Illidan (DATA_AKAMA = AKAMA_FIGHT)');
+
+-- Cibles des sorts du combat. 52503 de TrinityCore est notre 85041 (meme position).
+DELETE FROM `conditions` WHERE `SourceTypeOrReferenceId` = 13 AND `SourceEntry` IN (39635,39849,40693,40761,40647);
+INSERT INTO `conditions` (`SourceTypeOrReferenceId`,`SourceGroup`,`SourceEntry`,`SourceId`,`ElseGroup`,`ConditionTypeOrReference`,`ConditionTarget`,`ConditionValue1`,`ConditionValue2`,`ConditionValue3`,`NegativeCondition`,`ErrorType`,`ErrorTextId`,`ScriptName`,`Comment`) VALUES
+(13,1,39635,0,0,31,0,3,23448,52502,0,0,0,'','Throw Glaive - Glaive Target sud'),
+(13,1,39849,0,0,31,0,3,23448,85041,0,0,0,'','Throw Glaive - Glaive Target nord'),
+(13,1,40693,0,0,31,0,3,23197,0,0,0,0,'','Cage Trap Teleport - Maiev'),
+(13,1,40761,0,0,31,0,3,22917,0,0,0,0,'','Cage Trap - Illidan'),
+(13,4,40647,0,0,31,0,3,23089,0,0,0,0,'','Shadow Prison - Akama');
+
+-- Seconde cible des glaives : copie de la premiere a la position de TrinityCore
+DELETE FROM `creature` WHERE `guid` = 52502;
+INSERT INTO `creature` (`guid`,`id`,`map`,`zoneId`,`areaId`,`spawnDifficulties`,`phaseUseFlags`,`PhaseId`,`PhaseGroup`,`terrainSwapMap`,`modelid`,`equipment_id`,`position_x`,`position_y`,`position_z`,`orientation`,`spawntimesecs`,`spawndist`,`currentwaypoint`,`curhealth`,`curmana`,`MovementType`,`npcflag`,`unit_flags`,`unit_flags2`,`unit_flags3`,`dynamicflags`,`ScriptName`,`movementmode`,`VerifiedBuild`) SELECT 52502,`id`,`map`,`zoneId`,`areaId`,`spawnDifficulties`,`phaseUseFlags`,`PhaseId`,`PhaseGroup`,`terrainSwapMap`,`modelid`,`equipment_id`,678.06,285.22,354.325,3.29867,`spawntimesecs`,`spawndist`,`currentwaypoint`,`curhealth`,`curmana`,`MovementType`,`npcflag`,`unit_flags`,`unit_flags2`,`unit_flags3`,`dynamicflags`,`ScriptName`,`movementmode`,`VerifiedBuild` FROM `creature` WHERE `guid` = 85041;
+
+-- Scripts de sorts ecrits mais jamais rattaches
+DELETE FROM `spell_script_names` WHERE `spell_id` IN (39635,39849,39857,39873,39908,40398,40409,40511,40631,40693,40760,40761,40834,40904,41077,41081,41126,41242,41268,41917) AND (`ScriptName` LIKE 'spell_illidan%' OR `ScriptName` LIKE 'spell_maiev%');
+INSERT INTO `spell_script_names` (`spell_id`,`ScriptName`) VALUES
+(39635,'spell_illidan_throw_warglaive'),
+(39849,'spell_illidan_throw_warglaive'),
+(39857,'spell_illidan_tear_of_azzinoth_channel'),
+(39873,'spell_illidan_return_glaives'),
+(39908,'spell_illidan_eye_blast'),
+(40398,'spell_illidan_demon_transform2'),
+(40409,'spell_maiev_down'),
+(40511,'spell_illidan_demon_transform1'),
+(40631,'spell_illidan_flame_blast'),
+(40693,'spell_illidan_cage_teleport'),
+(40760,'spell_illidan_caged'),
+(40761,'spell_illidan_cage_trap'),
+(40834,'spell_illidan_agonizing_flames'),
+(40904,'spell_illidan_draw_soul'),
+(41077,'spell_illidan_akama_teleport'),
+(41081,'spell_illidan_find_target'),
+(41126,'spell_illidan_flame_burst'),
+(41242,'spell_illidan_despawn_akama'),
+(41268,'spell_illidan_akama_door_channel'),
+(41917,'spell_illidan_parasitic_shadowfiend');
+
+-- Scripts de PNJ non rattaches
+UPDATE `creature_template` SET `ScriptName` = 'npc_maiev' WHERE `entry` = 23197;
+UPDATE `creature_template` SET `ScriptName` = 'npc_illidan_db_target' WHERE `entry` = 23070;

@@ -449,7 +449,7 @@ public:
     struct boss_illidan_stormrageAI : public BossAI
     {
         boss_illidan_stormrageAI(Creature* creature) : BossAI(creature, DATA_ILLIDAN_STORMRAGE),
-            _intro(true), _minionsCount(0), _flameCount(0), _orientation(0.0f), _pillarIndex(0), _phase(0), _dead(false), _isDemon(false) { }
+            _minionsCount(0), _flameCount(0), _orientation(0.0f), _pillarIndex(0), _phase(0), _dead(false), _isDemon(false) { }
 
         void Reset() override
         {
@@ -465,7 +465,7 @@ public:
             _flameCount = 0;
             _phase = PHASE_1;
             _isDemon = false;
-            if (_intro && instance->GetBossState(DATA_ILLIDARI_COUNCIL) == DONE)
+            if (instance->GetData(DATA_AKAMA_ILLIDAN_INTRO) && instance->GetBossState(DATA_ILLIDARI_COUNCIL) == DONE)
                 if (Creature* akama = instance->GetCreature(DATA_AKAMA))
                     akama->AI()->DoAction(ACTION_ACTIVE_AKAMA_INTRO);
         }
@@ -566,7 +566,7 @@ public:
                         akama->AI()->DoAction(ACTION_FREE);
                     break;
                 case ACTION_INTRO_DONE:
-                    _intro = false;
+                    instance->SetData(DATA_AKAMA_ILLIDAN_INTRO, 0);
                     break;
                 case ACTION_START_MINIONS:
                     Talk(SAY_ILLIDAN_MINION);
@@ -1021,7 +1021,6 @@ public:
         }
 
     private:
-        bool _intro;
         uint8 _minionsCount;
         uint8 _flameCount;
         float _orientation;
@@ -1155,7 +1154,7 @@ public:
             {
                 case POINT_ILLIDARI_COUNCIL:
                     Talk(SAY_AKAMA_FINISH);
-                    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                    me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                     break;
                 case POINT_STAIRS:
                     ChangeOrientation(6.265732f);
@@ -1164,7 +1163,7 @@ public:
                 case POINT_ILLIDAN_ROOM:
                     ChangeOrientation(2.129302f);
                     Talk(SAY_AKAMA_BETRAYER);
-                    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                    me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                     break;
                 case POINT_FACE_ILLIDAN:
                     ChangeOrientation(3.140537f);

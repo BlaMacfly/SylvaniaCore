@@ -42,6 +42,7 @@ enum BTDataTypes
     DATA_AKAMA_SHADE                = 9,
 
     DATA_AKAMA                      = 10,
+    DATA_AKAMA_ILLIDAN_INTRO        = 100,
     DATA_MAIEV                      = 11,
     DATA_GO_ILLIDAN_GATE            = 12,
     DATA_BLACK_TEMPLE_TRIGGER       = 13,

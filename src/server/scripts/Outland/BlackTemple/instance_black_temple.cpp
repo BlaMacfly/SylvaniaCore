@@ -102,6 +102,7 @@ class instance_black_temple : public InstanceMapScript
                 LoadObjectData(creatureData, gameObjectData);
                 LoadBossBoundaries(boundaries);
                 akamaState = AKAMA_INTRO;
+                akamaIllidanIntro = 1;
             }
 
             void OnGameObjectCreate(GameObject* go) override
@@ -140,6 +141,9 @@ class instance_black_temple : public InstanceMapScript
                 if (data == DATA_AKAMA)
                     return akamaState;
 
+                if (data == DATA_AKAMA_ILLIDAN_INTRO)
+                    return akamaIllidanIntro;
+
                 return 0;
             }
 
@@ -149,6 +153,9 @@ class instance_black_temple : public InstanceMapScript
                 {
                 case DATA_AKAMA:
                     akamaState = value;
+                    break;
+                case DATA_AKAMA_ILLIDAN_INTRO:
+                    akamaIllidanIntro = value;
                     break;
                 case ACTION_OPEN_DOOR:
                     if (GameObject* illidanGate = GetGameObject(DATA_GO_ILLIDAN_GATE))
@@ -212,6 +219,7 @@ class instance_black_temple : public InstanceMapScript
         protected:
             GuidVector AshtongueGUIDs;
             uint8 akamaState;
+            uint8 akamaIllidanIntro;
         };
 
         InstanceScript* GetInstanceScript(InstanceMap* map) const override
