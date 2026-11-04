@@ -379,7 +379,7 @@ public:
             {
                 JustDied(me);
                 me->setFaction(35);
-                me->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                 endEncounter = true;
             }
 

@@ -653,7 +653,7 @@ class npc_foundry_pristine_true_iron_ore : public CreatureScript
                 {
                     m_Clicked = false;
 
-                    me->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+                    me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
                 }
             }
 

@@ -509,7 +509,7 @@ class npc_bethtilac_spiderweb_filament : public CreatureScript
                     if (data == POINT_DOWN)
                     {
                         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
-                        me->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
+                        me->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_SPELLCLICK);
                     }
             }
 
@@ -921,7 +921,7 @@ class spell_bethtilac_smoldering_devastation : public SpellScriptLoader
                         if (Creature* pFocus = (*itr)->ToCreature())
                         {
                             pFocus->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
-                            pFocus->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                            pFocus->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                             pFocus->CastSpell(pFocus, SPELL_TRANSFORM_CHARGED_CHITINOUS_FOCUS, true);
                         }
                     }

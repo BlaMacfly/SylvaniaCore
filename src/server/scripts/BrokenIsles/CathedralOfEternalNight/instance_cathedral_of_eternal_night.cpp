@@ -274,7 +274,7 @@ public:
                     if (Creature* egida = instance->GetCreature(EgidaDomatraxStarterGuid))
                     {
                         egida->SetVisible(true);
-                        egida->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                        egida->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                         egida->CastSpell(egida, 144373);
                     }
                     break;

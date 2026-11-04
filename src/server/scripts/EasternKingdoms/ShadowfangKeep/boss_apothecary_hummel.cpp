@@ -109,7 +109,7 @@ class boss_apothecary_hummel : public CreatureScript
             {
                 if (menuId == GOSSIP_MENU_HUMMEL && gossipListId == GOSSIP_OPTION_START)
                 {
-                    me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                    me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                     CloseGossipMenuFor(player);
                     DoAction(ACTION_START_EVENT);
                 }

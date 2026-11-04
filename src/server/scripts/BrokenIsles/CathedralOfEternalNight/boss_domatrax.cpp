@@ -315,7 +315,7 @@ public:
         void sGossipSelect(Player* player, uint32 sender, uint32 action) override
         {
             me->RemoveAurasDueToSpell(144373);
-            me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+            me->RemoveFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
 
             if (InstanceScript* instance = me->GetInstanceScript())
                 if (Creature* domatrax = instance->instance->GetCreature(instance->GetGuidData(BOSS_DOMATRAX)))

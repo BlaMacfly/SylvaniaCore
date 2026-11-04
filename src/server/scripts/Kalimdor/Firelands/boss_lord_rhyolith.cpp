@@ -1416,7 +1416,7 @@ class spell_lord_rhyolith_conclusive_stomp : public SpellScriptLoader
                         if (Creature* pFocus = (*itr)->ToCreature())
                         {
                             pFocus->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
-                            pFocus->SetFlag(UNIT_FIELD_FLAGS, UNIT_NPC_FLAG_GOSSIP);
+                            pFocus->SetFlag(UNIT_NPC_FLAGS, UNIT_NPC_FLAG_GOSSIP);
                             pFocus->CastSpell(pFocus, SPELL_TRANSFORM_CHARGED_RHYOLITH_FOCUS, true);
                         }
                     }
