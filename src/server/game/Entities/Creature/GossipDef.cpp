@@ -205,6 +205,8 @@ void PlayerMenu::ClearMenus()
 
 void PlayerMenu::SendGossipMenu(uint32 titleTextId, ObjectGuid objectGUID)
 {
+    if (objectGUID.GetEntry() == 21657)
+        TC_LOG_INFO("network", "[NELTHARAKU] send-gossip player=%s quests=%u options=%u", _session->GetPlayer()->GetName().c_str(), uint32(_questMenu.GetMenuItemCount()), uint32(_gossipMenu.GetMenuItems().size()));
     _interactionData.Reset();
     _interactionData.SourceGuid = objectGUID;
 
@@ -625,6 +627,8 @@ void PlayerMenu::SendQuestQueryResponse(Quest const* quest) const
 
 void PlayerMenu::SendQuestGiverOfferReward(Quest const* quest, ObjectGuid npcGUID, bool autoLaunched) const
 {
+    if (quest->GetQuestId() == 10837)
+        TC_LOG_INFO("network", "[NELTHARAKU] offer-window player=%s", _session->GetPlayer()->GetName().c_str());
     WorldPackets::Quest::QuestGiverOfferRewardMessage packet;
 
     packet.QuestTitle = quest->GetLogTitle();
@@ -682,6 +686,8 @@ void PlayerMenu::SendQuestGiverOfferReward(Quest const* quest, ObjectGuid npcGUI
 
 void PlayerMenu::SendQuestGiverRequestItems(Quest const* quest, ObjectGuid npcGUID, bool canComplete, bool autoLaunched) const
 {
+    if (quest->GetQuestId() == 10837)
+        TC_LOG_INFO("network", "[NELTHARAKU] items-window player=%s complete=%u auto=%u", _session->GetPlayer()->GetName().c_str(), uint32(canComplete), uint32(autoLaunched));
     // We can always call to RequestItems, but this packet only goes out if there are actually
     // items.  Otherwise, we'll skip straight to the OfferReward
 

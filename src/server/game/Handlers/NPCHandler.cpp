@@ -322,6 +322,8 @@ void WorldSession::HandleTrainerBuySpellOpcodeLegacy(WorldPackets::NPC::TrainerB
 void WorldSession::HandleGossipHelloOpcode(WorldPackets::NPC::Hello& packet)
 {
     Creature* unit = GetPlayer()->GetNPCIfCanInteractWith(packet.Unit, UNIT_NPC_FLAG_GOSSIP);
+    if (packet.Unit.GetEntry() == 21657)
+        TC_LOG_INFO("network", "[NELTHARAKU] gossip-hello player=%s allowed=%u", _player->GetName().c_str(), uint32(unit != nullptr));
     if (!unit)
     {
         TC_LOG_DEBUG("network", "WORLD: HandleGossipHelloOpcode - %s not found or you can not interact with him.", packet.Unit.ToString().c_str());

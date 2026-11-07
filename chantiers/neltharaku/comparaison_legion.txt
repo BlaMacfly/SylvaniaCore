@@ -1,0 +1,20 @@
+Legion neighbors compared on 2026-11-07:
+https://github.com/Titans-Project/LegionCore-Reforged/blob/main/src/server/game/Handlers/QuestHandler.cpp
+https://github.com/Titans-Project/LegionCore-Reforged/blob/main/src/server/game/Entities/Creature/GossipDef.cpp
+https://github.com/Titans-Project/LegionCore-Reforged/blob/main/src/server/game/Server/Packets/QuestPackets.cpp
+ArgusCore local reference: /home/ubuntu/tmp/arguscore_ref @50c3aeb3.
+
+The request-items payload and complete/incomplete StatusFlags match our core.
+Do not change these flags solely because some bits appear undocumented.
+Reforged and Argus explicitly pause movement when talking to a creature and
+set its home position. Our handlers only call StopMoving; the waypoint
+generator supplies the configured pause when it notices a stop in motion.
+This difference warrants investigation but does not demonstrate the reported
+failure to open the window, particularly when the NPC is already waiting.
+
+The 20:39 attempt produced no NELTHARAKU handler trace. The original trace
+does not cover initial gossip/questgiver hello or automatic request-items
+opening, so this is insufficient to conclude the client never interacted.
+Added entry-specific hello traces and quest-specific outgoing menu traces.
+Build succeeded (build-neltharaku-hello.done=0). Not installed or activated.
+No quest completion, gameplay data changes or restart performed in this audit.
