@@ -1,0 +1,30 @@
+Neltharaku / quest 10837 -- CMaNGOS TBC comparison, 2026-11-07
+
+Sources inspected:
+https://github.com/cmangos/tbc-db/blob/master/Full_DB/TBCDB_1.11.0_Vengeance_One_A_Cmangos_Story.sql.gz
+https://github.com/cmangos/mangos-tbc/blob/master/src/game/Quests/QuestHandler.cpp
+https://github.com/cmangos/mangos-tbc/blob/master/src/game/Entities/GossipDef.cpp
+https://github.com/cmangos/mangos-tbc/blob/master/src/game/AI/ScriptDevAI/scripts/outland/shadowmoon_valley.cpp
+
+Confirmed matching data:
+- Ender 21657, quest 10837, required item 31504 x12.
+- Creature faction 7, npcflags 3, unit_flags 256, gossip menu 8397.
+- Quest flags 136; no dedicated quest-completion script in TBC data.
+- The TBC handler calls the generic request-items/reward flow.
+- SylvaniaCore has the same generic flow and automatically sets DELIVER for item objectives.
+- Blez: quest status COMPLETE; twelve crystals were found in backpack slot 24.
+
+Differences not established as causes:
+- TBC has the full gossip dialogue menu chain; SylvaniaCore uses SmartAI quest credit.
+  That dialogue concerns quest 10814, not the item hand-in for 10837.
+- TBC InhabitType 5 and SylvaniaCore 4 use different movement implementations.
+  No movement or faction replacement is justified by this alone.
+
+No root cause or gameplay fix demonstrated. Do not import TBC network packets
+into Legion, bypass reward validation, or credit the quest artificially.
+The first diagnostic was filtered by Logger.root=5. Logger.network=3 was
+enabled and config reloaded live; no restart was performed for that change.
+Automatic opening via SendPreparedQuest/SendQuestGiverRequestItems remains
+outside the handler-only traces from commit 9eabd2cd4.
+Next investigation: cover the automatic opening path and validate the emitted
+Legion request-items packet offline, rather than repeatedly asking the player.
