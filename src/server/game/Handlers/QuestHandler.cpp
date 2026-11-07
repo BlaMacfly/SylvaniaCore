@@ -452,6 +452,8 @@ void WorldSession::HandleQuestgiverChooseRewardOpcode(WorldPackets::Quest::Quest
 
 void WorldSession::HandleQuestgiverRequestRewardOpcode(WorldPackets::Quest::QuestGiverRequestReward& packet)
 {
+    if (packet.QuestID == 10837)
+        TC_LOG_INFO("network", "[NELTHARAKU] request-reward player=%s status=%u", _player->GetName().c_str(), uint32(_player->GetQuestStatus(packet.QuestID)));
     TC_LOG_DEBUG("network", "WORLD: Received CMSG_QUESTGIVER_REQUEST_REWARD npc = %s, quest = %u", packet.QuestGiverGUID.ToString().c_str(), packet.QuestID);
 
     Object* object = ObjectAccessor::GetObjectByTypeMask(*_player, packet.QuestGiverGUID, TYPEMASK_UNIT | TYPEMASK_GAMEOBJECT);
@@ -469,7 +471,11 @@ void WorldSession::HandleQuestgiverRequestRewardOpcode(WorldPackets::Quest::Ques
         return;
 
     if (Quest const* quest = sObjectMgr->GetQuestTemplate(packet.QuestID))
+    {
+        if (packet.QuestID == 10837)
+            TC_LOG_INFO("network", "[NELTHARAKU] send-offer-reward player=%s", _player->GetName().c_str());
         _player->PlayerTalkClass->SendQuestGiverOfferReward(quest, packet.QuestGiverGUID, true);
+    }
 }
 
 void WorldSession::HandleQuestLogRemoveQuest(WorldPackets::Quest::QuestLogRemoveQuest& packet)
@@ -577,6 +583,8 @@ void WorldSession::HandleQuestConfirmAccept(WorldPackets::Quest::QuestConfirmAcc
 
 void WorldSession::HandleQuestgiverCompleteQuest(WorldPackets::Quest::QuestGiverCompleteQuest& packet)
 {
+    if (packet.QuestID == 10837)
+        TC_LOG_INFO("network", "[NELTHARAKU] complete-request player=%s status=%u from-script=%u", _player->GetName().c_str(), uint32(_player->GetQuestStatus(packet.QuestID)), uint32(packet.FromScript));
     bool autoCompleteMode = packet.FromScript; // 0 - standart complete quest mode with npc, 1 - auto-complete mode
 
     TC_LOG_DEBUG("network", "WORLD: Received CMSG_QUESTGIVER_COMPLETE_QUEST npc = %s, questId = %u self-complete: %u", packet.QuestGiverGUID.ToString().c_str(), packet.QuestID, autoCompleteMode ? 1 : 0);
@@ -599,6 +607,8 @@ void WorldSession::HandleQuestgiverCompleteQuest(WorldPackets::Quest::QuestGiver
 
     if (!autoCompleteMode)
     {
+        if (packet.QuestID == 10837)
+            TC_LOG_INFO("network", "[NELTHARAKU] interaction player=%s involved=%u allowed=%u", _player->GetName().c_str(), uint32(object->hasInvolvedQuest(packet.QuestID)), uint32(_player->CanInteractWithQuestGiver(object)));
         if (!object->hasInvolvedQuest(packet.QuestID))
             return;
 
@@ -622,6 +632,9 @@ void WorldSession::HandleQuestgiverCompleteQuest(WorldPackets::Quest::QuestGiver
 
     if (Battleground* bg = _player->GetBattleground())
         bg->HandleQuestComplete(packet.QuestID, _player);
+
+    if (packet.QuestID == 10837)
+        TC_LOG_INFO("network", "[NELTHARAKU] dispatch-window player=%s can-reward=%u deliver=%u", _player->GetName().c_str(), uint32(_player->CanRewardQuest(quest, false)), uint32(quest->HasSpecialFlag(QUEST_SPECIAL_FLAGS_DELIVER)));
 
     if (_player->GetQuestStatus(packet.QuestID) != QUEST_STATUS_COMPLETE)
     {
