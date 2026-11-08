@@ -22,6 +22,7 @@
 #include "PathGenerator.h"
 #include "Transport.h"
 #include "Unit.h"
+#include <cmath>
 
 namespace Movement
 {
@@ -108,6 +109,25 @@ namespace Movement
                 moveFlagsForSpeed &= ~MOVEMENTFLAG_WALKING;
 
             args.velocity = unit->GetSpeed(SelectSpeedType(moveFlagsForSpeed));
+        }
+
+        // Port de TrinityCore master (MoveSplineInitArgs::_checkPathLengths) : en chemin compresse,
+        // chaque point intermediaire part en delta autour du milieu du trajet, sur 11 bits (10 pour Z)
+        // au quart de yard, soit +/-256 yd (+/-128 en Z). Au-dela le delta deborde : le client affiche
+        // un autre trajet que celui du serveur (Neltharaku 21657, montgolfiere 55649). On envoie alors
+        // les points en clair. Chemins cycliques non touches (leur serialisation differe de master).
+        if (!args.flags.cyclic && !args.flags.uncompressedPath && args.path.size() > 2)
+        {
+            G3D::Vector3 middle = (args.path.front() + args.path.back()) / 2.f;
+            for (size_t i = 1; i < args.path.size() - 1; ++i)
+            {
+                G3D::Vector3 offset = middle - args.path[i];
+                if (std::fabs(offset.x) >= 256.f || std::fabs(offset.y) >= 256.f || std::fabs(offset.z) >= 128.f)
+                {
+                    args.flags.uncompressedPath = true;
+                    break;
+                }
+            }
         }
 
         if (!args.Validate(unit))
