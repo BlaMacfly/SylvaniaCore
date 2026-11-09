@@ -84,6 +84,7 @@
 #include "MapManager.h"
 #include "MiscPackets.h"
 #include "MotionMaster.h"
+#include "MoveSpline.h"
 #include "MovementPackets.h"
 #include "MoveSplineInitArgs.h"
 #include "ObjectAccessor.h"
@@ -2562,13 +2563,23 @@ Creature* Player::GetNPCIfCanInteractWith(ObjectGuid const& guid, uint64 npcflag
 
     // not unfriendly/hostile
     if (creature->GetReactionTo(this) <= REP_UNFRIENDLY)
+    {
+        if (creature->GetEntry() == 21657)
+            TC_LOG_INFO("network", "[NELTHARAKU] hostile player=%s reaction=%u", GetName().c_str(), uint32(creature->GetReactionTo(this)));
         return nullptr;
+    }
 
     // not too far, taken from CGGameUI::SetInteractTarget (TrinityCore 3.3.5 et master) : la portee suit
     // la taille de la creature. 5 yd fixes refusaient en silence les grands PNJ que le client laisse
     // cliquer (Neltharaku 21657, CombatReach 10 : 16,5 yd au lieu de 25,5).
     if (!creature->IsWithinDistInMap(this, creature->GetCombatReach() + 4.0f))
+    {
+        if (creature->GetEntry() == 21657)
+            TC_LOG_INFO("network", "[NELTHARAKU] too-far player=%s player=(%.1f %.1f %.1f) npc=(%.1f %.1f %.1f) dist=%.1f reach=%.1f moving=%u",
+                GetName().c_str(), GetPositionX(), GetPositionY(), GetPositionZ(), creature->GetPositionX(), creature->GetPositionY(), creature->GetPositionZ(),
+                GetExactDist(creature), creature->GetCombatReach(), uint32(!creature->movespline->Finalized()));
         return nullptr;
+    }
 
     return creature;
 }
