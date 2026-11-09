@@ -405,6 +405,50 @@ public:
     }
 };
 
+// 80582 - Olin Umberhide libere (Winds of Change 34462), d apres LegionCore-Reforged (npc_q34462)
+class npc_q34462 : public CreatureScript
+{
+public:
+    npc_q34462() : CreatureScript("npc_q34462") { }
+
+    enum
+    {
+        EVENT_OLIN_LEAVE   = 1,
+        ANIMKIT_OLIN_FREED = 655,
+    };
+
+    struct npc_q34462AI : public ScriptedAI
+    {
+        npc_q34462AI(Creature* creature) : ScriptedAI(creature) { }
+
+        EventMap _events;
+
+        void IsSummonedBy(Unit* summoner) override
+        {
+            Player* player = summoner->ToPlayer();
+            if (!player)
+                return;
+
+            me->PlayOneShotAnimKitId(ANIMKIT_OLIN_FREED);
+            Talk(0, player);
+            me->DespawnOrUnsummon(15000);
+            _events.ScheduleEvent(EVENT_OLIN_LEAVE, 5000);
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            _events.Update(diff);
+            if (_events.ExecuteEvent() == EVENT_OLIN_LEAVE)
+                me->GetMotionMaster()->MovePoint(1, 5733.759f, 4133.515f, 60.66695f);
+        }
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_q34462AI(creature);
+    }
+};
+
 void AddSC_frostfire_ridge()
 {
     /* BEGIN */
@@ -418,6 +462,7 @@ void AddSC_frostfire_ridge()
     new npc_gazlowe_garrison();
 
     new spell_frostridge_claiming();
+    new npc_q34462();
 
     /* BOSS */
     new npc_groog();

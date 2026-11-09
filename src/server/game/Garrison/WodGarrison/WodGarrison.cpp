@@ -26,6 +26,10 @@
 #include "VehicleDefines.h"
 #include "WodGarrison.h"
 #include "MotionMaster.h"
+#include "Random.h"
+#include <cmath>
+
+enum : uint32 { GARRISON_BUILDING_BARRACKS_1 = 26 }; // GarrBuilding.db2 : Caserne niveau 1
 
 WodGarrison::WodGarrison(Player* owner) : Garrison(owner)
 {
@@ -370,6 +374,23 @@ void WodGarrison::PlaceBuilding(uint32 garrPlotInstanceId, uint32 garrBuildingId
         placeBuildingResult.BuildingInfo.GarrBuildingID = garrBuildingId;
         placeBuildingResult.BuildingInfo.TimeBuilt = time(nullptr);
 
+        // LegionCore instance_garr.cpp (OnPlaceBuilding) : caserne de niveau 1 posee pendant "Construire votre caserne"
+        // (Horde 34461 / Alliance 34587). Construite en 60 s au lieu de 3600 (Gazlowe, texte 82336 : "seein' as how this
+        // is your first building...") ; cote Horde, credit de l'objectif "Suivez Gazlowe" (78466).
+        if (garrBuildingId == GARRISON_BUILDING_BARRACKS_1)
+        {
+            bool horde = GetFaction() == GARRISON_FACTION_INDEX_HORDE;
+            if (_owner->GetQuestStatus(horde ? 34461 : 34587) == QUEST_STATUS_INCOMPLETE)
+            {
+                if (Creature* guide = _owner->FindNearestCreature(horde ? 78466 : 77209, 100.0f))
+                {
+                    placeBuildingResult.BuildingInfo.TimeBuilt -= 3540;
+                    if (horde)
+                        _owner->KilledMonsterCredit(guide->GetEntry());
+                }
+            }
+        }
+
         Plot* plot = GetPlot(garrPlotInstanceId);
         uint32 oldBuildingId = 0;
         Map* map = FindMap();
@@ -475,7 +496,71 @@ void WodGarrison::ActivateBuilding(uint32 garrPlotInstanceId)
             WorldPackets::Garrison::GarrisonBuildingActivated buildingActivated;
             buildingActivated.GarrPlotInstanceID = garrPlotInstanceId;
             _owner->SendDirectMessage(buildingActivated.Write());
+
+            // LC Garrison.cpp:1393 / TC master Garrison::ActivateBuilding : jamais appele ici, d'ou "Finaliser votre parcelle"
+            // (critere 25030 = type 169 sur le batiment 26) impossible
+            _owner->UpdateCriteria(CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING, plot->BuildingInfo.PacketInfo->GarrBuildingID);
         }
+    }
+}
+
+/// Batiment offert par une quete : ni plan, ni cout, construit d emblee (LegionCore Garrison::PlaceBuilding(plot, build, true))
+void WodGarrison::PlaceQuestRewardBuilding(uint32 garrPlotInstanceId, uint32 garrBuildingId)
+{
+    Plot* plot = GetPlot(garrPlotInstanceId);
+    GarrPlotInstanceEntry const* plotInstance = sGarrPlotInstanceStore.LookupEntry(garrPlotInstanceId);
+    GarrBuildingEntry const* building = sGarrBuildingStore.LookupEntry(garrBuildingId);
+    if (!plot || !plotInstance || !building || plot->BuildingInfo.PacketInfo)
+        return;
+
+    if (!sGarrisonMgr.IsPlotMatchingBuilding(plotInstance->GarrPlotID, garrBuildingId))
+        return;
+
+    WorldPackets::Garrison::GarrisonPlaceBuildingResult placeBuildingResult;
+    placeBuildingResult.GarrTypeID = GARRISON_TYPE_GARRISON;
+    placeBuildingResult.Result = GARRISON_SUCCESS;
+    placeBuildingResult.BuildingInfo.GarrPlotInstanceID = garrPlotInstanceId;
+    placeBuildingResult.BuildingInfo.GarrBuildingID = garrBuildingId;
+    placeBuildingResult.BuildingInfo.TimeBuilt = time(nullptr) - building->BuildSeconds;
+
+    Map* map = FindMap();
+    if (map)
+        plot->DeleteGameObject(map);
+
+    plot->SetBuildingInfo(placeBuildingResult.BuildingInfo, _owner);
+    if (map)
+        if (GameObject* go = plot->CreateGameObject(map, GetFaction()))
+            map->AddToMap(go);
+
+    _owner->SendDirectMessage(placeBuildingResult.Write());
+    _owner->UpdateCriteria(CRITERIA_TYPE_PLACE_GARRISON_BUILDING, garrBuildingId);
+
+    ActivateBuilding(garrPlotInstanceId);
+}
+
+/// Batiments ouverts par une quete, leur sort de recompense n etant qu un effet factice (LegionCore Garrison::OnQuestReward)
+void WodGarrison::OnQuestReward(uint32 questId)
+{
+    switch (questId)
+    {
+        case 36404: // Clearing the Garden (jardin, parcelle 63)
+        case 34193:
+            PlaceQuestRewardBuilding(63, 29);
+            break;
+        case 35154: // Things Are Not Goren Our Way (mine, parcelle 59)
+        case 34192:
+            PlaceQuestRewardBuilding(59, 61);
+            break;
+        case 36870: // Luring Nat (cabane de peche, parcelle 67)
+        case 36612:
+            PlaceQuestRewardBuilding(67, 64);
+            break;
+        case 36483: // menagerie, parcelle 81
+        case 36662:
+            PlaceQuestRewardBuilding(81, 42);
+            break;
+        default:
+            break;
     }
 }
 
@@ -600,6 +685,117 @@ T* BuildingSpawnHelper(GameObject* building, ObjectGuid::LowType spawnId, Map* m
     return spawn;
 }
 
+namespace
+{
+    // Cartes de fief WoD par faction (niveaux 1, 2, 3) : cf. GarrSiteLevel.db2 (258/445/259 Horde, 5/444/6 Alliance)
+    bool IsWodGarrisonMapOfFaction(uint32 mapId, GarrisonFactionIndex faction)
+    {
+        switch (mapId)
+        {
+            case 1152: case 1330: case 1153: return faction == GARRISON_FACTION_INDEX_HORDE;
+            case 1158: case 1331: case 1159: return faction == GARRISON_FACTION_INDEX_ALLIANCE;
+            default: return false;
+        }
+    }
+
+    float PlotYaw(float qz, float qw) { return 2.0f * std::atan2(qz, qw); }
+
+    /// Garde les lignes relevees sur la carte courante, sinon celles d'une seule autre carte de la faction
+    /// (LC les prenait toutes : 9 couples batiment/parcelle releves sur deux niveaux apparaissaient en double).
+    std::vector<GarrisonBuildingSpawn const*> SelectBuildingSpawns(std::vector<GarrisonBuildingSpawn> const* rows, uint32 currentMapId, GarrisonFactionIndex faction, bool active, bool hasBuilding)
+    {
+        std::vector<GarrisonBuildingSpawn const*> selected;
+        if (!rows)
+            return selected;
+
+        uint32 sourceMapId = 0;
+        for (GarrisonBuildingSpawn const& row : *rows)
+            if (row.MapId == currentMapId)
+                sourceMapId = currentMapId;
+
+        for (GarrisonBuildingSpawn const& row : *rows)
+        {
+            if (!IsWodGarrisonMapOfFaction(row.MapId, faction))
+                continue;
+
+            if (!sourceMapId)
+                sourceMapId = row.MapId;
+            if (row.MapId != sourceMapId)
+                continue;
+
+            // regle de LC (GarrisonPlot.cpp) : ouvriers seulement pendant le chantier, contenu seulement batiment actif
+            if (row.DuringConstruction && !hasBuilding)
+                continue;
+            if (hasBuilding && active == row.DuringConstruction)
+                continue;
+
+            selected.push_back(&row);
+        }
+        return selected;
+    }
+}
+
+/// Recale une position relevee sur la parcelle `plotInstanceId` de la carte `sourceMapId` sur la parcelle courante.
+/// Identite quand la parcelle a la meme pose (ex. parcelle 18 Horde : 1152 = 1330, mais pas 1153).
+Position WodGarrison::Plot::RelocateBuildingSpawn(GarrisonBuildingSpawn const& row) const
+{
+    GameObjectsEntry const* source = sGarrisonMgr.GetPlotGameObject(row.MapId, PacketInfo.GarrPlotInstanceID);
+    if (!source)
+        return row.Pos;
+
+    Position const& target = PacketInfo.PlotPos.Pos;
+    float delta = PlotYaw(Rotation.z, Rotation.w) - PlotYaw(source->Rot[2], source->Rot[3]);
+    float dx = row.Pos.GetPositionX() - source->Pos.X;
+    float dy = row.Pos.GetPositionY() - source->Pos.Y;
+    float c = std::cos(delta), s = std::sin(delta);
+    return Position(target.GetPositionX() + dx * c - dy * s,
+                    target.GetPositionY() + dx * s + dy * c,
+                    target.GetPositionZ() + row.Pos.GetPositionZ() - source->Pos.Z,
+                    Position::NormalizeOrientation(row.Pos.GetOrientation() + delta));
+}
+
+void WodGarrison::Plot::SpawnBuildingContent(Map* map, GarrisonFactionIndex faction)
+{
+    bool hasBuilding = BuildingInfo.PacketInfo.has_value();
+    bool active = hasBuilding && BuildingInfo.PacketInfo->Active;
+    uint32 buildingId = active ? BuildingInfo.PacketInfo->GarrBuildingID : 0;
+
+    for (GarrisonBuildingSpawn const* row : SelectBuildingSpawns(sGarrisonMgr.GetBuildingGameObjects(buildingId, PacketInfo.GarrPlotInstanceID), map->GetId(), faction, active, hasBuilding))
+    {
+        Position pos = RelocateBuildingSpawn(*row);
+        QuaternionData rotation = QuaternionData::fromEulerAnglesZYX(pos.GetOrientation(), 0.0f, 0.0f);
+        GameObject* go = GameObject::CreateGameObject(row->Entry, map, pos, rotation, 255, GO_STATE_READY);
+        if (!go)
+            continue;
+
+        go->SetParentRotation(Rotation); // les releves LC portent la rotation de la parcelle, pas celle de l'objet
+        if (!go->IsPositionValid() || !map->AddToMap(go))
+        {
+            delete go;
+            continue;
+        }
+        BuildingInfo.Spawns.insert(go->GetGUID());
+    }
+
+    for (GarrisonBuildingSpawn const* row : SelectBuildingSpawns(sGarrisonMgr.GetBuildingCreatures(buildingId, PacketInfo.GarrPlotInstanceID), map->GetId(), faction, active, hasBuilding))
+    {
+        Creature* creature = Creature::CreateCreature(row->Entry, map, RelocateBuildingSpawn(*row));
+        if (!creature)
+            continue;
+
+        if (!creature->IsPositionValid() || !map->AddToMap(creature))
+        {
+            delete creature;
+            continue;
+        }
+
+        if (row->DuringConstruction) // LC : les ouvriers martelent (emotes 173 / 69)
+            creature->SetUInt32Value(UNIT_NPC_EMOTESTATE, urand(0, 1) ? 173 : 69);
+
+        BuildingInfo.Spawns.insert(creature->GetGUID());
+    }
+}
+
 GameObject* WodGarrison::Plot::CreateGameObject(Map* map, GarrisonFactionIndex faction)
 {
     uint32 entry = EmptyGameObjectId;
@@ -655,6 +851,8 @@ GameObject* WodGarrison::Plot::CreateGameObject(Map* map, GarrisonFactionIndex f
                     BuildingInfo.Spawns.insert(spawn->GetGUID());
         }
     }
+
+    SpawnBuildingContent(map, faction);
 
     BuildingInfo.Guid = building->GetGUID();
     return building;

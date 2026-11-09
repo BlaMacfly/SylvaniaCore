@@ -210,6 +210,7 @@ void GarrisonMgr::Initialize()
 
     InitializeDbIdSequences();
     LoadPlotFinalizeGOInfo();
+    LoadBuildingSpawns();
     LoadFollowerClassSpecAbilities();
     LoadPlotClassHallGOInfo();
 }
@@ -281,6 +282,27 @@ FinalizeGarrisonPlotGOInfo const* GarrisonMgr::GetPlotFinalizeGOInfo(uint32 garr
         return &itr->second;
 
     return nullptr;
+}
+
+template<class M>
+static std::vector<GarrisonBuildingSpawn> const* FindBuildingSpawns(M const& store, uint32 garrBuildingId, uint32 garrPlotInstanceId)
+{
+    auto b = store.find(garrBuildingId);
+    if (b == store.end())
+        return nullptr;
+
+    auto p = b->second.find(garrPlotInstanceId);
+    return p != b->second.end() ? &p->second : nullptr;
+}
+
+std::vector<GarrisonBuildingSpawn> const* GarrisonMgr::GetBuildingCreatures(uint32 garrBuildingId, uint32 garrPlotInstanceId) const
+{
+    return FindBuildingSpawns(_buildingCreatures, garrBuildingId, garrPlotInstanceId);
+}
+
+std::vector<GarrisonBuildingSpawn> const* GarrisonMgr::GetBuildingGameObjects(uint32 garrBuildingId, uint32 garrPlotInstanceId) const
+{
+    return FindBuildingSpawns(_buildingGameObjects, garrBuildingId, garrPlotInstanceId);
 }
 
 GarrisonClassHallPlotGOInfo const* GarrisonMgr::GetPlotClassHallGOInfo(uint32 garrPlotInstanceID) const
@@ -658,6 +680,122 @@ void GarrisonMgr::LoadPlotFinalizeGOInfo()
     } while (result->NextRow());
 
     TC_LOG_INFO("server.loading", ">> Loaded %u garrison plot finalize entries in %u.", uint32(_finalizePlotGOInfo.size()), GetMSTimeDiffToNow(msTime));
+}
+
+/// Contenu des batiments du fief WoD, porte de LegionCore (GarrisonMgr::LoadBuildingSpawnNPC / LoadBuildingSpawnGo).
+/// Sans ces tables, aucun batiment n'a de PNJ : aucune carte de batiment (SpawnMap du gabarit 38) n'a d'apparition.
+void GarrisonMgr::LoadBuildingSpawns()
+{
+    uint32 msTime = getMSTime();
+    _buildingCreatures.clear();
+    _buildingGameObjects.clear();
+
+    // Une partie des lignes LC portent la carte du niveau 2 (1330/1331) pour des parcelles qui n'existent qu'au niveau 3
+    // (20, 24, 25) : leurs coordonnees sont celles du niveau 3 (ex. parcelle 20 : 5617,7/4510,6 = GameObjects.db2 sur 1153).
+    // On rattache alors la ligne a la carte de la meme faction qui possede la parcelle.
+    auto checkKeys = [this](char const* table, uint32 plotInstanceId, uint32 buildingId, uint32& mapId) -> bool
+    {
+        static uint32 const hordeMaps[] = { 1153, 1330, 1152 };
+        static uint32 const allianceMaps[] = { 1159, 1331, 1158 };
+        if (!GetPlotGameObject(mapId, plotInstanceId))
+        {
+            uint32 const* maps = nullptr;
+            if (mapId == 1152 || mapId == 1330 || mapId == 1153)
+                maps = hordeMaps;
+            else if (mapId == 1158 || mapId == 1331 || mapId == 1159)
+                maps = allianceMaps;
+            if (maps)
+                for (uint8 i = 0; i < 3; ++i)
+                    if (GetPlotGameObject(maps[i], plotInstanceId))
+                    {
+                        mapId = maps[i];
+                        break;
+                    }
+        }
+
+        if (!sGarrPlotInstanceStore.LookupEntry(plotInstanceId))
+        {
+            TC_LOG_ERROR("sql.sql", "Table `%s` references non-existing GarrPlotInstance %u, skipped.", table, plotInstanceId);
+            return false;
+        }
+        if (buildingId && !sGarrBuildingStore.LookupEntry(buildingId))
+        {
+            TC_LOG_ERROR("sql.sql", "Table `%s` references non-existing GarrBuilding %u, skipped.", table, buildingId);
+            return false;
+        }
+        if (!GetPlotGameObject(mapId, plotInstanceId))
+        {
+            TC_LOG_ERROR("sql.sql", "Table `%s` references plot %u on map %u, which has no plot there, skipped.", table, plotInstanceId, mapId);
+            return false;
+        }
+        return true;
+    };
+
+    uint32 creatures = 0;
+    //                                                  0       1        2   3    4           5           6           7            8
+    if (QueryResult result = WorldDatabase.Query("SELECT plotID, BuildID, id, map, position_x, position_y, position_z, orientation, building FROM garrison_building_creature"))
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 plotInstanceId = fields[0].GetUInt32();
+            uint32 buildingId = fields[1].GetUInt32();
+            GarrisonBuildingSpawn spawn;
+            spawn.Entry = fields[2].GetUInt32();
+            spawn.MapId = fields[3].GetUInt16();
+            spawn.Pos.Relocate(fields[4].GetFloat(), fields[5].GetFloat(), fields[6].GetFloat(), fields[7].GetFloat());
+            spawn.DuringConstruction = fields[8].GetBool();
+
+            if (!sObjectMgr->GetCreatureTemplate(spawn.Entry))
+            {
+                TC_LOG_ERROR("sql.sql", "Table `garrison_building_creature` has non-existing creature entry %u, skipped.", spawn.Entry);
+                continue;
+            }
+            if (!checkKeys("garrison_building_creature", plotInstanceId, buildingId, spawn.MapId))
+                continue;
+
+            _buildingCreatures[buildingId][plotInstanceId].push_back(spawn);
+            ++creatures;
+        } while (result->NextRow());
+    }
+
+    uint32 gameobjects = 0;
+    //                                                  0       1        2   3    4           5           6           7            8          9          10         11         12
+    if (QueryResult result = WorldDatabase.Query("SELECT plotID, BuildID, id, map, position_x, position_y, position_z, orientation, rotation0, rotation1, rotation2, rotation3, building FROM garrison_building_gameobject"))
+    {
+        do
+        {
+            Field* fields = result->Fetch();
+            uint32 plotInstanceId = fields[0].GetUInt32();
+            uint32 buildingId = fields[1].GetUInt32();
+            GarrisonBuildingSpawn spawn;
+            spawn.Entry = fields[2].GetUInt32();
+            spawn.MapId = fields[3].GetUInt16();
+            spawn.Pos.Relocate(fields[4].GetFloat(), fields[5].GetFloat(), fields[6].GetFloat(), fields[7].GetFloat());
+            spawn.ParentRotation = QuaternionData(fields[8].GetFloat(), fields[9].GetFloat(), fields[10].GetFloat(), fields[11].GetFloat());
+            spawn.DuringConstruction = fields[12].GetBool();
+
+            GameObjectTemplate const* goTemplate = sObjectMgr->GetGameObjectTemplate(spawn.Entry);
+            if (!goTemplate)
+            {
+                TC_LOG_ERROR("sql.sql", "Table `garrison_building_gameobject` has non-existing gameobject entry %u, skipped.", spawn.Entry);
+                continue;
+            }
+            // comme LC : jamais de batiment ou de parcelle dans le contenu d'un batiment (sauf 239085, parcelle du chantier naval)
+            if ((goTemplate->type == GAMEOBJECT_TYPE_GARRISON_BUILDING || goTemplate->type == GAMEOBJECT_TYPE_GARRISON_PLOT) && spawn.Entry != 239085)
+            {
+                TC_LOG_ERROR("sql.sql", "Table `garrison_building_gameobject` has gameobject %u of forbidden type %u, skipped.", spawn.Entry, goTemplate->type);
+                continue;
+            }
+            if (!checkKeys("garrison_building_gameobject", plotInstanceId, buildingId, spawn.MapId))
+                continue;
+
+            _buildingGameObjects[buildingId][plotInstanceId].push_back(spawn);
+            ++gameobjects;
+        } while (result->NextRow());
+    }
+
+    TC_LOG_INFO("server.loading", ">> Loaded %u garrison building creatures and %u gameobjects in %u ms.", creatures, gameobjects, GetMSTimeDiffToNow(msTime));
 }
 
 void GarrisonMgr::LoadFollowerClassSpecAbilities()

@@ -64,6 +64,8 @@ public:
     struct Plot
     {
         GameObject* CreateGameObject(Map* map, GarrisonFactionIndex faction);
+        void SpawnBuildingContent(Map* map, GarrisonFactionIndex faction);
+        Position RelocateBuildingSpawn(GarrisonBuildingSpawn const& row) const;
         void DeleteGameObject(Map* map);
         void ClearBuildingInfo(Player* owner);
         void SetBuildingInfo(WorldPackets::Garrison::GarrisonBuildingInfo const& buildingInfo, Player* owner);
@@ -104,6 +106,8 @@ public:
     void PlaceBuilding(uint32 garrPlotInstanceId, uint32 garrBuildingId);
     void CancelBuildingConstruction(uint32 garrPlotInstanceId);
     void ActivateBuilding(uint32 garrPlotInstanceId);
+    void PlaceQuestRewardBuilding(uint32 garrPlotInstanceId, uint32 garrBuildingId);
+    void OnQuestReward(uint32 questId);
     std::unordered_set<uint32 /*garrBuildingId*/> const& GetKnownBuildings() const;
 
     void SendBuildingLandmarks(Player* receiver) const;

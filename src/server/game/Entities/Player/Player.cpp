@@ -16557,6 +16557,10 @@ void Player::RewardQuest(Quest const* quest, uint32 reward, Object* questGiver, 
     sScriptMgr->OnQuestStatusChange(this, quest_id);
     sScriptMgr->OnQuestReward(this, quest);
 
+    if (Garrison* garrison = GetGarrison(GARRISON_TYPE_GARRISON))
+        if (WodGarrison* wodGarrison = garrison->ToWodGarrison())
+            wodGarrison->OnQuestReward(quest_id);
+
     for (uint16 index = 0; index < MAX_QUEST_LOG_SIZE; ++index)
     {
         uint32 qu_id = GetQuestSlotQuestId(index);

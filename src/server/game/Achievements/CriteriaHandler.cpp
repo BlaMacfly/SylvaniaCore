@@ -526,6 +526,7 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_WIN_ARENA: // This also behaves like CRITERIA_TYPE_WIN_RATED_ARENA
         case CRITERIA_TYPE_ON_LOGIN:
         case CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
+        case CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING: // ActivateBuilding (LC Garrison.cpp:1393)
         case CRITERIA_TYPE_COLLECT_BATTLEPET:
         case CRITERIA_TYPE_CAPTURE_PET_IN_BATTLE:
         case CRITERIA_TYPE_BATTLEPET_WIN:
@@ -794,7 +795,6 @@ void CriteriaHandler::UpdateCriteria(CriteriaTypes type, uint64 miscValue1 /*= 0
         case CRITERIA_TYPE_COUNT_OF_LFR_QUEUE_BOOSTS_BY_TANK:
         case CRITERIA_TYPE_COMPLETE_SCENARIO_COUNT:
         case CRITERIA_TYPE_UPGRADE_GARRISON_BUILDING:
-        case CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
         case CRITERIA_TYPE_UPGRADE_GARRISON:
         case CRITERIA_TYPE_LEARN_GARRISON_BLUEPRINT_COUNT:
         case CRITERIA_TYPE_RAISE_GARRISON_FOLLOWER_LEVEL:
@@ -1208,6 +1208,7 @@ bool CriteriaHandler::IsCompletedCriteria(Criteria const* criteria, uint64 requi
     case CRITERIA_TYPE_GET_KILLING_BLOWS:
     case CRITERIA_TYPE_CURRENCY:
     case CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
+    case CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
     case CRITERIA_TYPE_BUY_GUILD_TABARD:
     case CRITERIA_TYPE_EARN_GUILD_ACHIEVEMENT_POINTS:
     case CRITERIA_TYPE_APPEARANCE_UNLOCKED_BY_SLOT:
@@ -1404,6 +1405,7 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
     }
     case CRITERIA_TYPE_START_GARRISON_MISSION:
     case CRITERIA_TYPE_START_ORDER_HALL_MISSION:
+    case CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT:
     case CRITERIA_TYPE_RELIC_TALENT_UNLOCKED:
     case CRITERIA_TYPE_SURVEY_GAMEOBJECT:
     case CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT:
@@ -1700,6 +1702,7 @@ bool CriteriaHandler::RequirementsSatisfied(Criteria const* criteria, uint64 mis
     case CRITERIA_TYPE_HIGHEST_TEAM_RATING:
         return false;
     case CRITERIA_TYPE_PLACE_GARRISON_BUILDING:
+    case CRITERIA_TYPE_CONSTRUCT_GARRISON_BUILDING:
         if (miscValue1 != uint32(criteria->Entry->Asset.GarrBuildingID))
             return false;
         break;

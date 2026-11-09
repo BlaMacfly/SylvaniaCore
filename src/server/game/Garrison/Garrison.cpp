@@ -1163,8 +1163,11 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
 
     SendStartMissionResult(true, mission, &Followers);
 
-    // criteres « lancer une mission » (campagnes de domaine, quetes navales)
-    _owner->UpdateCriteria(GetType() == GARRISON_TYPE_CLASS_HALL ? CRITERIA_TYPE_START_ORDER_HALL_MISSION : CRITERIA_TYPE_START_GARRISON_MISSION, garrMissionId);
+    // criteres « lancer une mission » (TC master DBCEnums.h) :
+    // 171 = toute mission d un type de sujet (Asset = GarrFollowerType : 1 fief, 2 chantier naval, 4 domaine), ex. Mission Probable 34775
+    // 172 = une mission precise (Asset = GarrMission), fief comme domaine
+    _owner->UpdateCriteria(CRITERIA_TYPE_START_GARRISON_MISSION, missionEntry->FollowerType);
+    _owner->UpdateCriteria(CRITERIA_TYPE_START_ORDER_HALL_MISSION, garrMissionId);
 }
 
 void Garrison::SendStartMissionResult(bool success, Mission* mission /*= nullptr*/, std::vector<uint64 /*DbID*/>* Followers /*= nullptr*/)
@@ -1245,7 +1248,7 @@ void Garrison::CompleteMission(uint32 garrMissionId)
         if (success)
         {
             _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_MISSION, missionEntry->ID);
-            _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT, missionEntry->ID);
+            _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_MISSION_COUNT, missionEntry->FollowerType); // 173 : Asset = GarrFollowerType
         }
     }
 

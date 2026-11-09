@@ -23,6 +23,7 @@
 #include "GarrisonConstants.h"
 #include "Hash.h"
 #include "Position.h"
+#include "GameObjectData.h"
 #include <list>
 #include <set>
 #include <unordered_map>
@@ -46,6 +47,19 @@ struct FinalizeGarrisonPlotGOInfo
         Position Pos;
         uint16 AnimKitId;
     } FactionInfo[2];
+};
+
+/// Contenu d'un batiment de fief (PNJ / objets), repris de LegionCore
+/// (tables garrison_building_creature / garrison_building_gameobject).
+/// Positions absolues, relevees sur la carte `MapId` ; elles sont recalees
+/// sur la parcelle courante si celle-ci n'a pas la meme pose sur la carte du fief.
+struct GarrisonBuildingSpawn
+{
+    uint32 Entry = 0;
+    uint32 MapId = 0;
+    Position Pos;
+    QuaternionData ParentRotation;      // colonnes rotation0-3 de LC = rotation PARENTE (celle de la parcelle)
+    bool DuringConstruction = false;    // colonne `building` de LC : 1 = ouvriers du chantier
 };
 
 struct GarrisonClassHallPlotGOInfo
@@ -123,6 +137,8 @@ public:
     uint32 GetGarrBuildingPlotInst(uint32 garrBuildingId, uint32 garrSiteLevelPlotInstId) const;
     uint32 GetPreviousLevelBuildingId(uint32 buildingType, uint32 currentLevel) const;
     FinalizeGarrisonPlotGOInfo const* GetPlotFinalizeGOInfo(uint32 garrPlotInstanceID) const;
+    std::vector<GarrisonBuildingSpawn> const* GetBuildingCreatures(uint32 garrBuildingId, uint32 garrPlotInstanceId) const;
+    std::vector<GarrisonBuildingSpawn> const* GetBuildingGameObjects(uint32 garrBuildingId, uint32 garrPlotInstanceId) const;
     GarrisonClassHallPlotGOInfo const* GetPlotClassHallGOInfo(uint32 garrPlotInstanceID) const;
     std::vector<GarrisonClassHallPlotGOInfo> GetPlotClassHallByCreatureId(uint32 creatureID) const;
     uint64 GenerateFollowerDbId();
@@ -149,6 +165,7 @@ private:
     std::unordered_map<uint32 /*containerId*/, std::vector<CharShipmentEntry const*>> _shipmentsByContainer;
     void InitializeDbIdSequences();
     void LoadPlotFinalizeGOInfo();
+    void LoadBuildingSpawns();
     void LoadFollowerClassSpecAbilities();
     void LoadPlotClassHallGOInfo();
 
@@ -158,6 +175,9 @@ private:
     std::unordered_map<std::pair<uint32 /*garrBuildingId*/, uint32 /*garrSiteLevelPlotInstId*/>, uint32 /*garrBuildingPlotInstId*/> _garrisonBuildingPlotInstances;
     std::unordered_map<uint32 /*buildingType*/, std::vector<uint32>> _garrisonBuildingsByType;
     std::unordered_map<uint32 /*garrPlotInstanceId*/, FinalizeGarrisonPlotGOInfo> _finalizePlotGOInfo;
+    // garrBuildingId 0 = parcelle vide ou en chantier (comme chez LegionCore)
+    std::unordered_map<uint32 /*garrBuildingId*/, std::unordered_map<uint32 /*garrPlotInstanceId*/, std::vector<GarrisonBuildingSpawn>>> _buildingCreatures;
+    std::unordered_map<uint32 /*garrBuildingId*/, std::unordered_map<uint32 /*garrPlotInstanceId*/, std::vector<GarrisonBuildingSpawn>>> _buildingGameObjects;
     std::unordered_map<uint32 /*garrPlotInstanceId*/, GarrisonClassHallPlotGOInfo> _classHallPlotGOInfo;
     std::unordered_map<uint32 /*garrFollowerId*/, GarrAbilities> _garrisonFollowerAbilities[2];
     std::unordered_map<uint32 /*classSpecId*/, std::list<GarrAbilityEntry const*>> _garrisonFollowerClassSpecAbilities;
