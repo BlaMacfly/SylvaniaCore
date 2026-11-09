@@ -44,6 +44,7 @@ enum
 {
     PHASE_DALARAN_KARAZHAN  = 5829,
     QUEST_BLINK_OF_AN_EYE   = 44663,
+    QUEST_BLINK_OF_AN_EYE_ALLIANCE = 44184,
 };
 
 // TODO : All this script is temp fix,
@@ -1570,10 +1571,33 @@ struct npc_emissary_auldbridge_111109 : public ScriptedAI
         m_playerGUID = ObjectGuid::Empty;
     }
 
+    static bool HasRewardedBlinkOfAnEye(Player* player)
+    {
+        return player->GetQuestStatus(QUEST_BLINK_OF_AN_EYE) == QUEST_STATUS_REWARDED || player->GetQuestStatus(QUEST_BLINK_OF_AN_EYE_ALLIANCE) == QUEST_STATUS_REWARDED;
+    }
+
+    // Joueurs ayant rendu la quete avant que ce script soit rattache (ScriptName vide jusqu au 10/11/2026) :
+    // la quete de classe leur est proposee quand ils repassent devant l emissaire.
+    void MoveInLineOfSight(Unit* who) override
+    {
+        Player* player = who->ToPlayer();
+        if (!player || !m_playerGUID.IsEmpty() || pList.count(player->GetGUID()) || !me->IsWithinDistInMap(player, 15.0f))
+            return;
+
+        if (!HasRewardedBlinkOfAnEye(player))
+            return;
+
+        pList.insert(player->GetGUID());
+        m_playerGUID = player->GetGUID();
+        CheckQuestGive();
+        m_playerGUID = ObjectGuid::Empty;
+    }
+
     void sQuestReward(Player* player, Quest const* quest, uint32 /*opt*/)  override
     {
-        if (quest->GetQuestId() == QUEST_BLINK_OF_AN_EYE)
+        if (quest->GetQuestId() == QUEST_BLINK_OF_AN_EYE || quest->GetQuestId() == QUEST_BLINK_OF_AN_EYE_ALLIANCE)
         {
+                pList.insert(player->GetGUID());
                 m_playerGUID = player->GetGUID();
                 events.ScheduleEvent(DATA_TALK_1, 1s);  
         }            
@@ -1632,7 +1656,7 @@ struct npc_emissary_auldbridge_111109 : public ScriptedAI
         if (!m_playerGUID.IsEmpty())
         {
             if (Player* player = ObjectAccessor::GetPlayer(*me, m_playerGUID))
-                if (player->GetQuestStatus(QUEST_BLINK_OF_AN_EYE) == QUEST_STATUS_REWARDED && player->getLevel() >= 98 && player->GetZoneId() == 7502 && player->IsInWorld() || player->IsAlive())
+                if (HasRewardedBlinkOfAnEye(player) && player->getLevel() >= 98 && player->GetZoneId() == 7502 && player->IsInWorld() && player->IsAlive())
                 {
                     //Druid Quest
                     if (player->getClass() == CLASS_DRUID && player->GetQuestStatus(QUEST_A_SUMMONS_FROM_MOONGLADE) == QUEST_STATUS_NONE)
