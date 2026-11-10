@@ -34,7 +34,7 @@ enum
     NPC_KATHRA_NATIR_102785 = 102785,
     NPC_MERYL_FELSTORM_102850 = 102850,
     NPC_SIPHONING_RIFT_102787 = 102787,
-    NPC_FORGE_OF_THE_GUARDIAN_447175 = 447175,
+    NPC_FORGE_OF_THE_GUARDIAN_102786 = 102786,
     NPC_ALODI = 102846,
     PLAYER_GUID = 0,
     TALK_INTRO = 0,
@@ -108,7 +108,7 @@ struct scenario_the_violet_hold : public InstanceScript
         case NPC_KATHRA_NATIR_102785:
             m_kathra_natirGUID = creature->GetGUID();
             break;
-        case NPC_FORGE_OF_THE_GUARDIAN_447175:
+        case NPC_FORGE_OF_THE_GUARDIAN_102786:
             m_forge_of_the_guardianGUID = creature->GetGUID();
             break;
         case NPC_ALODI:

@@ -1234,6 +1234,12 @@ void InstanceScript::SendScenarioState(ScenarioData p_Data, Player* p_Player /*=
 
     l_Data << uint32(p_Data.m_CriteriaCount);
     l_Data << uint32(p_Data.m_BonusCount);
+    l_Data << uint32(0);                            // PickedSteps
+    l_Data << uint32(0);                            // Spells
+
+    // 7.3.5 layout (see WorldPackets::Scenario::ScenarioState::Write): completion bit before the arrays
+    l_Data.WriteBit(p_Data.m_ScenarioComplete);
+    l_Data.FlushBits();
 
     for (CriteriaProgressData l_ProgressData : p_Data.m_CriteriaProgress)
         BuildCriteriaProgressPacket(&l_Data, l_ProgressData);
@@ -1244,9 +1250,6 @@ void InstanceScript::SendScenarioState(ScenarioData p_Data, Player* p_Player /*=
         l_Data.WriteBit(l_BonusObjective.m_ObjectiveComplete);
         l_Data.FlushBits();
     }
-
-    l_Data.WriteBit(p_Data.m_ScenarioComplete);
-    l_Data.FlushBits();
 
     if (p_Player == nullptr)
         instance->SendToPlayers(&l_Data);
