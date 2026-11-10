@@ -49,13 +49,15 @@ void EventMap::ScheduleEvent(uint32 eventId, Milliseconds const& minTime, Millis
 
 void EventMap::ScheduleEvent(uint32 eventId, uint32 time, uint16 group /*= 0*/, uint16 phase /*= 0*/)
 {
+    // group and phase bits live above bit 31: build them on 64 bits, a uint32 eventId would drop them
+    uint64 data = eventId;
     if (group && group < 16)
-        eventId |= (1LL << (group + 31));
+        data |= (uint64(1) << (group + 31));
 
     if (phase && phase < 16)
-        eventId |= (1LL << (phase + 47));
+        data |= (uint64(1) << (phase + 47));
 
-    _eventMap.insert(EventStore::value_type(_time + time, eventId));
+    _eventMap.insert(EventStore::value_type(_time + time, data));
 }
 
 void EventMap::RescheduleEvent(uint32 eventId, Milliseconds const& minTime, Milliseconds const& maxTime, uint16 group /*= 0*/, uint16 phase /*= 0*/)
