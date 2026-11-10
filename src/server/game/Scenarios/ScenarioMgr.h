@@ -46,12 +46,13 @@ struct ScenarioDBData
 {
     uint32 MapID;
     uint8 DifficultyID;
+    uint8 ClassID;          // 0 = any class
     uint32 ZoneID;
     uint32 Scenario_A;
     uint32 Scenario_H;
 };
 
-typedef std::unordered_map<std::pair<uint32, uint8>, ScenarioDBData> ScenarioDBDataContainer;
+typedef std::unordered_map<std::pair<uint32, uint8>, std::vector<ScenarioDBData>> ScenarioDBDataContainer;
 typedef std::map<uint32, ScenarioData> ScenarioDataContainer;
 
 enum ScenarioType
@@ -107,7 +108,7 @@ private:
 public:
     static ScenarioMgr* Instance();
 
-    InstanceScenario* CreateInstanceScenario(Map const* map, TeamId team, uint32 zoneId) const;
+    InstanceScenario* CreateInstanceScenario(Map const* map, TeamId team, uint32 zoneId, uint8 playerClass = 0) const;
     InstanceScenario* CreateInstanceScenarioByID(Map const * map, uint32 zoneId) ;
 
     void LoadDBData();
@@ -120,6 +121,8 @@ private:
     ScenarioDataContainer _scenarioData;
     ScenarioPOIContainer _scenarioPOIStore;
     ScenarioDBDataContainer _scenarioDBData;
+
+    ScenarioDBData const* SelectDBData(uint32 mapId, uint8 difficulty, uint8 playerClass) const;
 
     ScenarioMgr(ScenarioMgr const&) = delete;
     ScenarioMgr& operator=(ScenarioMgr const&) = delete;

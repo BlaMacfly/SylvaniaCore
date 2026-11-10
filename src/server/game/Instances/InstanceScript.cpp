@@ -1205,7 +1205,7 @@ void InstanceScript::GetScenarioData(Player* p_Player/*= nullptr*/)
     InstanceMap* map = instance->ToInstanceMap();
     //map->SetDifficultyID(DIFFICULTY_MYTHIC_KEYSTONE);
     TC_LOG_ERROR("scripts", "GetScenarioData  map->SetDifficultyID %s", "");
-    if (InstanceScenario* instanceScenario = sScenarioMgr->CreateInstanceScenario(map, tid, zoneid))
+    if (InstanceScenario* instanceScenario = sScenarioMgr->CreateInstanceScenario(map, tid, zoneid, p_Player ? p_Player->getClass() : 0))
     {
         TC_LOG_ERROR("scripts", "GetScenarioData CreateInstanceScenario %s", "");
         m_ScenarioID = instanceScenario->GetStep()->ScenarioID;

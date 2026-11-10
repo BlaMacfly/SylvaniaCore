@@ -29,53 +29,55 @@ ScenarioMgr* ScenarioMgr::Instance()
     return &instance;
 }
 
-InstanceScenario* ScenarioMgr::CreateInstanceScenario(Map const* map, TeamId team, uint32 zoneId) const
+// Class scenarios share a map (Violet Hold 1494: mage 1034, hunter 1136): pick the row of the player's class,
+// else a row for any class (LegionCore scenario_data.Class)
+ScenarioDBData const* ScenarioMgr::SelectDBData(uint32 mapId, uint8 difficulty, uint8 playerClass) const
 {
-    auto dbDataItr = _scenarioDBData.find(std::make_pair(map->GetId(), map->GetDifficultyID()));
-    // No scenario registered for this map and difficulty in the database
-    if (dbDataItr == _scenarioDBData.end())
-    {
-        // We then search for global scenario
-        dbDataItr = _scenarioDBData.find(std::make_pair(map->GetId(), 0));
+    auto itr = _scenarioDBData.find(std::make_pair(mapId, difficulty));
+    if (itr == _scenarioDBData.end())
+        return nullptr;
 
-        // No more luck, return
-        if (dbDataItr == _scenarioDBData.end())
-            return nullptr;
+    ScenarioDBData const* anyClass = nullptr;
+    for (ScenarioDBData const& data : itr->second)
+    {
+        if (!data.ClassID)
+            anyClass = &data;
+        else if (data.ClassID == playerClass)
+            return &data;
     }
+
+    return anyClass;
+}
+
+InstanceScenario* ScenarioMgr::CreateInstanceScenario(Map const* map, TeamId team, uint32 zoneId, uint8 playerClass /*= 0*/) const
+{
+    ScenarioDBData const* dbData = SelectDBData(map->GetId(), map->GetDifficultyID(), playerClass);
+    // No scenario registered for this map and difficulty in the database: we then search for global scenario
+    if (!dbData)
+        dbData = SelectDBData(map->GetId(), 0, playerClass);
+
+    // No more luck, return
+    if (!dbData)
+        return nullptr;
 
     uint32 scenarioID = 0;
     switch (team)
     {
     case TEAM_ALLIANCE:
-        if (dbDataItr->second.ZoneID > 0)
-        {
-            if (zoneId == dbDataItr->second.ZoneID)
-            {
-                scenarioID = dbDataItr->second.Scenario_A;
-            }
-        }
-        else
-        {
-            scenarioID = dbDataItr->second.Scenario_A;
-        }
+        if (!dbData->ZoneID || zoneId == dbData->ZoneID)
+            scenarioID = dbData->Scenario_A;
         break;
     case TEAM_HORDE:
-        if (dbDataItr->second.ZoneID > 0)
-        {
-            if (zoneId == dbDataItr->second.ZoneID)
-            {
-                scenarioID = dbDataItr->second.Scenario_H;
-            }
-        }
-        else
-        {
-            scenarioID = dbDataItr->second.Scenario_H;
-        }
+        if (!dbData->ZoneID || zoneId == dbData->ZoneID)
+            scenarioID = dbData->Scenario_H;
         break;
     default:
         break;
     }
 
+    // class row without a scenario (LegionCore uses 0 to give none to that class)
+    if (!scenarioID)
+        return nullptr;
 
     auto itr = _scenarioData.find(scenarioID);
     if (itr == _scenarioData.end())
@@ -89,29 +91,14 @@ InstanceScenario* ScenarioMgr::CreateInstanceScenario(Map const* map, TeamId tea
 
 InstanceScenario * ScenarioMgr::CreateInstanceScenarioByID(Map const * map, uint32 zoneId)
 {
-    auto dbDataItr = _scenarioDBData.find(std::make_pair(map->GetId(), map->GetDifficultyID()));
+    ScenarioDBData const* dbData = SelectDBData(map->GetId(), map->GetDifficultyID(), 0);
     // No scenario registered for this map and difficulty in the database
-    if (dbDataItr == _scenarioDBData.end())
+    if (!dbData)
         return nullptr;
 
     uint32 scenarioID = 0;
-   // scenarioID = scenarioId;
-
-
-        if (dbDataItr->second.ZoneID > 0)
-        {
-            if (zoneId == dbDataItr->second.ZoneID)
-            {
-                scenarioID = dbDataItr->second.Scenario_A;
-            }
-        }
-        else
-        {
-            scenarioID = dbDataItr->second.Scenario_A;
-        }
-
-
-    
+    if (!dbData->ZoneID || zoneId == dbData->ZoneID)
+        scenarioID = dbData->Scenario_A;
 
     auto itr = _scenarioData.find(scenarioID);
     if (itr == _scenarioData.end())
@@ -129,13 +116,15 @@ void ScenarioMgr::LoadDBData()
 
     uint32 oldMSTime = getMSTime();
 
-    QueryResult result = WorldDatabase.Query("SELECT map, difficulty, scenario_A, scenario_H, zoneid FROM scenarios");
+    QueryResult result = WorldDatabase.Query("SELECT map, difficulty, scenario_A, scenario_H, zoneid, class FROM scenarios");
 
     if (!result)
     {
         TC_LOG_INFO("server.loading", ">> Loaded 0 scenarios. DB table `scenarios` is empty!");
         return;
     }
+
+    uint32 count = 0;
 
     do
     {
@@ -162,16 +151,19 @@ void ScenarioMgr::LoadDBData()
         if (scenarioHordeId == 0)
             scenarioHordeId = scenarioAllianceId;
 
-        ScenarioDBData& data = _scenarioDBData[std::make_pair(mapId, difficulty)];
+        ScenarioDBData data;
         data.MapID = mapId;
         data.DifficultyID = difficulty;
         data.ZoneID = zoneid;
         data.Scenario_A = scenarioAllianceId;
         data.Scenario_H = scenarioHordeId;
+        data.ClassID = fields[5].GetUInt8();
+        _scenarioDBData[std::make_pair(mapId, difficulty)].push_back(data);
+        ++count;
     }
     while (result->NextRow());
 
-    TC_LOG_INFO("server.loading", ">> Loaded " SZFMTD " instance scenario entries in %u ms", _scenarioDBData.size(), GetMSTimeDiffToNow(oldMSTime));
+    TC_LOG_INFO("server.loading", ">> Loaded %u instance scenario entries in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
 void ScenarioMgr::LoadDB2Data()
