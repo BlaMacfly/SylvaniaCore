@@ -602,7 +602,7 @@ public:
                     events.CancelEventGroup(GROUP_PHASE_2);
                     _phase = PHASE_3;
                     events.CancelEvent(EVENT_FLY_TO_RANDOM_PILLAR);
-                    me->GetMotionMaster()->MovePoint(POINT_ILLIDAN_MIDDLE, IllidanMiddlePoint);
+                    me->GetMotionMaster()->MovePoint(POINT_ILLIDAN_MIDDLE, IllidanMiddlePoint, false);
                     break;
                 case ACTION_START_PHASE_4:
                     events.CancelEventGroup(GROUP_PHASE_3);
@@ -845,7 +845,7 @@ public:
                         triggers.sort(Trinity::ObjectDistanceOrderPred(me));
                         pos.Relocate(triggers.front());
                         pos.SetOrientation(0.0f);
-                        me->GetMotionMaster()->MovePoint(POINT_THROW_GLAIVE, pos);
+                        me->GetMotionMaster()->MovePoint(POINT_THROW_GLAIVE, pos, false);
                         if (GameObject* musicController = instance->GetGameObject(DATA_ILLIDAN_MUSIC_CONTROLLER))
                             musicController->PlayDirectMusic(EVENT_BT_STORM_WALK_HERO_2_SOUND_ID);
                         break;
@@ -870,7 +870,7 @@ public:
                     {
                         events.CancelEventGroup(GROUP_PHASE_2);
                         _pillarIndex = urand(0, 3);
-                        me->GetMotionMaster()->MovePoint(POINT_RANDOM_PILLAR, IllidanPhase2Positions[_pillarIndex]);
+                        me->GetMotionMaster()->MovePoint(POINT_RANDOM_PILLAR, IllidanPhase2Positions[_pillarIndex], false);
                         events.Repeat(Seconds(30));
                         break;
                     }
