@@ -36,7 +36,8 @@
 #include "VehicleDefines.h"
 #include "WodGarrison.h"
 
-Garrison::Garrison(Player* owner) : _garrisonType(), _owner(owner), _siteLevel(nullptr), _followerActivationsRemainingToday(1)
+Garrison::Garrison(Player* owner) : _garrisonType(), _owner(owner), _siteLevel(nullptr), _followerActivationsRemainingToday(1),
+    _lastCacheCollect(0), _cacheMaxSize(0)
 {
     _timers[GUPDATE_MISSIONS_DISTRIBUTION].SetInterval(MINUTE * IN_MILLISECONDS);
     _timers[GUPDATE_WORKORDERS].SetInterval(10 * IN_MILLISECONDS);
@@ -245,6 +246,8 @@ bool Garrison::LoadFromDB()
     Field* fields = garrisonStmt->Fetch();
     GarrSiteLevelEntry const* siteLevel = sGarrSiteLevelStore.LookupEntry(fields[0].GetUInt32());
     _followerActivationsRemainingToday = fields[1].GetUInt32();
+    _lastCacheCollect = fields[2].GetUInt32();
+    _cacheMaxSize = fields[3].GetUInt16();
     if (!siteLevel)
         return false;
 
@@ -421,6 +424,8 @@ void Garrison::SaveToDB(CharacterDatabaseTransaction& trans)
     stmt->setUInt8(1, _garrisonType);
     stmt->setUInt32(2, _siteLevel->ID);
     stmt->setUInt32(3, _followerActivationsRemainingToday);
+    stmt->setUInt32(4, _lastCacheCollect);
+    stmt->setUInt16(5, uint16(_cacheMaxSize));
     trans->Append(stmt);
 
     for (auto const& p : _followers)
@@ -2158,4 +2163,36 @@ void Garrison::CompleteShipments(GameObject* go)
 
         _owner->UpdateCriteria(CRITERIA_TYPE_COMPLETE_GARRISON_SHIPMENT, container->ID);
     }
+}
+
+// Garrison cache: LegionCore (Garrison::GetResNumber) and Wowhead (1 every 10 min, cap 500; 750 and 1000 with spells 189189 / 189205)
+enum GarrisonCacheData : uint32
+{
+    GARRISON_CACHE_TOKEN_INTERVAL   = 10 * MINUTE,
+    GARRISON_CACHE_BASE_SIZE        = 500,
+    GARRISON_CACHE_IMPROVED_SIZE    = 750,      // 189189 Improved Logistics
+    GARRISON_CACHE_FIRST_COLLECT    = 50,       // LegionCore
+    QUEST_THE_ASSAULT_BASE_H        = 37935,
+    QUEST_THE_ASSAULT_BASE_A        = 38445,
+};
+
+uint32 Garrison::GetCacheMaxSize() const
+{
+    uint32 size = std::max<uint32>(_cacheMaxSize, GARRISON_CACHE_BASE_SIZE);
+    // the reward spell 189189 is cast by the quest giver on itself: rely on the quest
+    if (_owner->GetQuestRewardStatus(QUEST_THE_ASSAULT_BASE_H) || _owner->GetQuestRewardStatus(QUEST_THE_ASSAULT_BASE_A))
+        size = std::max<uint32>(size, GARRISON_CACHE_IMPROVED_SIZE);
+    return size;
+}
+
+uint32 Garrison::GetCacheResourceCount() const
+{
+    if (!_lastCacheCollect)
+        return GARRISON_CACHE_FIRST_COLLECT;
+
+    time_t now = time(nullptr);
+    if (now <= time_t(_lastCacheCollect))
+        return 0;
+
+    return std::min<uint32>(uint32(now - _lastCacheCollect) / GARRISON_CACHE_TOKEN_INTERVAL, GetCacheMaxSize());
 }

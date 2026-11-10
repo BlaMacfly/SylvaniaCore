@@ -730,8 +730,8 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_UPD_QUEST_TRACK_ABANDON_TIME, "UPDATE quest_tracker SET quest_abandon_time = NOW() WHERE id = ? AND character_guid = ? ORDER BY quest_accept_time DESC LIMIT 1", CONNECTION_ASYNC);
 
     // Garrison
-    PrepareStatement(CHAR_SEL_CHARACTER_GARRISON, "SELECT `siteLevelId`, `followerActivationsRemainingToday` FROM `character_garrison` WHERE `guid` = ? AND `type` = ?", CONNECTION_SYNCH);
-    PrepareStatement(CHAR_INS_CHARACTER_GARRISON, "INSERT INTO `character_garrison` (`guid`, `type`, `siteLevelId`, `followerActivationsRemainingToday`) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_CHARACTER_GARRISON, "SELECT `siteLevelId`, `followerActivationsRemainingToday`, `lastCacheCollect`, `cacheMaxSize` FROM `character_garrison` WHERE `guid` = ? AND `type` = ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_INS_CHARACTER_GARRISON, "INSERT INTO `character_garrison` (`guid`, `type`, `siteLevelId`, `followerActivationsRemainingToday`, `lastCacheCollect`, `cacheMaxSize`) VALUES (?, ?, ?, ?, ?, ?)", CONNECTION_ASYNC);
     PrepareStatement(CHAR_DEL_CHARACTER_GARRISON, "DELETE FROM `character_garrison` WHERE `guid` = ? AND `type` = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_UPD_CHARACTER_GARRISON_FOLLOWER_ACTIVATIONS, "UPDATE character_garrison SET followerActivationsRemainingToday = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_SEL_CHARACTER_GARRISON_BLUEPRINTS, "SELECT buildingId FROM character_garrison_blueprints WHERE `guid` = ? AND garrison_type = ?", CONNECTION_SYNCH);

@@ -58,7 +58,58 @@ class spell_garrison_hearthstone : public SpellScript
     }
 };
 
+// 173847 - Loot (garrison cache), forced by 178479 (gameobjects 237191/236916/237720/237722/237723/237724)
+class spell_garrison_cache_loot : public SpellScript
+{
+    PrepareSpellScript(spell_garrison_cache_loot);
+
+    void HandleScript(SpellEffIndex effIndex)
+    {
+        PreventHitDefaultEffect(effIndex);
+        Player* player = GetHitUnit() ? GetHitUnit()->ToPlayer() : nullptr;
+        if (!player)
+            return;
+
+        Garrison* garrison = player->GetGarrison(GARRISON_TYPE_GARRISON);
+        if (!garrison)
+            return;
+
+        uint32 amount = garrison->GetCacheResourceCount();
+        if (!amount)
+            return;
+
+        player->ModifyCurrency(GARRISON_WOD_CURRENCY, int32(amount));
+        player->SendDisplayToast(GARRISON_WOD_CURRENCY, 0, amount, DISPLAY_TOAST_METHOD_GARRISON_CACHE, TOAST_TYPE_CURRENCY, false, false);
+        garrison->CollectCache();
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_garrison_cache_loot::HandleScript, EFFECT_0, SPELL_EFFECT_SCRIPT_EFFECT);
+    }
+};
+
+// 189189 - Improved Logistics, 189205 - Trade Agreement: Arakkoa Outcasts
+class spell_garrison_cache_size : public SpellScript
+{
+    PrepareSpellScript(spell_garrison_cache_size);
+
+    void HandleCacheSize(SpellEffIndex /*effIndex*/)
+    {
+        if (Player* player = GetHitUnit() ? GetHitUnit()->ToPlayer() : nullptr)
+            if (Garrison* garrison = player->GetGarrison(GARRISON_TYPE_GARRISON))
+                garrison->SetCacheMaxSize(uint32(GetEffectValue()));
+    }
+
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_garrison_cache_size::HandleCacheSize, EFFECT_ALL, SPELL_EFFECT_SET_GARRISON_CACHE_SIZE);
+    }
+};
+
 void AddSC_spells_garrison()
 {
     RegisterSpellScript(spell_garrison_hearthstone);
+    RegisterSpellScript(spell_garrison_cache_loot);
+    RegisterSpellScript(spell_garrison_cache_size);
 }

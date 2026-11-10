@@ -148,6 +148,12 @@ public:
     uint32 GetFollowerActivationLimit() const { return _followerActivationsRemainingToday; }
     void ResetFollowerActivationLimit() { _followerActivationsRemainingToday = 1; }
 
+    // Garrison cache (WoD): one resource every 10 minutes since the last collect
+    uint32 GetCacheResourceCount() const;
+    uint32 GetCacheMaxSize() const;
+    void CollectCache() { _lastCacheCollect = uint32(time(nullptr)); }
+    void SetCacheMaxSize(uint32 size) { if (size > _cacheMaxSize) _cacheMaxSize = size; }
+
     // Missions
     void AddMission(uint32 garrMissionId);
     Mission* GetMission(uint64 dbId);
@@ -223,6 +229,8 @@ protected:
     std::unordered_map<uint64 /*dbId*/, Garrison::Follower> _followers;
     std::unordered_set<uint32> _followerIds;
     uint32 _followerActivationsRemainingToday;
+    uint32 _lastCacheCollect;   // 0 = never collected
+    uint32 _cacheMaxSize;       // 0 = base size
     uint32 m_NumFollowerActivation;
     uint32 m_NumFollowerActivationRegenTimestamp;
 
