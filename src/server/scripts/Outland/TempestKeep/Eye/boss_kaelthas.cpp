@@ -458,6 +458,7 @@ class boss_kaelthas : public CreatureScript
                 me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
                 me->SetUInt32Value(UNIT_NPC_EMOTESTATE, EMOTE_ONESHOT_NONE);
                 me->SetDisableGravity(false);
+                me->SetReactState(REACT_AGGRESSIVE);
                 me->SetTarget(ObjectGuid::Empty);
                 me->SetObjectScale(1.0f);
                 BossAI::Reset();
@@ -618,6 +619,7 @@ class boss_kaelthas : public CreatureScript
                         events.ScheduleEvent(EVENT_TRANSITION_5, 2000);
                         break;
                     case POINT_END_TRANSITION:
+                        me->SetDisableGravity(false);
                         me->SetReactState(REACT_AGGRESSIVE);
                         me->InterruptNonMeleeSpells(false);
                         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE);
@@ -654,6 +656,9 @@ class boss_kaelthas : public CreatureScript
             void JustDied(Unit* killer) override
             {
                 Talk(SAY_DEATH);
+                // killed during the 50% transition: the corpse kept NOT_SELECTABLE and could not be looted
+                me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NOT_SELECTABLE | UNIT_FLAG_PACIFIED);
+                me->SetDisableGravity(false);
                 BossAI::JustDied(killer);
             }
 
@@ -1489,6 +1494,34 @@ class spell_kael_gravity_lapse : public SpellScriptLoader
         }
 };
 
+// 36797 - Mind Control (TrinityCore 3.3.5): never the current victim, at most 3 targets
+class spell_kaelthas_mind_control : public SpellScriptLoader
+{
+    public:
+        spell_kaelthas_mind_control() : SpellScriptLoader("spell_kaelthas_mind_control") { }
+
+        class spell_kaelthas_mind_control_SpellScript : public SpellScript
+        {
+            PrepareSpellScript(spell_kaelthas_mind_control_SpellScript);
+
+            void FilterTargets(std::list<WorldObject*>& targets)
+            {
+                targets.remove(GetCaster()->GetVictim());
+                Trinity::Containers::RandomResize(targets, 3);
+            }
+
+            void Register() override
+            {
+                OnObjectAreaTargetSelect += SpellObjectAreaTargetSelectFn(spell_kaelthas_mind_control_SpellScript::FilterTargets, EFFECT_ALL, TARGET_UNIT_SRC_AREA_ENEMY);
+            }
+        };
+
+        SpellScript* GetSpellScript() const override
+        {
+            return new spell_kaelthas_mind_control_SpellScript();
+        }
+};
+
 void AddSC_boss_kaelthas()
 {
     new boss_kaelthas();
@@ -1500,4 +1533,5 @@ void AddSC_boss_kaelthas()
     new npc_phoenix_tk();
     new npc_phoenix_egg_tk();
     new spell_kael_gravity_lapse();
+    new spell_kaelthas_mind_control();
 }
