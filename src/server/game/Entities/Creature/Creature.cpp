@@ -234,6 +234,8 @@ void Creature::AddToWorld()
             GetMap()->GetCreatureBySpawnIdStore().insert(std::make_pair(m_spawnId, this));
 
         Unit::AddToWorld();
+        if (IsVisibilityOverridden())
+            GetMap()->AddFarVisibleCreature(this);
         SearchFormation();
         AIM_Initialize();
         if (IsVehicle())
@@ -253,6 +255,7 @@ void Creature::RemoveFromWorld()
 
         Unit::RemoveFromWorld();
 
+        GetMap()->RemoveFarVisibleCreature(this);
         if (m_spawnId)
             Trinity::Containers::MultimapErasePair(GetMap()->GetCreatureBySpawnIdStore(), m_spawnId, this);
         GetMap()->GetObjectsStore().Remove<Creature>(GetGUID());

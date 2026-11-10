@@ -841,6 +841,30 @@ void Map::Update(const uint32 t_diff)
         }
     }
 
+    // Creatures with a visibility distance override are shown to clients beyond the grid activation range:
+    // update them while a player can see them, otherwise the client keeps playing a path the server has frozen
+    // and every interaction is refused as too far (Neltharaku 21657)
+    if (!_farVisibleCreatures.empty())
+    {
+        std::vector<Creature*> updateList;
+        for (Creature* creature : _farVisibleCreatures)
+        {
+            for (MapRefManager::iterator itr = m_mapRefManager.begin(); itr != m_mapRefManager.end(); ++itr)
+            {
+                Player* player = itr->GetSource();
+                if (player && player->IsInWorld() && creature->IsWithinDistInMap(player, creature->GetVisibilityRange(), false))
+                {
+                    updateList.push_back(creature);
+                    break;
+                }
+            }
+        }
+
+        for (Creature* creature : updateList)
+            if (creature->IsInWorld())
+                VisitNearbyCellsOf(creature, grid_object_update, world_object_update);
+    }
+
     // non-player active objects, increasing iterator in the loop in case of object removal
     for (m_activeNonPlayersIter = m_activeNonPlayers.begin(); m_activeNonPlayersIter != m_activeNonPlayers.end();)
     {

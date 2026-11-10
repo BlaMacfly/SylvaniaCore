@@ -496,6 +496,8 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
 
         typedef std::unordered_multimap<ObjectGuid::LowType, Creature*> CreatureBySpawnIdContainer;
         CreatureBySpawnIdContainer& GetCreatureBySpawnIdStore() { return _creatureBySpawnIdStore; }
+        void AddFarVisibleCreature(Creature* creature) { _farVisibleCreatures.insert(creature); }
+        void RemoveFarVisibleCreature(Creature* creature) { _farVisibleCreatures.erase(creature); }
 
         typedef std::unordered_multimap<ObjectGuid::LowType, GameObject*> GameObjectBySpawnIdContainer;
         GameObjectBySpawnIdContainer& GetGameObjectBySpawnIdStore() { return _gameobjectBySpawnIdStore; }
@@ -713,6 +715,9 @@ class TC_GAME_API Map : public GridRefManager<NGridType>
         typedef std::set<Transport*> TransportsContainer;
         TransportsContainer _transports;
         TransportsContainer::iterator _transportsUpdateIter;
+
+        // Creatures with a visibility distance override: clients see them beyond the grid activation range
+        std::set<Creature*> _farVisibleCreatures;
 
     private:
         Player* _GetScriptPlayerSourceOrTarget(Object* source, Object* target, const ScriptInfo* scriptInfo) const;
