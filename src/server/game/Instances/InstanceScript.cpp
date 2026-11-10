@@ -1502,6 +1502,17 @@ void InstanceScript::StartChallengeMode(uint8 modeid, uint8 level, uint8 affix1,
     _challengeModeStarted = true;
     _challengeModeLevel = level;
 
+    // The dungeon scenario only counts the bosses, the keystone one adds the enemy forces
+    if (InstanceScenario* challengeScenario = sScenarioMgr->CreateChallengeScenario(instance, modeid, HasAffix(Affixes::Teeming)))
+    {
+        delete instance->GetInstanceScenario();
+        instance->SetInstanceScenario(challengeScenario);
+
+        Map::PlayerList const& scenarioPlayers = instance->GetPlayers();
+        for (Map::PlayerList::const_iterator itr = scenarioPlayers.begin(); itr != scenarioPlayers.end(); ++itr)
+            challengeScenario->OnPlayerEnter(itr->GetSource());
+    }
+
     instance->SendToPlayers(WorldPackets::ChallengeMode::ChangePlayerDifficultyResult(5).Write());
 
     // Add the health/dmg modifier aura to all creatures

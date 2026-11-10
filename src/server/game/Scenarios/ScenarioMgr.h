@@ -109,6 +109,7 @@ public:
     static ScenarioMgr* Instance();
 
     InstanceScenario* CreateInstanceScenario(Map const* map, TeamId team, uint32 zoneId, uint8 playerClass = 0) const;
+    InstanceScenario* CreateChallengeScenario(Map const* map, uint32 challengeModeId, bool teeming) const;
     InstanceScenario* CreateInstanceScenarioByID(Map const * map, uint32 zoneId) ;
 
     void LoadDBData();
@@ -121,6 +122,7 @@ private:
     ScenarioDataContainer _scenarioData;
     ScenarioPOIContainer _scenarioPOIStore;
     ScenarioDBDataContainer _scenarioDBData;
+    ScenarioDataContainer _teemingScenarioData;
 
     ScenarioDBData const* SelectDBData(uint32 mapId, uint8 difficulty, uint8 playerClass) const;
 

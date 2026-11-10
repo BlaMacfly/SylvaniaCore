@@ -89,6 +89,43 @@ InstanceScenario* ScenarioMgr::CreateInstanceScenario(Map const* map, TeamId tea
     return new InstanceScenario(map, &itr->second);
 }
 
+// A keystone run has its own scenario, bosses and enemy forces (LegionCore Scenario::CreateChallenge)
+InstanceScenario* ScenarioMgr::CreateChallengeScenario(Map const* map, uint32 challengeModeId, bool teeming) const
+{
+    uint32 scenarioID = 0;
+    switch (challengeModeId)
+    {
+        case 197: scenarioID = 1169; break; // Eye of Azshara
+        case 198: scenarioID = 1172; break; // Darkheart Thicket
+        case 199: scenarioID = 1166; break; // Black Rook Hold
+        case 200: scenarioID = 1046; break; // Halls of Valor
+        case 206: scenarioID = 1174; break; // Neltharion's Lair
+        case 207: scenarioID = 1173; break; // Vault of the Wardens
+        case 208: scenarioID = 1175; break; // Maw of Souls
+        case 209: scenarioID = 1177; break; // The Arcway
+        case 210: scenarioID = 1178; break; // Court of Stars
+        case 227: scenarioID = 1309; break; // Return to Karazhan: Lower
+        case 233: scenarioID = 1335; break; // Cathedral of Eternal Night
+        case 234: scenarioID = 1308; break; // Return to Karazhan: Upper
+        case 239: scenarioID = 1428; break; // Seat of the Triumvirate
+        default:
+            return nullptr;
+    }
+
+    if (teeming)
+    {
+        auto itr = _teemingScenarioData.find(scenarioID);
+        if (itr != _teemingScenarioData.end())
+            return new InstanceScenario(map, &itr->second);
+    }
+
+    auto itr = _scenarioData.find(scenarioID);
+    if (itr == _scenarioData.end())
+        return nullptr;
+
+    return new InstanceScenario(map, &itr->second);
+}
+
 InstanceScenario * ScenarioMgr::CreateInstanceScenarioByID(Map const * map, uint32 zoneId)
 {
     ScenarioDBData const* dbData = SelectDBData(map->GetId(), map->GetDifficultyID(), 0);
@@ -166,16 +203,47 @@ void ScenarioMgr::LoadDBData()
     TC_LOG_INFO("server.loading", ">> Loaded %u instance scenario entries in %u ms", count, GetMSTimeDiffToNow(oldMSTime));
 }
 
+// Keystone scenarios carry a "(More Trash)" step for the Teeming affix, run instead of their first step
+static bool IsTeemingCriteriaTree(uint32 criteriaTreeId)
+{
+    switch (criteriaTreeId)
+    {
+        case 47415: // Halls of Valor
+        case 50599: // Black Rook Hold
+        case 51246: // Eye of Azshara
+        case 51710: // Darkheart Thicket
+        case 51880: // Vault of the Wardens
+        case 52278: // Neltharion's Lair
+        case 52327: // Maw of Souls
+        case 52427: // The Arcway
+        case 52471: // Court of Stars
+        case 57810: // Return to Karazhan: Upper
+        case 57866: // Return to Karazhan: Lower
+        case 58715: // Cathedral of Eternal Night
+        case 60933: // Seat of the Triumvirate
+            return true;
+        default:
+            return false;
+    }
+}
+
 void ScenarioMgr::LoadDB2Data()
 {
     _scenarioData.clear();
+    _teemingScenarioData.clear();
 
     std::unordered_map<uint32, std::map<uint8, ScenarioStepEntry const*>> scenarioSteps;
+    std::unordered_map<uint32, ScenarioStepEntry const*> teemingSteps;
     uint32 deepestCriteriaTreeSize = 0;
 
     for (ScenarioStepEntry const* step : sScenarioStepStore)
     {
-        scenarioSteps[step->ScenarioID][step->OrderIndex] = step;
+        // shares its OrderIndex with the normal step, which it used to overwrite
+        if (IsTeemingCriteriaTree(step->Criteriatreeid))
+            teemingSteps[step->ScenarioID] = step;
+        else
+            scenarioSteps[step->ScenarioID][step->OrderIndex] = step;
+
         if (CriteriaTree const* tree = sCriteriaMgr->GetCriteriaTree(step->Criteriatreeid))
         {
             uint32 criteriaTreeSize = 0;
@@ -194,6 +262,17 @@ void ScenarioMgr::LoadDB2Data()
         ScenarioData& data = _scenarioData[scenario->ID];
         data.Entry = scenario;
         data.Steps = std::move(scenarioSteps[scenario->ID]);
+    }
+
+    for (auto const& teemingStep : teemingSteps)
+    {
+        auto itr = _scenarioData.find(teemingStep.first);
+        if (itr == _scenarioData.end() || itr->second.Steps.empty())
+            continue;
+
+        ScenarioData& data = _teemingScenarioData[teemingStep.first];
+        data = itr->second;
+        data.Steps.begin()->second = teemingStep.second;
     }
 }
 
