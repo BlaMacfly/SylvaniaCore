@@ -24,6 +24,8 @@
 #include "Log.h"
 #include "Spell.h"
 #include "SceneHelper.h"
+#include "InstanceScenario.h"
+#include "InstanceScript.h"
 
 enum
 {
@@ -121,9 +123,15 @@ struct npc_meryl_felstorm_102700 : public ScriptedAI
                     alodi->GetScheduler().Schedule(Milliseconds(11000), [player](TaskContext context)
                         {
                             GetContextCreature()->Say(112328, player);
-                            player->KilledMonsterCredit(107589);
                         });
                 }
+                // the credit does not wait for Alodi: one Meryl of the Hall stands far from him
+                ObjectGuid playerGuid = player->GetGUID();
+                me->GetScheduler().Schedule(Milliseconds(11000), [playerGuid](TaskContext context)
+                    {
+                        if (Player* plr = ObjectAccessor::GetPlayer(*GetContextCreature(), playerGuid))
+                            plr->KilledMonsterCredit(107589);
+                    });
                 me->GetScheduler().Schedule(Milliseconds(5000), [player](TaskContext context)
                     {
                         GetContextCreature()->Say(112326, player);
@@ -1036,8 +1044,75 @@ struct npc_aethas_s_portal_99418 : public ScriptedAI
         }
     }
 };
+// Faronaar, scenario 1122 "The Mage Hunter". Balaadur sweeps the players up into his realm when the
+// ritual ends (Fel Grip and Teleport), claiming Ebonchill ends the scenario and the players are sent back
+// (Teleport: Out of Eredar Realm). No source has the caster of these spells: the steps are watched here.
+enum FaronaarMage
+{
+    SCENARIO_THE_MAGE_HUNTER        = 1122,
+    STEP_REALM_OF_MADNESS           = 4,
+    STEP_EBONCHILL                  = 5,
+    SPELL_FEL_GRIP_AND_TELEPORT     = 214719,
+    SPELL_TELEPORT_EREDAR_REALM     = 214730,
+    SPELL_TELEPORT_OUT_EREDAR_REALM = 214778,
+};
+
+struct instance_faronaar_mage : public InstanceScript
+{
+    instance_faronaar_mage(InstanceMap* map) : InstanceScript(map) { }
+
+    // the realm lies at the other end of the map
+    static bool InRealm(Player* player) { return player->GetPositionX() < -3000.0f; }
+
+    void Update(uint32 diff) override
+    {
+        InstanceScript::Update(diff);
+
+        if (_checkTimer > diff)
+        {
+            _checkTimer -= diff;
+            return;
+        }
+        _checkTimer = 1000;
+
+        InstanceScenario* scenario = instance->GetInstanceScenario();
+        if (!scenario || scenario->GetEntry()->ID != SCENARIO_THE_MAGE_HUNTER)
+            return;
+
+        if (scenario->IsComplete())
+        {
+            if (_returnTimer && (_returnTimer -= std::min(_returnTimer, 1000u)) == 0)
+                DoOnPlayers([](Player* player)
+                {
+                    if (InRealm(player))
+                        player->CastSpell(player, SPELL_TELEPORT_OUT_EREDAR_REALM, true);
+                });
+            return;
+        }
+
+        ScenarioStepEntry const* step = scenario->GetStep();
+        if (!step || (step->OrderIndex != STEP_REALM_OF_MADNESS && step->OrderIndex != STEP_EBONCHILL))
+            return;
+
+        // the grip at the end of the ritual, the teleport alone for whoever comes back from a graveyard
+        bool grip = !_sweptAway;
+        _sweptAway = true;
+        DoOnPlayers([grip](Player* player)
+        {
+            if (player->IsAlive() && !InRealm(player) && !player->HasAura(SPELL_FEL_GRIP_AND_TELEPORT) && !player->HasAura(SPELL_TELEPORT_EREDAR_REALM))
+                player->CastSpell(player, grip ? SPELL_FEL_GRIP_AND_TELEPORT : SPELL_TELEPORT_EREDAR_REALM, true);
+        });
+    }
+
+private:
+    uint32 _checkTimer = 1000;
+    uint32 _returnTimer = 10000;
+    bool _sweptAway = false;
+};
+
 void AddSC_class_hall_mage()
 {
+    RegisterInstanceScript(instance_faronaar_mage, 1616);
     RegisterCreatureAI(npc_meryl_felstorm_102700);
     new mage_playerchoice();
     new go_finding_bonchill_note();

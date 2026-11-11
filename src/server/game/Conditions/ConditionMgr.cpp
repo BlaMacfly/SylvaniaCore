@@ -23,6 +23,7 @@
 #include "GameEventMgr.h"
 #include "GameObject.h"
 #include "Group.h"
+#include "InstanceScenario.h"
 #include "InstanceScript.h"
 #include "Item.h"
 #include "LFGMgr.h"
@@ -127,6 +128,7 @@ ConditionMgr::ConditionTypeInfo const ConditionMgr::StaticConditionTypeData[COND
     { "Object Entry or Guid", true, true,  true  },
     { "Object TypeMask",      true, false, false },
     { "Specialization",       true, false, false },
+    { "Scenario step",        true, true,  false },
 };
 
 // Checks if object meets the condition
@@ -346,6 +348,14 @@ bool Condition::Meets(ConditionSourceInfo& sourceInfo) const
         {
             if (Player* player = object->ToPlayer())
                 condMeets = player->GetPrimarySpecialization() == ConditionValue1;
+            break;
+        }
+        case CONDITION_SCENARIO_STEP:
+        {
+            if (InstanceMap* instance = object->GetMap()->ToInstanceMap())
+                if (InstanceScenario* scenario = instance->GetInstanceScenario())
+                    if (ScenarioStepEntry const* step = scenario->GetStep())
+                        condMeets = step->ScenarioID == ConditionValue1 && step->OrderIndex == ConditionValue2;
             break;
         }
         case CONDITION_RELATION_TO:
@@ -665,6 +675,9 @@ uint32 Condition::GetSearcherTypeMaskForCondition() const
             break;
         case CONDITION_SPECIALIZATION:
             mask |= GRID_MAP_TYPE_MASK_PLAYER;
+            break;
+        case CONDITION_SCENARIO_STEP:
+            mask |= GRID_MAP_TYPE_MASK_ALL;
             break;
         case CONDITION_RELATION_TO:
             mask |= GRID_MAP_TYPE_MASK_CREATURE | GRID_MAP_TYPE_MASK_PLAYER;
@@ -2179,6 +2192,15 @@ bool ConditionMgr::isConditionTypeValid(Condition* cond) const
             if (!sChrSpecializationStore.LookupEntry(cond->ConditionValue1))
             {
                 TC_LOG_ERROR("sql.sql", "%s has non existing specialization (%u), skipped.", cond->ToString(true).c_str(), cond->ConditionValue1);
+                return false;
+            }
+            break;
+        }
+        case CONDITION_SCENARIO_STEP:
+        {
+            if (!sScenarioStore.LookupEntry(cond->ConditionValue1))
+            {
+                TC_LOG_ERROR("sql.sql", "%s has non existing scenario (%u), skipped.", cond->ToString(true).c_str(), cond->ConditionValue1);
                 return false;
             }
             break;

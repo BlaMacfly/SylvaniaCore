@@ -62,6 +62,7 @@
 #include "PhasingHandler.h"
 #include "Player.h"
 #include "ReputationMgr.h"
+#include "Scenario.h"
 #include "ScriptMgr.h"
 #include "SharedDefines.h"
 #include "SkillExtraItems.h"
@@ -1259,6 +1260,11 @@ void Spell::EffectSendEvent(SpellEffIndex /*effIndex*/)
         instanceScript->ProcessEvent(target, effectInfo->MiscValue);
 
     m_caster->GetMap()->ScriptsStart(sEventScripts, effectInfo->MiscValue, m_caster, target);
+
+    // an event sent by a player moves on its scenario (AnyoneTriggerGameEventScenario)
+    if (Player* player = m_caster->ToPlayer())
+        if (Scenario* scenario = player->GetScenario())
+            scenario->SendScenarioEvent(player, effectInfo->MiscValue);
 }
 
 void Spell::EffectPowerBurn(SpellEffIndex effIndex)

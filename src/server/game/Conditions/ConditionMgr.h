@@ -105,6 +105,7 @@ enum ConditionTypes
     CONDITION_OBJECT_ENTRY_GUID        = 51,                   // TypeID           entry          guid               true if object is type TypeID and the entry is 0 or matches entry of the object or matches guid of the object
     CONDITION_TYPE_MASK                = 52,                   // TypeMask         0              0                  true if object is type object's TypeMask matches provided TypeMask
     CONDITION_SPECIALIZATION           = 53,                   // specId           0              0                  true if player's primary specialization is specId (ChrSpecialization)
+    CONDITION_SCENARIO_STEP            = 54,                   // scenarioId       stepIndex      0                  true if the instance scenario is scenarioId at step OrderIndex stepIndex
     CONDITION_MAX
 };
 

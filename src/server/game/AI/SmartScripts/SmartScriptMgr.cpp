@@ -1552,6 +1552,13 @@ bool SmartAIMgr::IsEventValid(SmartScriptHolder& e)
         case SMART_ACTION_CAST_SPELL_OFFSET:
         case SMART_ACTION_RISE_UP:
             break;
+        case SMART_ACTION_UPDATE_CRITERIA:
+            if (e.action.raw.param1 >= CRITERIA_TYPE_TOTAL)
+            {
+                TC_LOG_ERROR("sql.sql", "SmartAIMgr: Entry " SI64FMTD " SourceType %u Event %u Action %u uses invalid criteria type %u, skipped.", e.entryOrGuid, e.GetScriptType(), e.event_id, e.GetActionType(), e.action.raw.param1);
+                return false;
+            }
+            break;
         default:
             TC_LOG_ERROR("sql.sql", "SmartAIMgr: Not handled action_type(%u), event_type(%u), Entry " SI64FMTD " SourceType %u Event %u, skipped.", e.GetActionType(), e.GetEventType(), e.entryOrGuid, e.GetScriptType(), e.event_id);
             return false;
