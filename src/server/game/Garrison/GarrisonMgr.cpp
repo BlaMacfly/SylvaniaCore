@@ -72,6 +72,11 @@ void GarrisonMgr::LoadShipments()
     for (auto& itr : _shipmentsByContainer)
         std::sort(itr.second.begin(), itr.second.end(), [](CharShipmentEntry const* a, CharShipmentEntry const* b) { return a->ID < b->ID; });
 
+    _shipmentCreateSpells.clear();
+    for (SpellEffectEntry const* effect : sSpellEffectStore)
+        if (effect->Effect == SPELL_EFFECT_CREATE_SHIPMENT && effect->EffectMiscValue[0] > 0)
+            _shipmentCreateSpells.emplace(uint32(effect->EffectMiscValue[0]), effect->SpellID);
+
     QueryResult result = WorldDatabase.Query("SELECT SiteID, ContainerID, NpcEntry, questReq, ShipmentID, classReq FROM garrison_shipment");
     if (!result)
     {
@@ -122,6 +127,12 @@ GarrShipment const* GarrisonMgr::GetShipmentByNpc(uint32 npcEntry, uint8 classId
         return &shipment;
     }
     return nullptr;
+}
+
+uint32 GarrisonMgr::GetShipmentCreateSpell(uint32 shipmentId) const
+{
+    auto itr = _shipmentCreateSpells.find(shipmentId);
+    return itr != _shipmentCreateSpells.end() ? itr->second : 0;
 }
 
 std::vector<CharShipmentEntry const*> const* GarrisonMgr::GetContainerShipments(uint32 containerId) const

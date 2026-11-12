@@ -15277,6 +15277,12 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId /*= 0*/, bool 
                     if (!sOutdoorPvPMgr->CanTalkTo(this, creature, itr->second))
                         canTalk = false;
                     break;
+                case GOSSIP_OPTION_SHIPMENT_CRAFTER:
+                {
+                    Garrison* garrison = Garrison::GetForShipmentNpc(this, creature->GetEntry());
+                    canTalk = garrison && garrison->CanOpenShipmentNpc(creature);
+                    break;
+                }
                 default:
                     TC_LOG_ERROR("sql.sql", "Creature entry %u has unknown gossip option %u for menu %u.", creature->GetEntry(), itr->second.OptionType, itr->second.MenuId);
                     canTalk = false;

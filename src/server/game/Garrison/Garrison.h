@@ -199,6 +199,7 @@ public:
     uint32 CountShipmentTroops(GarrShipment const* shipment) const;
     bool HasShipmentCurrencyCost(uint32 spellId) const;
     void TakeShipmentCurrencyCost(uint32 spellId);
+    bool CanOpenShipmentNpc(Creature const* npc) const;
     bool OpenShipmentNpc(Creature* npc);
     void SendShipmentInfo(ObjectGuid const& npcGuid);
     void CreateShipment(ObjectGuid const& npcGuid, uint32 count);

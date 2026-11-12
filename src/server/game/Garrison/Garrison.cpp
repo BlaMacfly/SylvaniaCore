@@ -1883,11 +1883,18 @@ Garrison* Garrison::GetForShipmentNpc(Player* player, uint32 npcEntry)
     return nullptr;
 }
 
-bool Garrison::OpenShipmentNpc(Creature* npc)
+bool Garrison::CanOpenShipmentNpc(Creature const* npc) const
 {
     GarrShipment const* shipment = npc ? GetShipmentForNpc(npc->GetEntry()) : nullptr;
-    if (!shipment || !SelectShipment(shipment))
+    return shipment && SelectShipment(shipment);
+}
+
+bool Garrison::OpenShipmentNpc(Creature* npc)
+{
+    if (!CanOpenShipmentNpc(npc))
         return false;
+
+    GarrShipment const* shipment = GetShipmentForNpc(npc->GetEntry());
 
     WorldPackets::Garrison::GarrisonOpenShipmentNpcFromGossip packet;
     packet.NpcGUID = npc->GetGUID();
@@ -1965,6 +1972,10 @@ void Garrison::CreateShipment(ObjectGuid const& npcGuid, uint32 count)
         // le sort de la commande porte l'effet 216 (creer la commande) ; ses composants sont exiges,
         // son cout en monnaie (SpellReagentsCurrency) est preleve par l'effet
         SpellInfo const* spell = sSpellMgr->GetSpellInfo(entry->SpellID);
+        // the orders of the garrison buildings carry a script effect, their twin spell creates the order
+        if (!spell || !spell->HasEffect(SPELL_EFFECT_CREATE_SHIPMENT))
+            if (uint32 createSpell = sGarrisonMgr.GetShipmentCreateSpell(entry->ID))
+                spell = sSpellMgr->GetSpellInfo(createSpell);
         if (!spell || !spell->HasEffect(SPELL_EFFECT_CREATE_SHIPMENT))
         {
             if (!HasShipmentCurrencyCost(entry->SpellID))

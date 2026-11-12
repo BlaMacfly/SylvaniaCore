@@ -155,6 +155,7 @@ public:
     void LoadShipments();
     GarrShipment const* GetShipmentByNpc(uint32 npcEntry, uint8 classId, uint32 siteId) const;
     std::vector<CharShipmentEntry const*> const* GetContainerShipments(uint32 containerId) const;
+    uint32 GetShipmentCreateSpell(uint32 shipmentId) const;
     uint32 GetClassByMissionType(uint32 missionType);
     uint32 GetFactionByMissionType(uint32 missionType);
 
@@ -163,6 +164,7 @@ private:
     std::unordered_map<uint32, GarrisonMissionRewardInfo> _missionRewards;
     std::unordered_map<uint32 /*npcEntry*/, std::vector<GarrShipment>> _shipmentsByNpc;
     std::unordered_map<uint32 /*containerId*/, std::vector<CharShipmentEntry const*>> _shipmentsByContainer;
+    std::unordered_map<uint32 /*shipmentId*/, uint32 /*spellId*/> _shipmentCreateSpells;
     void InitializeDbIdSequences();
     void LoadPlotFinalizeGOInfo();
     void LoadBuildingSpawns();
