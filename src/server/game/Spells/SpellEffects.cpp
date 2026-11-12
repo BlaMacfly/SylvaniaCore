@@ -2456,8 +2456,10 @@ void Spell::EffectLearnSkill(SpellEffIndex /*effIndex*/)
     if (!tier)
         return;
 
+    // a lower tier (the Draenor books for a Broken Isles craftsman) keeps the skill cap, only the recipes are learned
     uint16 skillval = unitTarget->ToPlayer()->GetPureSkillValue(skillid);
-    unitTarget->ToPlayer()->SetSkill(skillid, effectInfo->CalcValue(), std::max<uint16>(skillval, 1), tier->Value[damage - 1]);
+    if (unitTarget->ToPlayer()->GetSkillStep(skillid) < damage)
+        unitTarget->ToPlayer()->SetSkill(skillid, effectInfo->CalcValue(), std::max<uint16>(skillval, 1), tier->Value[damage - 1]);
 
     // learn dependent spells
     SpellLearnSpellMapBounds spell_bounds = sSpellMgr->GetSpellLearnSpellMapBounds(GetSpellInfo()->Id);
