@@ -17,6 +17,9 @@
 #include "ObjectMgr.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
+#include "AreaTrigger.h"
+#include "AreaTriggerAI.h"
+#include "PhasingHandler.h"
 
 namespace
 {
@@ -117,8 +120,46 @@ struct npc_ritssyn_flamescowl : public ScriptedAI
     }
 };
 
+// "A Hero's Weapon" (one quest per class): before the forge of each class hall the hero raises his
+// weapon from an action button (aura 219567, OverrideSpellData 750, spell 219410 gives the credit).
+// LegionCore casts the aura from an EventObject asking the quest; here a server areatrigger at the same places.
+struct at_class_hall_hero_weapon : AreaTriggerAI
+{
+    at_class_hall_hero_weapon(AreaTrigger* areatrigger) : AreaTriggerAI(areatrigger) { }
+
+    enum
+    {
+        SPELL_RAISE_YOUR_WEAPON = 219567
+    };
+
+    void OnInitialize() override
+    {
+        // the class halls are phased: seen by every phase
+        PhasingHandler::InitDbPhaseShift(at->GetPhaseShift(), PHASE_USE_FLAGS_ALWAYS_VISIBLE, 0, 0);
+    }
+
+    void OnUnitEnter(Unit* unit) override
+    {
+        static uint32 const heroWeaponQuests[] = { 43359, 43407, 43409, 43412, 43414, 43415, 43418, 43420, 43422, 43423, 43424, 43425 };
+
+        Player* player = unit->ToPlayer();
+        if (!player || player->HasAura(SPELL_RAISE_YOUR_WEAPON))
+            return;
+
+        for (uint32 questId : heroWeaponQuests)
+        {
+            if (player->GetQuestStatus(questId) == QUEST_STATUS_INCOMPLETE)
+            {
+                player->CastSpell(player, SPELL_RAISE_YOUR_WEAPON, true);
+                return;
+            }
+        }
+    }
+};
+
 void AddSC_class_hall_artifact_choices()
 {
+    RegisterAreaTriggerAI(at_class_hall_hero_weapon);
     new artifact_choice_universal();
     RegisterCreatureAI(npc_ritssyn_flamescowl);
 }
