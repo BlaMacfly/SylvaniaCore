@@ -341,6 +341,16 @@ bool Garrison::LoadFromDB()
 
         } while (missionsStmt->NextRow());
 
+        // a mission left in progress without follower could never complete: offered again
+        for (auto& missionPair : _missions)
+        {
+            if (missionPair.second.PacketInfo.MissionState == GarrisonMission::State::InProgress && GetMissionFollowers(missionPair.second.PacketInfo.MissionRecID).empty())
+            {
+                missionPair.second.PacketInfo.MissionState = GarrisonMission::State::Offered;
+                missionPair.second.PacketInfo.StartTime = time_t(2254525440);
+            }
+        }
+
         if (rewardsStmt)
         {
             do
@@ -1142,11 +1152,9 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
     if (missionCost && !_owner->HasCurrency(missionEntry->CurrencyID, missionCost))
         return SendStartMissionResult(false); // GARRISON_ERROR_NOT_ENOUGH_CURRENCY
 
-    mission->PacketInfo.TravelDuration = missionEntry->TravelTime;
-    mission->PacketInfo.MissionDuration = missionEntry->Duration;
-    mission->PacketInfo.StartTime = time(nullptr);
-    mission->PacketInfo.MissionState = GarrisonMission::State::InProgress;
-    mission->PacketInfo.SuccessChance = sGarrisonMgr.GetMissionSuccessChance(this, mission->PacketInfo.MissionRecID);
+    // every follower is checked before the mission starts: a refused start left the mission in progress without follower
+    if (Followers.empty())
+        return SendStartMissionResult(false);
 
     for (uint64 followerDbID : Followers)
     {
@@ -1159,9 +1167,16 @@ void Garrison::StartMission(uint32 garrMissionId, std::vector<uint64 /*DbID*/> F
 
         if (follower->PacketInfo.FollowerStatus == FOLLOWER_STATUS_INACTIVE)
             return SendStartMissionResult(false);
-
-        follower->PacketInfo.CurrentMissionID = missionEntry->ID;
     }
+
+    mission->PacketInfo.TravelDuration = missionEntry->TravelTime;
+    mission->PacketInfo.MissionDuration = missionEntry->Duration;
+    mission->PacketInfo.StartTime = time(nullptr);
+    mission->PacketInfo.MissionState = GarrisonMission::State::InProgress;
+    mission->PacketInfo.SuccessChance = sGarrisonMgr.GetMissionSuccessChance(this, mission->PacketInfo.MissionRecID);
+
+    for (uint64 followerDbID : Followers)
+        GetFollower(followerDbID)->PacketInfo.CurrentMissionID = missionEntry->ID;
 
     if (missionCost)
         _owner->ModifyCurrency(missionEntry->CurrencyID, -static_cast<int32>(missionCost));
