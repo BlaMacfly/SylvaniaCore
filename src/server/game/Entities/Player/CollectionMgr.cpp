@@ -495,7 +495,7 @@ void CollectionMgr::LoadAccountItemAppearances(PreparedQueryResult knownAppearan
 
         } while (knownAppearances->NextRow());
 
-        _appearances->init_from_block_range(blocks.begin(), blocks.end());
+        *_appearances = boost::dynamic_bitset<uint32>(blocks.begin(), blocks.end());
     }
 
     if (favoriteAppearances)

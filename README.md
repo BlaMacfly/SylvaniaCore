@@ -72,9 +72,10 @@ Ce README suffit pour **installer et lancer** un serveur. Tout le reste vit dans
 ## 🛠️ Prérequis
 
 - **CMake 3.31+**
-- **Boost 1.84.0**
+- **Boost 1.84.0 ou plus récent**
 - **MySQL 8.0** ou **MariaDB 10.6+** (le royaume tourne sur MariaDB 11.4)
-- **OpenSSL 3.x**
+- **OpenSSL 3.x ou 4.x**
+- **libcurl** avec ses en-têtes et sa bibliothèque de développement (pour le serveur)
 - **GCC / Clang / MSVC** (Visual Studio 2022 recommandé)
 
 Plateformes supportées : **Linux, Windows, macOS**.
@@ -97,6 +98,21 @@ Plateformes supportées : **Linux, Windows, macOS**.
    cmake -S . -B build -DTOOLS=ON
    cmake --build build -j$(nproc)
    ```
+
+   Sous Windows avec Visual Studio x64, libcurl peut être installé avec
+   [vcpkg](https://learn.microsoft.com/vcpkg/get_started/get-started) :
+   ```powershell
+   D:\vcpkg\vcpkg.exe install curl:x64-windows
+   cmake -S . -B build -A x64 -DCURL_NO_CURL_CMAKE=ON `
+     -DCURL_INCLUDE_DIR=D:\vcpkg\installed\x64-windows\include `
+     -DCURL_LIBRARY_RELEASE=D:\vcpkg\installed\x64-windows\lib\libcurl.lib `
+     -DCURL_LIBRARY_DEBUG=D:\vcpkg\installed\x64-windows\debug\lib\libcurl-d.lib
+   cmake --build build --config RelWithDebInfo
+   ```
+   Adapter `D:\vcpkg` au répertoire d'installation. Au lancement de `worldserver`,
+   ajouter `D:\vcpkg\installed\x64-windows\bin` au `PATH` ou placer ses DLL
+   à côté de l'exécutable ; utiliser `debug\bin` pour une compilation Debug.
+   Les DLL MySQL et OpenSSL restent également nécessaires.
 
 3. Installer les bases de données — voir la section
    [Installation de la base de données](#-installation-de-la-base-de-données) ci-dessous.

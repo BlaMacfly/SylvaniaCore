@@ -5140,7 +5140,7 @@ again:
         return soap->socket = SOAP_INVALID_SOCKET;
       }
       if (!(soap->ssl_flags & SOAP_SSL_SKIP_HOST_CHECK))
-      { X509_NAME *subj;
+      { const X509_NAME *subj;
         STACK_OF(CONF_VALUE) *val = NULL;
 #if (OPENSSL_VERSION_NUMBER >= 0x0090800fL)
         GENERAL_NAMES *names = NULL;
@@ -5233,13 +5233,13 @@ again:
         if (!ok && (subj = X509_get_subject_name(peer)) != 0)
         { int i = -1;
           do
-          { ASN1_STRING *name;
+          { const ASN1_STRING *name;
             i = X509_NAME_get_index_by_NID(subj, NID_commonName, i);
             if (i == -1)
               break;
             name = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(subj, i));
             if (name)
-            { if (!soap_tag_cmp(host, (const char*)ASN1_STRING_data(name)))
+            { if (!soap_tag_cmp(host, (const char*)ASN1_STRING_get0_data(name)))
                 ok = 1;
               else
               { unsigned char *tmp = NULL;

@@ -273,9 +273,9 @@ struct boss_tos_kiljaeden : BossAI
         DefaultEvents();
     }
 
-    void EnterEvadeMode()
+    void EnterEvadeMode(EvadeReason why = EVADE_REASON_OTHER) override
     {
-        BossAI::EnterEvadeMode();
+        BossAI::EnterEvadeMode(why);
         me->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_SELECTABLE);
         SetFlyMode(false);
         me->NearTeleportTo(me->GetHomePosition());
