@@ -378,6 +378,7 @@ namespace WorldPackets
         class GarrisonOpenTalentNpc;
         class GarrisonOpenRecruitmentNpc;
         class GarrisonRecruitsFollower;
+        class GarrisonSetRecruitmentPreferences;
         class GarrisonSetFollowerInactive;
         class GarrisonFollowerChangedStatus;
         class GarrisonRequestShipmentInfo;
@@ -1973,6 +1974,7 @@ class TC_GAME_API WorldSession
         void HandleRequestLandingPageShipmentInfoOpcode(WorldPackets::Garrison::GarrisonRequestLandingPageShipmentInfo& /*packet*/);
         void HandleGarrisonGenerateRecruits(WorldPackets::Garrison::GarrisonGenerateRecruits& generateRecruits);
         void HandleGarrisonRecruitFollower(WorldPackets::Garrison::GarrisonRecruitsFollower& garrisonRecruitsFollower);
+        void HandleGarrisonSetRecruitmentPreferences(WorldPackets::Garrison::GarrisonSetRecruitmentPreferences& setRecruitmentPreferences);
         void HandleGarrisonSetFollowerInactive(WorldPackets::Garrison::GarrisonSetFollowerInactive& garrisonSetFollowerInactive);
         void HandleGarrisonGetShipmentInfo(WorldPackets::Garrison::GarrisonRequestShipmentInfo& garrisonRequestShipmentInfo);
         void HandleGarrisonResearchTalent(WorldPackets::Garrison::GarrisonResearchTalent& researchTalent);

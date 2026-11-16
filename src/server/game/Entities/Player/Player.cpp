@@ -15283,6 +15283,12 @@ void Player::PrepareGossipMenu(WorldObject* source, uint32 menuId /*= 0*/, bool 
                     canTalk = garrison && garrison->CanOpenShipmentNpc(creature);
                     break;
                 }
+                case GOSSIP_OPTION_GARRISON_RECRUITMENT:
+                {
+                    Garrison* garrison = GetGarrison(GARRISON_TYPE_GARRISON);
+                    canTalk = garrison && garrison->ToWodGarrison() && garrison->ToWodGarrison()->CanOpenRecruitment(creature);
+                    break;
+                }
                 default:
                     TC_LOG_ERROR("sql.sql", "Creature entry %u has unknown gossip option %u for menu %u.", creature->GetEntry(), itr->second.OptionType, itr->second.MenuId);
                     canTalk = false;
@@ -15497,6 +15503,12 @@ void Player::OnGossipSelect(WorldObject* source, uint32 optionIndex, uint32 menu
         }
         case GOSSIP_OPTION_TRANSMOGRIFIER:
             GetSession()->SendOpenTransmogrifier(guid);
+            break;
+        case GOSSIP_OPTION_GARRISON_RECRUITMENT:
+            PlayerTalkClass->SendCloseGossip();
+            if (Garrison* garrison = GetGarrison(GARRISON_TYPE_GARRISON))
+                if (WodGarrison* wodGarrison = garrison->ToWodGarrison())
+                    wodGarrison->SendRecruitmentNpc(guid);
             break;
         case GOSSIP_OPTION_ADVENTURE_MAP:
         {
@@ -30279,14 +30291,6 @@ void Player::GetGarrisonOpenTalentNpc(ObjectGuid guid)
     WorldPackets::Garrison::GarrisonOpenTalentNpc openTalentNpc;
     openTalentNpc.NpcGUID = guid;
     SendDirectMessage(openTalentNpc.Write());
-}
-
-void Player::SendFollowerRecruitmentUI(ObjectGuid guid)
-{
-    WorldPackets::Garrison::GarrisonOpenRecruitmentNpc recruitmentNpc;
-    recruitmentNpc.NpcGUID = guid;
-    recruitmentNpc.CanRecruitFollower = true;
-    SendDirectMessage(recruitmentNpc.Write());
 }
 
 void Player::SendShipmentCrafterUI(ObjectGuid guid, uint32 shipmentContainerID)

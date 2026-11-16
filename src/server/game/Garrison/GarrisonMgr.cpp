@@ -224,6 +224,14 @@ void GarrisonMgr::Initialize()
     LoadBuildingSpawns();
     LoadFollowerClassSpecAbilities();
     LoadPlotClassHallGOInfo();
+    LoadAbilityCounters();
+
+    // recrues de l'auberge : les sujets generiques du fief (sans drapeau, sans source, verts ou bleus)
+    for (GarrFollowerEntry const* follower : sGarrFollowerStore)
+        if (follower->GarrFollowerTypeID == FOLLOWER_TYPE_GARRISON && !follower->Flags
+            && (follower->Quality == ITEM_QUALITY_UNCOMMON || follower->Quality == ITEM_QUALITY_RARE)
+            && follower->HordeCreatureID && follower->AllianceCreatureID)
+            _innRecruitPool.push_back(follower);
 }
 
 GarrSiteLevelEntry const* GarrisonMgr::GetGarrSiteLevelEntry(uint32 garrSiteId, uint32 level) const
@@ -528,6 +536,37 @@ std::list<GarrAbilityEntry const*> GarrisonMgr::RollFollowerAbilities(uint32 gar
     result.splice(result.end(), traitList);
 
     return result;
+}
+
+// GarrAbilityEffect.db2 (7.3.5) : menace contree par chaque capacite, recopiee dans garrison_ability_counter
+void GarrisonMgr::LoadAbilityCounters()
+{
+    uint32 msTime = getMSTime();
+    _abilityCounters.clear();
+
+    QueryResult result = WorldDatabase.Query("SELECT GarrAbilityID, GarrMechanicTypeID FROM garrison_ability_counter");
+    if (!result)
+    {
+        TC_LOG_INFO("server.loading", ">> Loaded 0 garrison ability counters. DB table `garrison_ability_counter` is empty.");
+        return;
+    }
+
+    do
+    {
+        Field* fields = result->Fetch();
+        _abilityCounters.emplace(fields[0].GetUInt32(), fields[1].GetUInt32());
+    } while (result->NextRow());
+
+    TC_LOG_INFO("server.loading", ">> Loaded %u garrison ability counters in %u ms", uint32(_abilityCounters.size()), GetMSTimeDiffToNow(msTime));
+}
+
+bool GarrisonMgr::AbilityCountersMechanic(uint32 garrAbilityId, uint32 garrMechanicTypeId) const
+{
+    auto bounds = _abilityCounters.equal_range(garrAbilityId);
+    for (auto itr = bounds.first; itr != bounds.second; ++itr)
+        if (itr->second == garrMechanicTypeId)
+            return true;
+    return false;
 }
 
 std::list<GarrAbilityEntry const*> GarrisonMgr::GetClassSpecAbilities(GarrFollowerEntry const* follower, uint32 faction) const

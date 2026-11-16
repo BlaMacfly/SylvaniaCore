@@ -2672,7 +2672,6 @@ class TC_GAME_API Player : public Unit, public GridObject<Player>
         void SendGarrisonBlueprintAndSpecializationData() const;
 
         void GetGarrisonOpenTalentNpc(ObjectGuid guid);
-        void SendFollowerRecruitmentUI(ObjectGuid guid);
         void SendShipmentCrafterUI(ObjectGuid guid, uint32 shipmentContainerID);
         void CheckClassHallAllowArea();
         // End Garrisons

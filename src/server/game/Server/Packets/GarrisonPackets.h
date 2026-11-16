@@ -671,19 +671,43 @@ namespace WorldPackets
             WorldPacket const* Write() override;
         };
 
+        // 7.3.5 : format de LegionCore (le client attend toujours trois sujets, vides tant que rien n'est tire)
         class GarrisonOpenRecruitmentNpc final : public ServerPacket
         {
         public:
-            GarrisonOpenRecruitmentNpc() : ServerPacket(SMSG_GARRISON_OPEN_RECRUITMENT_NPC, 4) { }
+            GarrisonOpenRecruitmentNpc() : ServerPacket(SMSG_GARRISON_OPEN_RECRUITMENT_NPC, 16 + 4 + 4 + 3 * 80 + 1) { }
+
+            WorldPacket const* Write() override;
 
             ObjectGuid NpcGUID;
-            uint32 Unk1 = 0;
-            //uint32 Unk2 = 0;
-            //uint32 Unk3 = 0;
-            std::vector <GarrisonFollower> followers;
-            bool CanRecruitFollower = false;
-            bool Unk4 = false;
+            uint32 GarrTypeID = 0;
+            uint32 Result = 0;
+            std::vector<GarrisonFollower> Followers;
+            bool CanGenerateRecruits = false;
+            bool CanSetRecruitmentPreference = false;
+        };
+
+        class GarrisonRecruitmentFollowersGenerated final : public ServerPacket
+        {
+        public:
+            GarrisonRecruitmentFollowersGenerated() : ServerPacket(SMSG_GARRISON_RECRUITMENT_FOLLOWERS_GENERATED, 4 + 3 * 80) { }
+
             WorldPacket const* Write() override;
+
+            uint32 Result = 0;
+            std::vector<GarrisonFollower> Followers;
+        };
+
+        class GarrisonSetRecruitmentPreferences final : public ClientPacket
+        {
+        public:
+            GarrisonSetRecruitmentPreferences(WorldPacket&& packet) : ClientPacket(CMSG_GARRISON_SET_RECRUITMENT_PREFERENCES, std::move(packet)) { }
+
+            void Read() override;
+
+            ObjectGuid NpcGUID;
+            uint32 AbilityID = 0;
+            uint32 TraitID = 0;
         };
 
         class GarrisonRecruitsFollower final : public ClientPacket
@@ -700,12 +724,12 @@ namespace WorldPackets
         class GarrisonRecruitFollowerResult final : public ServerPacket
         {
         public:
-            GarrisonRecruitFollowerResult() : ServerPacket(SMSG_GARRISON_RECRUIT_FOLLOWER_RESULT, 64) { }
-
-            uint32 resultID = 0;
-            std::vector <GarrisonFollower> followers;
+            GarrisonRecruitFollowerResult() : ServerPacket(SMSG_GARRISON_RECRUIT_FOLLOWER_RESULT, 4 + 80) { }
 
             WorldPacket const* Write() override;
+
+            int32 Result = 0;
+            GarrisonFollower Follower;
         };
 
         WorldPacket InsertGarrisonFollower(WorldPacket& worldPacke, WorldPackets::Garrison::GarrisonFollower follower);

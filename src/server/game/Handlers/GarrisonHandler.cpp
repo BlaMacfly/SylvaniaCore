@@ -220,54 +220,34 @@ void WorldSession::HandleRequestLandingPageShipmentInfoOpcode(WorldPackets::Garr
 void WorldSession::HandleGarrisonAssignFollowerToBuilding(WorldPackets::Garrison::GarrisonAssignFollowerToBuilding& /*packet*/)
 { }
 
+// recruteur de l'auberge du fief : le joueur choisit une menace ou un trait, trois recrues sont tirees pour la semaine
 void WorldSession::HandleGarrisonGenerateRecruits(WorldPackets::Garrison::GarrisonGenerateRecruits& generateRecruits)
 {
-    if (!_player)
-        return;
-
-    Garrison* garrison = _player->GetGarrison(GarrisonType::GARRISON_TYPE_CLASS_HALL);
-
+    Garrison* garrisonBase = _player->GetGarrison(GARRISON_TYPE_GARRISON);
+    WodGarrison* garrison = garrisonBase ? garrisonBase->ToWodGarrison() : nullptr;
     if (!garrison)
         return;
 
-    if (Creature* unit = _player->GetNPCIfCanInteractWith(generateRecruits.NpcGUID, 0))
-    {
-        _player->Whisper(std::string("CMSG_GARRISON_GENERATE_RECRUITS"), Language::LANG_COMMON, _player);
-        // if (unit->ToGarrisonNPCAI()) 
-        //     unit->ToGarrisonNPCAI()->SendRecruitmentFollowersGenerated(_player, generateRecruits.AbiltyID ? generateRecruits.AbiltyID : generateRecruits.TraitID, 0, generateRecruits.TraitID ? true : false);
-    }
+    if (Creature* npc = _player->GetNPCIfCanInteractWith(generateRecruits.NpcGUID, UNIT_NPC_FLAG_GOSSIP))
+        if (garrison->CanOpenRecruitment(npc))
+            garrison->GenerateRecruits(generateRecruits.TraitID, generateRecruits.AbiltyID);
 }
 
 void WorldSession::HandleGarrisonRecruitFollower(WorldPackets::Garrison::GarrisonRecruitsFollower& garrisonRecruitsFollower)
 {
-    if (_player == nullptr)
-        return;
-
-    Garrison* garrison = _player->GetGarrison(GarrisonType::GARRISON_TYPE_CLASS_HALL);
-
+    Garrison* garrisonBase = _player->GetGarrison(GARRISON_TYPE_GARRISON);
+    WodGarrison* garrison = garrisonBase ? garrisonBase->ToWodGarrison() : nullptr;
     if (!garrison)
         return;
 
-    WorldPackets::Garrison::GarrisonRecruitFollowerResult result;
-    std::unordered_map<uint64 /*dbId*/, Garrison::Follower> followers = garrison->GetFollowers();
+    if (Creature* npc = _player->GetNPCIfCanInteractWith(garrisonRecruitsFollower.NpcGUID, UNIT_NPC_FLAG_GOSSIP))
+        if (garrison->CanOpenRecruitment(npc))
+            garrison->RecruitFollower(garrisonRecruitsFollower.FollowerID);
+}
 
-    if (Creature* unit = _player->GetNPCIfCanInteractWith(garrisonRecruitsFollower.NpcGUID, 0))
-    {
-        result.resultID = uint32(GarrisonError::GARRISON_SUCCESS);
-
-        for (auto& follower : followers)
-        {
-            if (follower.second.PacketInfo.GarrFollowerID == garrisonRecruitsFollower.FollowerID)
-            {
-                result.followers.push_back(follower.second.PacketInfo);
-                garrison->AddFollower(garrisonRecruitsFollower.FollowerID);
-                //l_Garrison->SetCanRecruitFollower(false);
-                //m_Player->SetCharacterWorldState(CharacterWorldStates::GarrisonTavernBoolCanRecruitFollower, 0);
-                break;
-            }
-        }
-        SendPacket(result.Write());
-    }
+// envoye par le client a la fermeture de la fenetre : la preference n'est pas conservee (Firestorm non plus)
+void WorldSession::HandleGarrisonSetRecruitmentPreferences(WorldPackets::Garrison::GarrisonSetRecruitmentPreferences& /*setRecruitmentPreferences*/)
+{
 }
 
 void WorldSession::HandleGarrisonSetFollowerInactive(WorldPackets::Garrison::GarrisonSetFollowerInactive& garrisonSetFollowerInactive)

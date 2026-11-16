@@ -115,7 +115,7 @@ public:
     GarrSiteLevelEntry const* GetSiteLevel() const { return _siteLevel; }
 
     // Followers
-    void AddFollower(uint32 garrFollowerId);
+    void AddFollower(uint32 garrFollowerId, WorldPackets::Garrison::GarrisonFollower const* recruit = nullptr);
     void AddShipmentFollower(uint32 garrFollowerId);
     Follower* GetFollower(uint64 dbId);
     Follower* GetFollowerByGarrFollowerId(uint32 garrFollowerId);

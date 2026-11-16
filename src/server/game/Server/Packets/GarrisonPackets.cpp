@@ -561,25 +561,29 @@ WorldPacket const* WorldPackets::Garrison::GarrisonOpenTalentNpc::Write()
 WorldPacket const* WorldPackets::Garrison::GarrisonOpenRecruitmentNpc::Write()
 {
     _worldPacket << NpcGUID;
-    _worldPacket << Unk1;
-    if (followers.empty())
-    {
-        for (uint8 itr = 0; itr < 3; ++itr)
-        {
-            GarrisonFollower follower;
-            InsertGarrisonFollower(_worldPacket, follower);
-        }
-    }
-    else
-    {
-        for (GarrisonFollower follower : followers)
-        {
-            InsertGarrisonFollower(_worldPacket, follower);
-        }
-    }
-    _worldPacket << CanRecruitFollower;
-    _worldPacket << Unk4;
+    _worldPacket << uint32(GarrTypeID);
+    _worldPacket << uint32(Result);
+    for (uint32 i = 0; i < 3; ++i)
+        _worldPacket << (i < Followers.size() ? Followers[i] : GarrisonFollower());
+    _worldPacket.WriteBit(CanGenerateRecruits);
+    _worldPacket.WriteBit(CanSetRecruitmentPreference);
+    _worldPacket.FlushBits();
     return &_worldPacket;
+}
+
+WorldPacket const* WorldPackets::Garrison::GarrisonRecruitmentFollowersGenerated::Write()
+{
+    _worldPacket << uint32(Result);
+    for (uint32 i = 0; i < 3; ++i)
+        _worldPacket << (i < Followers.size() ? Followers[i] : GarrisonFollower());
+    return &_worldPacket;
+}
+
+void WorldPackets::Garrison::GarrisonSetRecruitmentPreferences::Read()
+{
+    _worldPacket >> NpcGUID;
+    _worldPacket >> AbilityID;
+    _worldPacket >> TraitID;
 }
 
 void WorldPackets::Garrison::GarrisonRecruitsFollower::Read()
@@ -590,24 +594,8 @@ void WorldPackets::Garrison::GarrisonRecruitsFollower::Read()
 
 WorldPacket const* WorldPackets::Garrison::GarrisonRecruitFollowerResult::Write()
 {
-    _worldPacket << resultID;
-
-    if (followers.empty())
-    {
-        for (uint8 itr = 0; itr < 3; ++itr)
-        {
-            GarrisonFollower follower;
-            InsertGarrisonFollower(_worldPacket, follower);
-        }
-    }
-    else
-    {
-        for (GarrisonFollower follower : followers)
-        {
-            InsertGarrisonFollower(_worldPacket, follower);
-        }
-    }
-
+    _worldPacket << int32(Result);
+    _worldPacket << Follower;
     return &_worldPacket;
 }
 

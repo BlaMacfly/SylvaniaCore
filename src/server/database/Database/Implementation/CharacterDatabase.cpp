@@ -757,6 +757,9 @@ void CharacterDatabaseConnection::DoPrepareStatements()
     PrepareStatement(CHAR_SEL_GARRISON_WORKORDER, "SELECT id, plot_instance_id, shipment_id, creation_time, complete_time, garrison_id FROM character_garrison_work_order WHERE garrison_id = ? AND garrison_type = ?", CONNECTION_SYNCH);
     PrepareStatement(CHAR_DEL_GARRISON_WORKORDER, "DELETE FROM character_garrison_work_order WHERE id = ?", CONNECTION_ASYNC);
     PrepareStatement(CHAR_DEL_GARRISON_WORKORDERS, "DELETE FROM character_garrison_work_order WHERE garrison_id = ? AND garrison_type = ?", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_SEL_GARRISON_RECRUITS, "SELECT generated, lastRecruit, recruits FROM character_garrison_recruits WHERE guid = ?", CONNECTION_SYNCH);
+    PrepareStatement(CHAR_REP_GARRISON_RECRUITS, "REPLACE INTO character_garrison_recruits (guid, generated, lastRecruit, recruits) VALUES (?, ?, ?, ?)", CONNECTION_ASYNC);
+    PrepareStatement(CHAR_DEL_GARRISON_RECRUITS, "DELETE FROM character_garrison_recruits WHERE guid = ?", CONNECTION_ASYNC);
 
     // Black Market
     PrepareStatement(CHAR_SEL_BLACKMARKET_AUCTIONS, "SELECT marketId, currentBid, time, numBids, bidder FROM blackmarket_auctions", CONNECTION_SYNCH);

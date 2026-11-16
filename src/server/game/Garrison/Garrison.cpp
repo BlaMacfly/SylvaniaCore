@@ -536,6 +536,12 @@ void Garrison::DeleteFromDB(CharacterDatabaseTransaction& trans, ObjectGuid::Low
 {
     if (garrType == GARRISON_TYPE_CLASS_HALL)
         trans->PAppend("DELETE FROM character_garrison_talents WHERE guid = " UI64FMTD, guid);
+    else if (garrType == GARRISON_TYPE_GARRISON)
+    {
+        CharacterDatabasePreparedStatement* recruits = CharacterDatabase.GetPreparedStatement(CHAR_DEL_GARRISON_RECRUITS);
+        recruits->setUInt64(0, guid);
+        trans->Append(recruits);
+    }
 
     CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_CHARACTER_GARRISON);
     stmt->setUInt64(0, guid);
@@ -612,7 +618,7 @@ void Garrison::AI_Destroy()
     _ai.reset();
 }
 
-void Garrison::AddFollower(uint32 garrFollowerId)
+void Garrison::AddFollower(uint32 garrFollowerId, WorldPackets::Garrison::GarrisonFollower const* recruit /*= nullptr*/)
 {
     WorldPackets::Garrison::GarrisonAddFollowerResult addFollowerResult;
     addFollowerResult.GarrTypeID = _garrisonType;
@@ -633,7 +639,8 @@ void Garrison::AddFollower(uint32 garrFollowerId)
     follower.PacketInfo.FollowerLevel = followerEntry->FollowerLevel;
     follower.PacketInfo.ItemLevelWeapon = followerEntry->ItemLevelWeapon;
     follower.PacketInfo.ItemLevelArmor = followerEntry->ItemLevelArmor;
-    follower.PacketInfo.AbilityID = sGarrisonMgr.RollFollowerAbilities(garrFollowerId, followerEntry, follower.PacketInfo.Quality, GetFaction(), true);
+    // recrue de l'auberge : elle garde les capacites montrees au joueur
+    follower.PacketInfo.AbilityID = recruit ? recruit->AbilityID : sGarrisonMgr.RollFollowerAbilities(garrFollowerId, followerEntry, follower.PacketInfo.Quality, GetFaction(), true);
     follower.UpdateEquipmentSlots();    // champion du domaine rare ou epique : ses emplacements d'equipement
     addFollowerResult.Follower = follower.PacketInfo;
     _owner->SendDirectMessage(addFollowerResult.Write());

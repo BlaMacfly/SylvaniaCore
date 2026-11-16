@@ -112,7 +112,24 @@ public:
 
     void SendBuildingLandmarks(Player* receiver) const;
 
+    // Recruteur de l'auberge (Akanja / Lysa Serion), d'apres Firestorm : auberge niveau 2, trois recrues tirees
+    // une fois par semaine selon la menace ou le trait choisi, une seule embauche par semaine
+    bool CanOpenRecruitment(Creature const* npc) const;
+    void SendRecruitmentNpc(ObjectGuid const& npcGuid);
+    void GenerateRecruits(uint32 traitId, uint32 garrMechanicTypeId);
+    void RecruitFollower(uint32 garrFollowerId);
+
 private:
+    void LoadRecruits();
+    void SaveRecruits() const;
+    bool CanRecruitThisWeek() const;
+    WorldPackets::Garrison::GarrisonFollower RollRecruit(GarrFollowerEntry const* entry, uint32 traitId, uint32 garrMechanicTypeId) const;
+
+    bool _recruitsLoaded = false;
+    uint32 _recruitsGenerated = 0;  // date du tirage des recrues
+    uint32 _lastRecruit = 0;        // date de la derniere embauche
+    std::vector<WorldPackets::Garrison::GarrisonFollower> _recruits;
+
     void InitializePlots();
     GarrisonError CheckBuildingPlacement(uint32 garrPlotInstanceId, uint32 garrBuildingId) const;
     GarrisonError CheckBuildingRemoval(uint32 garrPlotInstanceId) const;

@@ -146,6 +146,8 @@ public:
     uint64 GenerateWorkorderDbId();
     std::list<GarrAbilityEntry const*> RollFollowerAbilities(uint32 garrFollowerId, GarrFollowerEntry const* follower, uint32 quality, uint32 faction, bool initial) const;
     std::list<GarrAbilityEntry const*> GetClassSpecAbilities(GarrFollowerEntry const* follower, uint32 faction) const;
+    bool AbilityCountersMechanic(uint32 garrAbilityId, uint32 garrMechanicTypeId) const;
+    std::vector<GarrFollowerEntry const*> const& GetInnRecruitPool() const { return _innRecruitPool; }
 
     uint32 GetMissionSuccessChance(Garrison* garrison, uint32 missionId);
     ClassHallTalentInfo const* GetClassHallTalent(uint32 talentId) const;
@@ -170,6 +172,7 @@ private:
     void LoadBuildingSpawns();
     void LoadFollowerClassSpecAbilities();
     void LoadPlotClassHallGOInfo();
+    void LoadAbilityCounters();
 
     std::unordered_map<uint32 /*garrSiteId*/, std::vector<GarrSiteLevelPlotInstEntry const*>> _garrisonPlotInstBySiteLevel;
     std::unordered_map<uint32 /*mapId*/, std::unordered_map<uint32 /*garrPlotId*/, GameObjectsEntry const*>> _garrisonPlots;
@@ -184,6 +187,8 @@ private:
     std::unordered_map<uint32 /*garrFollowerId*/, GarrAbilities> _garrisonFollowerAbilities[2];
     std::unordered_map<uint32 /*classSpecId*/, std::list<GarrAbilityEntry const*>> _garrisonFollowerClassSpecAbilities;
     std::set<GarrAbilityEntry const*> _garrisonFollowerRandomTraits;
+    std::unordered_multimap<uint32 /*garrAbilityId*/, uint32 /*garrMechanicTypeId*/> _abilityCounters;
+    std::vector<GarrFollowerEntry const*> _innRecruitPool;
 
     uint64 _followerDbIdGenerator = UI64LIT(1);
     uint64 _missionDbIdGenerator = UI64LIT(1);

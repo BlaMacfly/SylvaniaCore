@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "Containers.h"
 #include "Creature.h"
 #include "DatabaseEnv.h"
 #include "GameObject.h"
@@ -27,6 +28,7 @@
 #include "WodGarrison.h"
 #include "MotionMaster.h"
 #include "Random.h"
+#include "World.h"
 #include <cmath>
 
 enum : uint32 { GARRISON_BUILDING_BARRACKS_1 = 26 }; // GarrBuilding.db2 : Caserne niveau 1
@@ -922,4 +924,257 @@ bool WodGarrison::Building::CanActivate() const
     }
 
     return false;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Recruteur de l'auberge : logique de Firestorm (WoD 6.2), paquets 7.3.5 de LegionCore
+// ---------------------------------------------------------------------------------------------
+namespace
+{
+    enum InnRecruiter : uint32
+    {
+        NPC_AKANJA                      = 87305,    // Horde
+        NPC_LYSA_SERION                 = 84947,    // Alliance
+        QUEST_HEADHUNTERS_HARVEST_H     = 37046,
+        QUEST_HEADHUNTERS_HARVEST_A     = 37119,
+        INN_LEVEL_RECRUITMENT           = 2
+    };
+
+    // debut de la semaine en cours (les recrues et l'embauche se renouvellent a la remise a zero hebdomadaire)
+    uint32 CurrentWeekStart()
+    {
+        return uint32(sWorld->GetNextWeeklyQuestsResetTime() - WEEK);
+    }
+}
+
+bool WodGarrison::CanOpenRecruitment(Creature const* npc) const
+{
+    if (!npc || npc->GetEntry() != (GetFaction() == GARRISON_FACTION_INDEX_HORDE ? NPC_AKANJA : NPC_LYSA_SERION))
+        return false;
+
+    if (_owner->GetQuestStatus(GetFaction() == GARRISON_FACTION_INDEX_HORDE ? QUEST_HEADHUNTERS_HARVEST_H : QUEST_HEADHUNTERS_HARVEST_A) == QUEST_STATUS_NONE)
+        return false;
+
+    for (auto const& itr : _plots)
+        if (itr.second.BuildingInfo.PacketInfo && itr.second.BuildingInfo.PacketInfo->Active)
+            if (GarrBuildingEntry const* building = sGarrBuildingStore.LookupEntry(itr.second.BuildingInfo.PacketInfo->GarrBuildingID))
+                if (building->BuildingType == GARR_BTYPE_TAVERN && building->UpgradeLevel >= INN_LEVEL_RECRUITMENT)
+                    return true;
+    return false;
+}
+
+bool WodGarrison::CanRecruitThisWeek() const
+{
+    return _lastRecruit < CurrentWeekStart();
+}
+
+void WodGarrison::LoadRecruits()
+{
+    if (!_recruitsLoaded)
+    {
+        _recruitsLoaded = true;
+        CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_SEL_GARRISON_RECRUITS);
+        stmt->setUInt64(0, _owner->GetGUID().GetCounter());
+        if (PreparedQueryResult result = CharacterDatabase.Query(stmt))
+        {
+            Field* fields = result->Fetch();
+            _recruitsGenerated = fields[0].GetUInt32();
+            _lastRecruit = fields[1].GetUInt32();
+
+            // "sujet capacite capacite ...;sujet ..."
+            std::string recruitsText = fields[2].GetString();
+            for (std::string_view recruitText : Trinity::Tokenize(recruitsText, ';', false))
+            {
+                std::vector<uint32> tokens;
+                for (std::string_view token : Trinity::Tokenize(recruitText, ' ', false))
+                    tokens.push_back(uint32(strtoul(std::string(token).c_str(), nullptr, 10)));
+                if (tokens.empty())
+                    continue;
+
+                GarrFollowerEntry const* entry = sGarrFollowerStore.LookupEntry(tokens[0]);
+                if (!entry)
+                    continue;
+
+                WorldPackets::Garrison::GarrisonFollower recruit;
+                recruit.GarrFollowerID = entry->ID;
+                recruit.Quality = entry->Quality;
+                recruit.FollowerLevel = entry->FollowerLevel;
+                recruit.ItemLevelWeapon = entry->ItemLevelWeapon;
+                recruit.ItemLevelArmor = entry->ItemLevelArmor;
+                for (uint32 i = 1; i < tokens.size(); ++i)
+                    if (GarrAbilityEntry const* ability = sGarrAbilityStore.LookupEntry(tokens[i]))
+                        recruit.AbilityID.push_back(ability);
+                _recruits.push_back(recruit);
+            }
+        }
+    }
+
+    // recrues d'une semaine passee : perimees
+    if (!_recruits.empty() && _recruitsGenerated < CurrentWeekStart())
+        _recruits.clear();
+}
+
+void WodGarrison::SaveRecruits() const
+{
+    std::ostringstream text;
+    for (WorldPackets::Garrison::GarrisonFollower const& recruit : _recruits)
+    {
+        if (text.tellp())
+            text << ';';
+        text << recruit.GarrFollowerID;
+        for (GarrAbilityEntry const* ability : recruit.AbilityID)
+            text << ' ' << ability->ID;
+    }
+
+    CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_REP_GARRISON_RECRUITS);
+    stmt->setUInt64(0, _owner->GetGUID().GetCounter());
+    stmt->setUInt32(1, _recruitsGenerated);
+    stmt->setUInt32(2, _lastRecruit);
+    stmt->setString(3, text.str());
+    CharacterDatabase.Execute(stmt);
+}
+
+void WodGarrison::SendRecruitmentNpc(ObjectGuid const& npcGuid)
+{
+    LoadRecruits();
+
+    WorldPackets::Garrison::GarrisonOpenRecruitmentNpc packet;
+    packet.NpcGUID = npcGuid;
+    packet.GarrTypeID = GARRISON_TYPE_GARRISON;
+    packet.Followers = _recruits;
+    packet.CanGenerateRecruits = CanRecruitThisWeek();
+    packet.CanSetRecruitmentPreference = true;
+    _owner->SendDirectMessage(packet.Write());
+}
+
+WorldPackets::Garrison::GarrisonFollower WodGarrison::RollRecruit(GarrFollowerEntry const* entry, uint32 traitId, uint32 garrMechanicTypeId) const
+{
+    WorldPackets::Garrison::GarrisonFollower recruit;
+    recruit.GarrFollowerID = entry->ID;
+    recruit.Quality = entry->Quality;
+    recruit.FollowerLevel = entry->FollowerLevel;
+    recruit.ItemLevelWeapon = entry->ItemLevelWeapon;
+    recruit.ItemLevelArmor = entry->ItemLevelArmor;
+    recruit.AbilityID = sGarrisonMgr.RollFollowerAbilities(entry->ID, entry, entry->Quality, GetFaction(), true);
+
+    auto isTrait = [](GarrAbilityEntry const* ability) { return (ability->Flags & GARRISON_ABILITY_FLAG_TRAIT) != 0; };
+
+    // menace choisie : une capacite de sa specialisation qui la contre remplace sa premiere capacite
+    if (garrMechanicTypeId && std::none_of(recruit.AbilityID.begin(), recruit.AbilityID.end(), [garrMechanicTypeId](GarrAbilityEntry const* ability)
+        { return sGarrisonMgr.AbilityCountersMechanic(ability->ID, garrMechanicTypeId); }))
+    {
+        for (GarrAbilityEntry const* counter : sGarrisonMgr.GetClassSpecAbilities(entry, GetFaction()))
+        {
+            if (!sGarrisonMgr.AbilityCountersMechanic(counter->ID, garrMechanicTypeId))
+                continue;
+
+            auto itr = std::find_if(recruit.AbilityID.begin(), recruit.AbilityID.end(), [&isTrait](GarrAbilityEntry const* ability) { return !isTrait(ability); });
+            if (itr != recruit.AbilityID.end())
+                *itr = counter;
+            else
+                recruit.AbilityID.push_front(counter);
+            break;
+        }
+    }
+
+    // trait choisi : il remplace son dernier trait
+    if (traitId && std::none_of(recruit.AbilityID.begin(), recruit.AbilityID.end(), [traitId](GarrAbilityEntry const* ability) { return ability->ID == traitId; }))
+    {
+        if (GarrAbilityEntry const* trait = sGarrAbilityStore.LookupEntry(traitId))
+        {
+            auto itr = std::find_if(recruit.AbilityID.rbegin(), recruit.AbilityID.rend(), isTrait);
+            if (itr != recruit.AbilityID.rend())
+                *itr = trait;
+            else
+                recruit.AbilityID.push_back(trait);
+        }
+    }
+
+    return recruit;
+}
+
+void WodGarrison::GenerateRecruits(uint32 traitId, uint32 garrMechanicTypeId)
+{
+    LoadRecruits();
+
+    WorldPackets::Garrison::GarrisonRecruitmentFollowersGenerated packet;
+    if (!CanRecruitThisWeek() || !_recruits.empty())
+    {
+        // deja tirees ou deja embauche cette semaine : on renvoie ce qui existe
+        packet.Followers = _recruits;
+        _owner->SendDirectMessage(packet.Write());
+        return;
+    }
+
+    // l'ordre des deux champs n'est sur que par WowPacketParser : un trait invalide seul est pris pour une menace
+    auto isGarrisonTrait = [](uint32 id)
+    {
+        GarrAbilityEntry const* ability = sGarrAbilityStore.LookupEntry(id);
+        return ability && (ability->Flags & GARRISON_ABILITY_FLAG_TRAIT) && ability->GarrFollowerTypeID == FOLLOWER_TYPE_GARRISON;
+    };
+    if (traitId && !garrMechanicTypeId && !isGarrisonTrait(traitId))
+        std::swap(traitId, garrMechanicTypeId);
+    if (traitId && !isGarrisonTrait(traitId))
+        traitId = 0;
+
+    std::vector<GarrFollowerEntry const*> pool, preferred;
+    for (GarrFollowerEntry const* entry : sGarrisonMgr.GetInnRecruitPool())
+    {
+        if (_followerIds.count(entry->ID))
+            continue;
+
+        pool.push_back(entry);
+        if (garrMechanicTypeId)
+        {
+            std::list<GarrAbilityEntry const*> abilities = sGarrisonMgr.GetClassSpecAbilities(entry, GetFaction());
+            if (std::any_of(abilities.begin(), abilities.end(), [garrMechanicTypeId](GarrAbilityEntry const* ability)
+                { return sGarrisonMgr.AbilityCountersMechanic(ability->ID, garrMechanicTypeId); }))
+                preferred.push_back(entry);
+        }
+    }
+
+    std::vector<GarrFollowerEntry const*>& candidates = preferred.empty() ? pool : preferred;
+    Trinity::Containers::RandomShuffle(candidates);
+    for (GarrFollowerEntry const* entry : candidates)
+    {
+        if (_recruits.size() >= 3)
+            break;
+        _recruits.push_back(RollRecruit(entry, traitId, garrMechanicTypeId));
+    }
+
+    _recruitsGenerated = uint32(time(nullptr));
+    SaveRecruits();
+
+    packet.Followers = _recruits;
+    _owner->SendDirectMessage(packet.Write());
+}
+
+void WodGarrison::RecruitFollower(uint32 garrFollowerId)
+{
+    LoadRecruits();
+
+    WorldPackets::Garrison::GarrisonRecruitFollowerResult packet;
+    auto itr = std::find_if(_recruits.begin(), _recruits.end(), [garrFollowerId](WorldPackets::Garrison::GarrisonFollower const& recruit) { return recruit.GarrFollowerID == garrFollowerId; });
+    // le Lua passe le rang de la recrue (1 a 3) : accepte aussi
+    if (itr == _recruits.end() && garrFollowerId >= 1 && garrFollowerId <= _recruits.size())
+        itr = _recruits.begin() + (garrFollowerId - 1);
+
+    if (!CanRecruitThisWeek() || itr == _recruits.end() || _followerIds.count(itr->GarrFollowerID))
+    {
+        packet.Result = GARRISON_ERROR_INVALID_FOLLOWER;
+        _owner->SendDirectMessage(packet.Write());
+        return;
+    }
+
+    WorldPackets::Garrison::GarrisonFollower recruit = *itr;
+    AddFollower(recruit.GarrFollowerID, &recruit);
+
+    _recruits.clear();
+    _lastRecruit = uint32(time(nullptr));
+    SaveRecruits();
+
+    for (auto const& follower : _followers)
+        if (follower.second.PacketInfo.GarrFollowerID == recruit.GarrFollowerID)
+            packet.Follower = follower.second.PacketInfo;
+    _owner->SendDirectMessage(packet.Write());
 }
