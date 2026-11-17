@@ -417,6 +417,10 @@ void BotBGAIMovement::MovementTo(ObjectGuid guid, float offset /* = 0 */)
 		if (!pObject)
 			return;
 		pos = pObject->GetPosition();
+		// SylvaniaCore (module BG BotFill): viser un point a 3 m de l objet, du cote du bot.
+		// Au centre, le bot se tenait dans le modele de la banniere : hors de vue pour tous.
+		float angle = pObject->GetAngle(m_Player);
+		pos.Relocate(pos.GetPositionX() + 3.0f * std::cos(angle), pos.GetPositionY() + 3.0f * std::sin(angle), pos.GetPositionZ());
 	}
 	if (IsNearToPosition(pos.GetPositionX(), pos.GetPositionY(), pos.GetPositionZ(), (offset == 0) ? 1.0f : offset * 0.9f))
 		return;
