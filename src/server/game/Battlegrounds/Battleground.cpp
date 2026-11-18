@@ -890,9 +890,6 @@ void Battleground::EndBattleground(uint32 winner)
         player->RemoveAura(SPELL_HONORABLE_DEFENDER_25Y);
         player->RemoveAura(SPELL_HONORABLE_DEFENDER_60Y);
 
-        uint32 winnerKills = player->GetRandomWinner() ? sWorld->getIntConfig(CONFIG_BG_REWARD_WINNER_HONOR_LAST) : sWorld->getIntConfig(CONFIG_BG_REWARD_WINNER_HONOR_FIRST);
-        uint32 loserKills = player->GetRandomWinner() ? sWorld->getIntConfig(CONFIG_BG_REWARD_LOSER_HONOR_LAST) : sWorld->getIntConfig(CONFIG_BG_REWARD_LOSER_HONOR_FIRST);
-
         if (isBattleground() && sWorld->getBoolConfig(CONFIG_BATTLEGROUND_STORE_STATISTICS_ENABLE))
         {
             BattlegroundScoreMap::const_iterator score = PlayerScores.find(player->GetGUID());
@@ -925,8 +922,8 @@ void Battleground::EndBattleground(uint32 winner)
             {
                 if (IsRandom() || BattlegroundMgr::IsBGWeekend(GetTypeID()))
                 {
-                    UpdatePlayerScore(player, SCORE_BONUS_HONOR, GetBonusHonorFromKill(winnerKills));
-
+                    // SylvaniaCore : plus de bonus GetBonusHonorFromKill(Battleground.RewardWinnerHonorFirst) herite de TC.
+                    // 27000 x 80 x 1,55 = 3,3 millions d honneur : les 25 prestiges d un coup a la premiere victoire (LegionCore ne l a pas).
                     if (!player->GetRandomWinner())
                     {
                         player->SetRandomWinner(true);

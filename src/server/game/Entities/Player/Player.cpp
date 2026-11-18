@@ -7136,8 +7136,6 @@ void Player::_InitHonorLevelOnLoadFromDB(uint32 honor, uint32 honorLevel, uint32
     UpdateHonorNextLevel();
 
     AddHonorXP(honor);
-    if (CanPrestige())
-        Prestige();
 }
 
 void Player::RewardPlayerWithRewardPack(uint32 rewardPackID)
@@ -7179,6 +7177,13 @@ void Player::AddHonorXP(uint32 xp)
 
     while (newHonorXP >= nextHonorLevelXP)
     {
+        // SylvaniaCore : au niveau 50, la barre reste pleine jusqu au clic sur Prestige (CMSG_PVP_PRESTIGE_RANK_UP, comme LegionCore)
+        if (honorLevel >= PLAYER_MAX_HONOR_LEVEL)
+        {
+            newHonorXP = nextHonorLevelXP;
+            break;
+        }
+
         newHonorXP -= nextHonorLevelXP;
 
         if (honorLevel < PLAYER_MAX_HONOR_LEVEL)
@@ -7215,15 +7220,13 @@ void Player::SetHonorLevel(uint8 level)
         else
             AddItem(138996, 1);
     }
-
-    if (CanPrestige())
-        Prestige();
 }
 
 void Player::Prestige()
 {
     SetUInt32Value(PLAYER_FIELD_PRESTIGE, GetPrestigeLevel() + 1);
     SetUInt32Value(PLAYER_FIELD_HONOR_LEVEL, 1);
+    SetUInt32Value(PLAYER_FIELD_HONOR, 0);
     UpdateHonorNextLevel();
 
     UpdateCriteria(CRITERIA_TYPE_PRESTIGE_REACHED);
