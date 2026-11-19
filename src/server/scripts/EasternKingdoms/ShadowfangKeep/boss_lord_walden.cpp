@@ -68,16 +68,13 @@ class boss_lord_walden : public CreatureScript
 
             void EnterCombat(Unit* /*who*/) override
             {
-                if (me->SelectNearestPlayer(10.0f))
-                {
-                    _EnterCombat();
-                    Talk(SAY_AGGRO);
-                    events.ScheduleEvent(EVENT_CONJURE_POISONOUS_MIXTURE, 5000);
-                    events.ScheduleEvent(EVENT_CONJURE_FROST_MIXTURE, urand(10000, 20000));
-                    events.ScheduleEvent(EVENT_CONJURE_MYSTERY_TOXIN, 25000);
-                }
-                else
-                    EnterEvadeMode();
+                // SylvaniaCore : plus d evade si aucun joueur a 10 m (attaque a distance ou par un familier =
+                // boss qui revenait aussitot a sa place et esquivait tout). LegionCore n a pas ce test.
+                _EnterCombat();
+                Talk(SAY_AGGRO);
+                events.ScheduleEvent(EVENT_CONJURE_POISONOUS_MIXTURE, 5000);
+                events.ScheduleEvent(EVENT_CONJURE_FROST_MIXTURE, urand(10000, 20000));
+                events.ScheduleEvent(EVENT_CONJURE_MYSTERY_TOXIN, 25000);
             }
 
             void JustDied(Unit* /*killer*/) override
