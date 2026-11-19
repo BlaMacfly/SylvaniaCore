@@ -23,7 +23,7 @@
 #define SMScriptName "instance_scarlet_monastery"
 #define DataHeader "SM"
 
-uint32 const EncounterCount = 10;
+uint32 const EncounterCount = 17;
 
 enum SMDataTypes
 {
@@ -42,7 +42,14 @@ enum SMDataTypes
     DATA_HIGH_INQUISITOR_FAIRBANKS  = 11,
     DATA_HOUNDMASTER_LOKSEY         = 12,
     DATA_INTERROGATOR_VISHAS        = 13,
-    DATA_SCORN                      = 14
+    DATA_SCORN                      = 14,
+
+    // Monastere refait (Mists of Pandaria, carte 1004)
+    DATA_THALNOS_SOULRENDER         = 15,
+    DATA_BROTHER_KORLOFF            = 16,
+    // hors rencontres
+    DATA_DURAND                     = 17,
+    DATA_EMPOWERED_ZOMBIE           = 18
 };
 
 enum SMCreatureIds
@@ -53,13 +60,22 @@ enum SMCreatureIds
 
     NPC_HORSEMAN                    = 23682,
     NPC_HEAD                        = 23775,
-    NPC_PUMPKIN                     = 23694
+    NPC_PUMPKIN                     = 23694,
+
+    NPC_THALNOS_SOULRENDER          = 59789,
+    NPC_EVICTED_SOUL                = 59974,
+    NPC_EMPOWERED_ZOMBIE            = 59930,
+    NPC_DURAND                      = 60040
 };
 
 enum SMGameObjectIds
 {
     GO_HIGH_INQUISITORS_DOOR        = 104600,
-    GO_PUMPKIN_SHRINE               = 186267
+    GO_PUMPKIN_SHRINE               = 186267,
+
+    GO_THALNOS_DOOR                 = 211844,
+    GO_KORLOFF_DOOR                 = 210564,
+    GO_WHITEMANE_DOOR               = 210563
 };
 
 template<typename AI>

@@ -226,7 +226,7 @@ public:
 class boss_high_inquisitor_whitemane : public CreatureScript
 {
 public:
-    boss_high_inquisitor_whitemane() : CreatureScript("boss_high_inquisitor_whitemane") { }
+    boss_high_inquisitor_whitemane() : CreatureScript("boss_high_inquisitor_whitemane_classic") { }
 
     CreatureAI* GetAI(Creature* creature) const override
     {

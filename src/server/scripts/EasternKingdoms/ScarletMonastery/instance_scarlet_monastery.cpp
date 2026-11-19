@@ -25,6 +25,9 @@
 DoorData const doorData[] =
 {
     { GO_HIGH_INQUISITORS_DOOR, DATA_MOGRAINE_AND_WHITE_EVENT, DOOR_TYPE_ROOM },
+    { GO_THALNOS_DOOR,          DATA_THALNOS_SOULRENDER,       DOOR_TYPE_PASSAGE },
+    { GO_KORLOFF_DOOR,          DATA_BROTHER_KORLOFF,          DOOR_TYPE_PASSAGE },
+    { GO_WHITEMANE_DOOR,        DATA_WHITEMANE,                DOOR_TYPE_SPAWN_HOLE },
     { 0,                        0,                             DOOR_TYPE_ROOM } // END
 };
 
@@ -52,6 +55,9 @@ class instance_scarlet_monastery : public InstanceMapScript
                         PumpkinShrineGUID = go->GetGUID();
                         break;
                     case GO_HIGH_INQUISITORS_DOOR:
+                    case GO_THALNOS_DOOR:
+                    case GO_KORLOFF_DOOR:
+                    case GO_WHITEMANE_DOOR:
                         AddDoor(go, true);
                         break;
                     default:
@@ -64,6 +70,9 @@ class instance_scarlet_monastery : public InstanceMapScript
                 switch (go->GetEntry())
                 {
                     case GO_HIGH_INQUISITORS_DOOR:
+                    case GO_THALNOS_DOOR:
+                    case GO_KORLOFF_DOOR:
+                    case GO_WHITEMANE_DOOR:
                         AddDoor(go, false);
                         break;
                     default:
@@ -92,6 +101,15 @@ class instance_scarlet_monastery : public InstanceMapScript
                         break;
                     case NPC_VORREL:
                         VorrelGUID = creature->GetGUID();
+                        break;
+                    case NPC_THALNOS_SOULRENDER:
+                        ThalnosGUID = creature->GetGUID();
+                        break;
+                    case NPC_DURAND:
+                        DurandGUID = creature->GetGUID();
+                        break;
+                    case NPC_EMPOWERED_ZOMBIE:
+                        EmpoweredZombieGUID = creature->GetGUID();
                         break;
                     default:
                         break;
@@ -146,6 +164,12 @@ class instance_scarlet_monastery : public InstanceMapScript
                         return WhitemaneGUID;
                     case DATA_VORREL:
                         return VorrelGUID;
+                    case DATA_THALNOS_SOULRENDER:
+                        return ThalnosGUID;
+                    case DATA_DURAND:
+                        return DurandGUID;
+                    case DATA_EMPOWERED_ZOMBIE:
+                        return EmpoweredZombieGUID;
                     default:
                         break;
                 }
@@ -159,6 +183,9 @@ class instance_scarlet_monastery : public InstanceMapScript
             ObjectGuid MograineGUID;
             ObjectGuid WhitemaneGUID;
             ObjectGuid VorrelGUID;
+            ObjectGuid ThalnosGUID;
+            ObjectGuid DurandGUID;
+            ObjectGuid EmpoweredZombieGUID;
 
             GuidSet HorsemanAdds;
         };
