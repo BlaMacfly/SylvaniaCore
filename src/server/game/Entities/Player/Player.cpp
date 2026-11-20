@@ -9317,7 +9317,10 @@ void Player::SendLoot(ObjectGuid guid, LootType loot_type, bool aeLooting/* = fa
             switch (loot_type)
             {
                 case LOOT_DISENCHANTING:
-                    loot->FillLoot(ASSERT_NOTNULL(item->GetDisenchantLoot(this))->ID, LootTemplates_Disenchant, this, true);
+                    if (ItemDisenchantLootEntry const* itemDisenchantLoot = item->GetDisenchantLoot(this))
+                        loot->FillLoot(itemDisenchantLoot->ID, LootTemplates_Disenchant, this, true);
+                    else if (item->GetTemplate()->GetFlags2() & ITEM_FLAG2_DISENCHANT_TO_LOOT_TABLE)
+                        loot->FillLoot(item->GetEntry(), LootTemplates_Disenchant, this, true);
                     break;
                 case LOOT_PROSPECTING:
                     loot->FillLoot(item->GetEntry(), LootTemplates_Prospecting, this, true);

@@ -7120,11 +7120,14 @@ SpellCastResult Spell::CheckItems(uint32* param1 /*= nullptr*/, uint32* param2 /
                 if (!itemProto)
                     return SPELL_FAILED_CANT_BE_DISENCHANTED;
 
-                ItemDisenchantLootEntry const* itemDisenchantLoot = item->GetDisenchantLoot(m_caster->ToPlayer());
-                if (!itemDisenchantLoot)
+                if (ItemDisenchantLootEntry const* itemDisenchantLoot = item->GetDisenchantLoot(m_caster->ToPlayer()))
+                {
+                    if (itemDisenchantLoot->SkillRequired > player->GetSkillValue(SKILL_ENCHANTING))
+                        return SPELL_FAILED_LOW_CASTLEVEL;
+                }
+                // objets de quete (runes, sigils) : butin indexe sur l objet lui-meme
+                else if (!(itemProto->GetFlags2() & ITEM_FLAG2_DISENCHANT_TO_LOOT_TABLE) || !LootTemplates_Disenchant.HaveLootFor(item->GetEntry()))
                     return SPELL_FAILED_CANT_BE_DISENCHANTED;
-                if (itemDisenchantLoot->SkillRequired > player->GetSkillValue(SKILL_ENCHANTING))
-                    return SPELL_FAILED_LOW_CASTLEVEL;
                 break;
             }
             case SPELL_EFFECT_PROSPECTING:

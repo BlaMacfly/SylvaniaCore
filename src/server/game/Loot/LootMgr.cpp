@@ -874,6 +874,11 @@ void LoadLootTemplates_Disenchant()
             lootIdSetUsed.insert(lootid);
     }
 
+    for (uint32 lootid : lootIdSet)
+        if (ItemTemplate const* proto = sObjectMgr->GetItemTemplate(lootid))
+            if (proto->GetFlags2() & ITEM_FLAG2_DISENCHANT_TO_LOOT_TABLE)
+                lootIdSetUsed.insert(lootid);
+
     for (LootIdSet::const_iterator itr = lootIdSetUsed.begin(); itr != lootIdSetUsed.end(); ++itr)
         lootIdSet.erase(*itr);
 
