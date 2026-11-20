@@ -31,9 +31,12 @@ EndContentData */
 #include "ScriptMgr.h"
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
+#include "SpellAuraEffects.h"
+#include "SpellScript.h"
 
 /*######
 ## npc_lady_sylvanas_windrunner
@@ -42,6 +45,11 @@ EndContentData */
 enum Sylvanas
 {
     QUEST_JOURNEY_TO_UNDERCITY      = 9180,
+    QUEST_THE_VICTORS_SPOILS        = 42987,
+
+    SPELL_HEROS_HONOR_OVERRIDE      = 218023,
+    SPELL_HEROS_HONOR_MARKER        = 218029,
+    SPELL_HEROS_HONOR_CREDIT        = 218086,
 
     EMOTE_LAMENT_END                = 0,
     SAY_LAMENT_END                  = 1,
@@ -96,6 +104,18 @@ class npc_lady_sylvanas_windrunner : public CreatureScript
 {
 public:
     npc_lady_sylvanas_windrunner() : CreatureScript("npc_lady_sylvanas_windrunner") { }
+
+    // Le ScriptName masque la SmartAI : on reprend ici son evenement d acceptation de quete
+    bool OnQuestAccept(Player* player, Creature* /*creature*/, Quest const* quest) override
+    {
+        if (quest->GetQuestId() == QUEST_THE_VICTORS_SPOILS)
+        {
+            player->CastSpell(player, SPELL_HEROS_HONOR_MARKER, true);
+            player->CastSpell(player, SPELL_HEROS_HONOR_OVERRIDE, true);
+        }
+
+        return false;
+    }
 
     bool OnQuestReward(Player* player, Creature* creature, const Quest *_Quest, uint32 /*slot*/) override
     {
@@ -317,6 +337,28 @@ public:
     };
 };
 
+/// Hero's Honor - 218084
+/// Le credit tombe a la fin de la scene 1343, dont le paquet de script n est connu d aucune source :
+/// sans scene_template, on donne le credit directement.
+class spell_heros_honor_play_scene : public AuraScript
+{
+    PrepareAuraScript(spell_heros_honor_play_scene);
+
+    void AfterApply(AuraEffect const* aurEff, AuraEffectHandleModes /*mode*/)
+    {
+        if (sObjectMgr->GetSceneTemplate(aurEff->GetMiscValue()))
+            return;
+
+        if (Unit* target = GetTarget())
+            target->CastSpell(target, SPELL_HEROS_HONOR_CREDIT, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectApply += AuraEffectApplyFn(spell_heros_honor_play_scene::AfterApply, EFFECT_0, SPELL_AURA_PLAY_SCENE, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 /*######
 ## AddSC
 ######*/
@@ -325,4 +367,5 @@ void AddSC_undercity()
 {
     new npc_lady_sylvanas_windrunner();
     new npc_highborne_lamenter();
+    RegisterAuraScript(spell_heros_honor_play_scene);
 }
