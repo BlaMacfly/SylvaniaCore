@@ -1,6 +1,7 @@
 import sys
+# Usage : offertes_arrivee.py <db> <zone> [hotfixes_supplementaires.sql]
 DBX = sys.argv[1]
-sys.argv = ["x", DBX, "7334"] + sys.argv[2:]
+sys.argv = ["x"] + sys.argv[1:]
 src = open("/home/ubuntu/tmp/verif_phasage.py").read().split("bad = []")[0]
 g = {}; exec(src, g)
 n = 0

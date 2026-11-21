@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Phasage d'une zone exterieure depuis LegionCore (lc_world_ref) vers dc_world.
 
-Usage : port_phasage_zone.py <zoneId> [<map>] [--exclure id,id,...]
+Usage : port_phasage_zone.py <zoneId> [<map>] [--exclure id,id,...] [--sans-phases id,id,...]
+--sans-phases : phases LC non portees (invasions 7.2 sans donneur chez nous...) ; les definitions LC qui les
+contiennent sont des releves pris pendant ce contenu et sont ignorees pour toutes leurs phases, et les spawns qui
+les portent ne sont ni ajoutes ni rephases.
 --exclure : PNJ/objets dont on ne touche pas les spawns (donnees LC incompletes, voir verif_phasage.py)
 Produit phasage_<zone>.sql et phasage_<zone>.log dans le repertoire courant.
 
@@ -21,6 +24,7 @@ LC, DC, HF = "lc_world_ref", "dc_world", "dc_hotfixes"
 ZONE = int(sys.argv[1])
 MAP = int(sys.argv[2]) if len(sys.argv) > 2 and sys.argv[2].isdigit() else 1220
 EXCLURE = {int(x) for x in sys.argv[sys.argv.index("--exclure") + 1].split(",")} if "--exclure" in sys.argv else set()
+SANS_PHASES = {int(x) for x in sys.argv[sys.argv.index("--sans-phases") + 1].split(",")} if "--sans-phases" in sys.argv else set()
 KEEP_PHASES = {4741}          # phases faites a la main chez nous : jamais retouchees
 SAME_TYPES = set(range(1, 19)) | {20, 22, 23, 25, 27, 28, 29, 30, 33, 34, 35, 36, 37, 38}
 
@@ -59,7 +63,9 @@ def L(*a):
     log.append(" ".join(str(x) for x in a))
 
 # ---------------------------------------------------------------- donnees client
-phases_ok = {int(r["ID"]) for r in csv.DictReader(open("/home/ubuntu/tmp/Phase.csv"))}
+# seules les phases cosmetiques (0x10) sont portees : chez nous (TC), un joueur qui porte une phase non
+# cosmetique ne voit plus les objets sans phase, alors que chez LC il les voit toujours
+phases_ok = {int(r["ID"]) for r in csv.DictReader(open("/home/ubuntu/tmp/Phase.csv")) if int(r["Flags"]) & 0x10}
 groups = collections.defaultdict(set)
 for r in csv.DictReader(open("/home/ubuntu/tmp/PhaseXPhaseGroup.csv")):
     groups[int(r["PhaseGroupID"])].add(int(r["PhaseID"]))
@@ -74,6 +80,9 @@ sql.append("-- Phasage de la zone %d (carte %d) depuis LegionCore" % (ZONE, MAP)
 
 # ---------------------------------------------------------------- 1. phases et conditions
 defs = q(LC, "SELECT entry,phaseId,comment FROM phase_definitions WHERE zoneId=%d ORDER BY entry" % ZONE)
+for d in [d for d in defs if {int(x) for x in d["phaseId"].split()} & SANS_PHASES]:
+    L("DEF %s (%s) ignoree : contient une phase non portee" % (d["entry"], d["comment"]))
+defs = [d for d in defs if not {int(x) for x in d["phaseId"].split()} & SANS_PHASES]
 lc_cond = collections.defaultdict(list)
 for c in q(LC, "SELECT * FROM conditions WHERE SourceTypeOrReferenceId=23 AND SourceGroup=%d" % ZONE):
     lc_cond[int(c["SourceEntry"])].append(c)
@@ -107,9 +116,18 @@ for d in defs:
     for p in d["phaseId"].split():
         p = int(p)
         if p not in phases_ok:
-            L("PHASE %d (def %s) absente de Phase.db2, ignoree" % (p, d["entry"]))
+            L("PHASE %d (def %s) absente de Phase.db2 ou non cosmetique, ignoree" % (p, d["entry"]))
             continue
         by_phase[p].append(d)
+
+# LC a des definitions sans condition (modeles jamais remplis, ex. « Highmountain - if has 39733 ») : leurs phases
+# sont donnees a tout le monde. Chez LC un spawn est visible des qu'UNE de ses phases est active, donc les spawns
+# releves avec ces phases de base en plus de leur phase propre (invasions 7.2 de Haut-Mont) y sont visibles en
+# permanence. On retire ces phases de base des spawns qui en ont une autre, et elles ne levent pas les conditions
+# de nos phases existantes.
+base_ph = {p for p, ds in by_phase.items() if any(not lc_cond.get(int(d["entry"])) for d in ds)}
+if base_ph:
+    L("PHASES DE BASE (definition LC sans condition) : %s" % " ".join(map(str, sorted(base_ph))))
 
 exist = {int(r["PhaseId"]): r["Comment"] or "" for r in q(DC, "SELECT PhaseId,Comment FROM phase_area WHERE AreaId=%d" % ZONE)}
 exist_cond = collections.defaultdict(list)
@@ -130,7 +148,7 @@ for p, ds in sorted(by_phase.items()):
             continue  # deja toujours active
         covered = {int(m) for c in exist_cond[p] for m in re.findall(r"LC (\d+) :", c["Comment"] or "")}
         # les portages precedents (campagnes, assauts) ne prenaient que les definitions a phase unique
-        todo = [d for d in ds if int(d["entry"]) not in covered and len(d["phaseId"].split()) > 1]
+        todo = [d for d in ds if int(d["entry"]) not in covered and len(d["phaseId"].split()) > 1 and lc_cond.get(int(d["entry"]))]
         eg = 1 + max(int(c["ElseGroup"]) for c in exist_cond[p])
     else:
         todo, eg = ds, 0
@@ -170,7 +188,11 @@ L("PHASES : %d nouvelles, %d completees, %d actives au total" % (n_new, n_ext, l
 
 # ---------------------------------------------------------------- 2. spawns
 def phase_fields(phs, what):
+    if phs & SANS_PHASES:
+        return 0, 0
     phs = {p for p in phs if p in phases_ok}
+    if phs - base_ph:
+        phs -= base_ph
     if not phs:
         return 0, 0
     if len(phs) == 1:
@@ -249,8 +271,11 @@ for table in ("creature", "gameobject"):
         if i >= 400000 or i not in templates[table]:
             L("SPAWN %s LC %s id %d : modele absent chez nous" % (table, r["guid"], i))
             continue
+        if r["ph"] & SANS_PHASES:
+            L("SPAWN %s LC %s id %d : phase non portee %s" % (table, r["guid"], i, sorted(r["ph"] & SANS_PHASES)))
+            continue
         if not (r["ph"] & phases_ok):
-            L("SPAWN %s LC %s id %d : phases %s absentes de Phase.db2" % (table, r["guid"], i, sorted(r["ph"])))
+            L("SPAWN %s LC %s id %d : phases %s absentes de Phase.db2 ou non cosmetiques" % (table, r["guid"], i, sorted(r["ph"])))
             continue
         near = [o for o in ours.get(i, []) if math.dist(r["pos"], (float(o["position_x"]), float(o["position_y"]), float(o["position_z"]))) < 30]
         if near:  # LC pose ce PNJ aussi sans phase et le notre est deja la : pas de doublon
