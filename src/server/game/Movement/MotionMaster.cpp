@@ -413,10 +413,23 @@ void MotionMaster::MoveCharge(Position* pos, float speed /*= SPEED_CHARGE*/, uin
     MoveCharge(pos->GetPositionX(), pos->GetPositionY(), pos->GetPositionZ(), speed, id, generatePath, target, spellEffectExtraData);
 }
 
+// La charge d un joueur passe avant le bond d un de ses propres sorts (Gangrelame juste apres Retraite vengeresse) : refusee,
+// le coup partait de loin sans deplacement. Tout autre mouvement controle (peur, confusion...) garde la main. [LegionCore 7a402a5]
+bool MotionMaster::ChargeIsBlocked() const
+{
+    MovementGenerator const* controlled = _slot[MOTION_SLOT_CONTROLLED];
+    if (!controlled)
+        return false;
+    MovementGeneratorType const type = controlled->GetMovementGeneratorType();
+    if (type == DISTRACT_MOTION_TYPE)
+        return false;
+    return !(_owner->GetTypeId() == TYPEID_PLAYER && type == EFFECT_MOTION_TYPE);
+}
+
 void MotionMaster::MoveCharge(float x, float y, float z, float speed /*= SPEED_CHARGE*/, uint32 id /*= EVENT_CHARGE*/, bool generatePath /*= false*/,
     Unit const* target /*= nullptr*/, Movement::SpellEffectExtraData const* spellEffectExtraData /*= nullptr*/)
 {
-    if (_slot[MOTION_SLOT_CONTROLLED] && _slot[MOTION_SLOT_CONTROLLED]->GetMovementGeneratorType() != DISTRACT_MOTION_TYPE)
+    if (ChargeIsBlocked())
         return;
 
     if (_owner->GetTypeId() == TYPEID_PLAYER)
@@ -435,6 +448,10 @@ void MotionMaster::MoveCharge(float x, float y, float z, float speed /*= SPEED_C
 void MotionMaster::MoveCharge(PathGenerator const& path, float speed /*= SPEED_CHARGE*/, Unit const* target /*= nullptr*/,
     Movement::SpellEffectExtraData const* spellEffectExtraData /*= nullptr*/)
 {
+    // la charge interne serait refusee : lancer quand meme le trajet deplacerait l unite sans generateur de mouvement
+    if (ChargeIsBlocked())
+        return;
+
     G3D::Vector3 dest = path.GetActualEndPosition();
 
     MoveCharge(dest.x, dest.y, dest.z, speed, EVENT_CHARGE_PREPATH);

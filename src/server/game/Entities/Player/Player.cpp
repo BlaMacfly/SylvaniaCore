@@ -17737,8 +17737,10 @@ void Player::KilledMonster(CreatureTemplate const* cInfo, ObjectGuid guid)
     if (cInfo->Entry)
         KilledMonsterCredit(cInfo->Entry, guid);
 
+    // un credit egal a la creature elle-meme ou au premier credit compterait la mise a mort deux fois
+    // (2 sur 6 par Hure-epine, quete 14452) [LegionCore 7ad0655]
     for (uint8 i = 0; i < MAX_KILL_CREDIT; ++i)
-        if (cInfo->KillCredit[i])
+        if (cInfo->KillCredit[i] && cInfo->KillCredit[i] != cInfo->Entry && (i == 0 || cInfo->KillCredit[i] != cInfo->KillCredit[0]))
             KilledMonsterCredit(cInfo->KillCredit[i], ObjectGuid::Empty);
 }
 
@@ -18311,6 +18313,10 @@ void Player::SetQuestObjectiveData(QuestObjective const& objective, int32 data)
         else
             RemoveQuestSlotState(log_slot, 256 << objective.StorageIndex);
     }
+
+    // une phase peut dependre d un objectif (condition d objectif de quete) : elle doit suivre sa progression, pas
+    // seulement le changement d etat de la quete ou la connexion [LegionCore 461795a]
+    PhasingHandler::OnConditionChange(this);
 }
 
 void Player::SendQuestComplete(Quest const* quest) const
@@ -27026,18 +27032,24 @@ void Player::ResurrectUsingRequestData()
 
 void Player::ResurrectUsingRequestDataImpl()
 {
+    // save health and mana before resurrecting, _resurrectionData can be erased
+    uint32 resurrectHealth = _resurrectionData->Health;
+    uint32 resurrectMana = _resurrectionData->Mana;
+    uint32 resurrectAura = _resurrectionData->Aura;
+    ObjectGuid resurrectGUID = _resurrectionData->GUID;
+
     ResurrectPlayer(0.0f, false);
 
-    SetHealth(_resurrectionData->Health);
-    SetPower(POWER_MANA, _resurrectionData->Mana);
+    SetHealth(resurrectHealth);
+    SetPower(POWER_MANA, resurrectMana);
 
     SetPower(POWER_RAGE, 0);
     SetFullPower(POWER_ENERGY);
     SetFullPower(POWER_FOCUS);
     SetPower(POWER_LUNAR_POWER, 0);
 
-    if (uint32 aura = _resurrectionData->Aura)
-        CastSpell(this, aura, true, nullptr, nullptr, _resurrectionData->GUID);
+    if (uint32 aura = resurrectAura)
+        CastSpell(this, aura, true, nullptr, nullptr, resurrectGUID);
 
     SpawnCorpseBones();
 }
