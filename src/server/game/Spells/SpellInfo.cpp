@@ -3392,6 +3392,7 @@ void SpellInfo::_LoadImmunityInfo()
         switch (Id)
         {
             case 22812: // Barkskin
+            case 47585: // Dispersion
                 _allowedMechanicMask |=
                     (1 << MECHANIC_STUN) |
                     (1 << MECHANIC_FREEZE) |
@@ -3410,7 +3411,18 @@ void SpellInfo::_LoadImmunityInfo()
         _allowedMechanicMask |= (1 << MECHANIC_DISORIENTED);
 
     if (HasAttribute(SPELL_ATTR5_USABLE_WHILE_FEARED))
-        _allowedMechanicMask |= (1 << MECHANIC_FEAR);
+    {
+        switch (Id)
+        {
+            case 22812: // Barkskin
+            case 47585: // Dispersion
+                _allowedMechanicMask |= (1 << MECHANIC_FEAR) | (1 << MECHANIC_HORROR);
+                break;
+            default:
+                _allowedMechanicMask |= (1 << MECHANIC_FEAR);
+                break;
+        }
+    }
 }
 
 void SpellInfo::ApplyAllSpellImmunitiesTo(Unit* target, SpellEffectInfo const* effect, bool apply) const
@@ -4104,7 +4116,7 @@ SpellInfo const* SpellInfo::GetAuraRankForLevel(uint8 level) const
     bool needRankSelection = false;
     for (SpellEffectInfo const* effect : GetEffectsForDifficulty(DIFFICULTY_NONE))
     {
-        if (effect && IsPositiveEffect(effect->Effect) &&
+        if (effect && IsPositiveEffect(effect->EffectIndex) &&
             (effect->Effect == SPELL_EFFECT_APPLY_AURA ||
             effect->Effect == SPELL_EFFECT_APPLY_AREA_AURA_PARTY ||
             effect->Effect == SPELL_EFFECT_APPLY_AREA_AURA_RAID) &&

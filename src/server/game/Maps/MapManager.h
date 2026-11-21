@@ -24,6 +24,7 @@
 #include "MapInstanced.h"
 #include "GridStates.h"
 #include "MapUpdater.h"
+#include <boost/dynamic_bitset.hpp>
 
 class PhaseShift;
 class Transport;
@@ -117,9 +118,6 @@ class TC_GAME_API MapManager
         void RegisterInstanceId(uint32 instanceId);
         void FreeInstanceId(uint32 instanceId);
 
-        uint32 GetNextInstanceId() const { return _nextInstanceId; };
-        void SetNextInstanceId(uint32 nextInstanceId) { _nextInstanceId = nextInstanceId; };
-
         MapUpdater * GetMapUpdater() { return &m_updater; }
 
         template<typename Worker>
@@ -135,7 +133,7 @@ class TC_GAME_API MapManager
 
     private:
         typedef std::unordered_map<uint32, Map*> MapMapType;
-        typedef std::vector<bool> InstanceIds;
+        typedef boost::dynamic_bitset<size_t> InstanceIds;
 
         MapManager();
         ~MapManager();
@@ -156,7 +154,7 @@ class TC_GAME_API MapManager
         MapMapType i_maps;
         IntervalTimer i_timer;
 
-        InstanceIds _instanceIds;
+        InstanceIds _freeInstanceIds;
         uint32 _nextInstanceId;
         MapUpdater m_updater;
 

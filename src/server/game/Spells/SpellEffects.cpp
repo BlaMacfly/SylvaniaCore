@@ -918,15 +918,12 @@ void Spell::EffectJump(SpellEffIndex effIndex)
     if (!unitTarget)
         return;
 
-    float x, y, z;
-    unitTarget->GetContactPoint(m_caster, x, y, z, CONTACT_DISTANCE);
-
     float speedXY, speedZ;
-    CalculateJumpSpeeds(effectInfo, m_caster->GetExactDist2d(x, y), speedXY, speedZ);
+    CalculateJumpSpeeds(effectInfo, m_caster->GetExactDist2d(unitTarget), speedXY, speedZ);
     JumpArrivalCastArgs arrivalCast;
     arrivalCast.SpellId = m_spellValue->EffectTriggerSpell[effIndex];
     arrivalCast.Target = unitTarget->GetGUID();
-    m_caster->GetMotionMaster()->MoveJump(x, y, z, 0.0f, speedXY, speedZ, EVENT_JUMP, false, &arrivalCast);
+    m_caster->GetMotionMaster()->MoveJump(*unitTarget, speedXY, speedZ, EVENT_JUMP, false, &arrivalCast);
 }
 
 void Spell::EffectJumpDest(SpellEffIndex effIndex)
@@ -2889,8 +2886,7 @@ void Spell::EffectTaunt(SpellEffIndex /*effIndex*/)
 
     // this effect use before aura Taunt apply for prevent taunt already attacking target
     // for spell as marked "non effective at already attacking target"
-    if (!unitTarget || !unitTarget->CanHaveThreatList()
-        || unitTarget->GetVictim() == m_caster)
+    if (!unitTarget->CanHaveThreatList() || unitTarget->GetVictim() == m_caster)
     {
         SendCastResult(SPELL_FAILED_DONT_REPORT);
         return;

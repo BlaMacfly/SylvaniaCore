@@ -18,6 +18,7 @@
 #include "ScriptMgr.h"
 #include "CreatureTextMgr.h"
 #include "GameObject.h"
+#include "GameObjectAI.h"
 #include "Group.h"
 #include "InstanceScript.h"
 #include "LFGMgr.h"
@@ -611,27 +612,34 @@ class go_ahune_ice_stone : public GameObjectScript
 public:
     go_ahune_ice_stone() : GameObjectScript("go_ahune_ice_stone") { }
 
-    bool OnGossipSelect(Player* player, GameObject* go, uint32 /*sender*/, uint32 /*action*/) override
+    struct go_ahune_ice_stoneAI : public GameObjectAI
     {
-        InstanceScript* instance = go->GetInstanceScript();
-        if (!instance)
-            return false;
+        go_ahune_ice_stoneAI(GameObject* go) : GameObjectAI(go), instance(go->GetInstanceScript()) { }
 
-        ClearGossipMenuFor(player);
+        InstanceScript* instance;
 
-        if (Creature* ahuneBunny = ObjectAccessor::GetCreature(*go, instance->GetGuidData(DATA_AHUNE_BUNNY)))
+        bool GossipSelect(Player* player, uint32 /*menuId*/, uint32 /*gossipListId*/) override
         {
-            ahuneBunny->AI()->DoAction(ACTION_START_EVENT);
-            ahuneBunny->SetInCombatWithZone();
-        }
-        if (Creature* luma = ObjectAccessor::GetCreature(*go, instance->GetGuidData(DATA_LUMA_SKYMOTHER)))
-            luma->CastSpell(player, SPELL_SUMMONING_RHYME_AURA, true);
-        CloseGossipMenuFor(player);
-        go->Delete();
+            ClearGossipMenuFor(player);
 
-        return true;
+            if (Creature* ahuneBunny = ObjectAccessor::GetCreature(*go, instance->GetGuidData(DATA_AHUNE_BUNNY)))
+            {
+                ahuneBunny->AI()->DoAction(ACTION_START_EVENT);
+                ahuneBunny->SetInCombatWithZone();
+            }
+            if (Creature* luma = ObjectAccessor::GetCreature(*go, instance->GetGuidData(DATA_LUMA_SKYMOTHER)))
+                luma->CastSpell(player, SPELL_SUMMONING_RHYME_AURA, true);
+            CloseGossipMenuFor(player);
+            go->Delete();
+            return true;
+        }
+    };
+
+    GameObjectAI* GetAI(GameObject* go) const override
+    {
+        return new go_ahune_ice_stoneAI(go);
     }
-};
+};;
 
 // 46430 - Synch Health
 class spell_ahune_synch_health : public SpellScript
