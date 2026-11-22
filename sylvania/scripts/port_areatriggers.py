@@ -57,7 +57,20 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
             for m in miscs_of.get(s, ()):
                 wanted[m].add((s, c))
 
-ours_misc = {int(r["SpellMiscId"]) for r in q("dc_world", "SELECT SpellMiscId FROM spell_areatrigger")}
+# style AreaTriggerEntityScript : « // sorts » juste au-dessus de la classe, nom dans le constructeur
+direct = collections.defaultdict(set)  # identifiant de zone donne tel quel -> scripts
+for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
+    for ids_txt, c, n in re.findall(r"^//\s*([0-9][0-9 ,]*)[^\n]*\n\s*class\s+(\w+)\s*:\s*public\s+AreaTriggerEntityScript\b.*?\2\s*\(\s*\)\s*:\s*AreaTriggerEntityScript\(\"(\w+)\"\)",
+                                    open(path, encoding="latin1").read(), re.M | re.S):
+        for s_ in map(int, re.findall(r"\d+", ids_txt)):
+            if miscs_of.get(s_):
+                for m in miscs_of[s_]:
+                    wanted[m].add((s_, n))
+            else:
+                direct[s_].add(n)
+
+ours_misc_at = {int(r["SpellMiscId"]): int(r["AreaTriggerId"]) for r in q("dc_world", "SELECT SpellMiscId,AreaTriggerId FROM spell_areatrigger")}
+ours_misc = set(ours_misc_at)
 ours_tpl = {int(r["Id"]): r for r in q("dc_world", "SELECT Id,Type,ScriptName FROM areatrigger_template")}
 lc_rows = collections.defaultdict(list)
 for r in q("lc_world_ref", "SELECT entry,spellId,customEntry,Radius,RadiusTarget,Height,HeightTarget,`Float4`,`Float5`,"
@@ -71,7 +84,9 @@ sql, log = ["-- Zones au sol de %s, converties depuis LegionCore" % folder], []
 tpl_done, scripts_on = {}, collections.defaultdict(set)
 for m, uses in sorted(wanted.items()):
     if m in ours_misc:
-        log.append("SpellMiscId %d deja chez nous" % m)
+        for _, c in uses:
+            scripts_on[ours_misc_at[m]].add(c)
+        log.append("SpellMiscId %d deja chez nous (zone %d) : seulement le script" % (m, ours_misc_at[m]))
         continue
     rows = lc_rows.get(m)
     if not rows:
@@ -124,6 +139,11 @@ for m, uses in sorted(wanted.items()):
         sql.append("INSERT INTO `areatrigger_template_polygon_vertices` (AreaTriggerId,Idx,VerticeX,VerticeY,VerticeTargetX,"
                    "VerticeTargetY,VerifiedBuild) VALUES (%d,%d,%r,%r,%r,%r,0);" % (at, i, x, y, tx, ty))
 
+for at, cs in direct.items():
+    if at in ours_tpl:
+        scripts_on[at] |= cs
+    else:
+        log.append("identifiant %d (%s) : ni sort a zone, ni zone connue" % (at, sorted(cs)))
 sql.append("\n-- Scripts")
 for at, cs in sorted(scripts_on.items()):
     if len(cs) > 1:

@@ -17,7 +17,7 @@ INSERT INTO game_tele (position_x, position_y, position_z, orientation, map, NAM
 class instance_trial_of_valor : public InstanceMapScript
 {
 public:
-    instance_trial_of_valor() : InstanceMapScript(TrialOfValorScriptName, 1456) { }
+    instance_trial_of_valor() : InstanceMapScript(TrialOfValorScriptName, 1648) { }
 
     struct instance_trial_of_valor_InstanceScript : public InstanceScript
     {

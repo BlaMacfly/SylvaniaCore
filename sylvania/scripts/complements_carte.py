@@ -140,6 +140,25 @@ for r in q(LC, "SELECT * FROM creature_template_addon WHERE entry IN (%s)" % ids
                "VALUES (%s,0,%d,%d,%d,%d,0,0,0,0,%s);" % (r["entry"], int(r["mount"] or 0), int(r["bytes1"] or 0), int(r["bytes2"] or 0),
                                                           int(r["emote"] or 0), lit((r["auras"] or "").strip())))
 
+# ---------------------------------------------------------------- 4. modeles d objets squelettes (type 0 sans apparence)
+go_entries = {int(m.group(1)) for m in re.finditer(r"^INSERT INTO `gameobject` \(.*?\) VALUES \(\d+,(\d+),", open(port, encoding="utf-8").read(), re.M)}
+for f in folders:
+    src = "".join(open(p, encoding="latin1").read() for p in glob.glob(os.path.join(f, "*.cpp")) + glob.glob(os.path.join(f, "*.h")))
+    go_entries |= {int(v) for k, v in re.findall(r"\b((?:GO|GOB|GAMEOBJECT)_[A-Z0-9_]+)\s*=\s*(\d+)", src) if int(v) > 1000}
+dgo = {int(r["entry"]): r for r in q(DC, "SELECT entry,name FROM gameobject_template WHERE type=0 AND displayId=0 AND entry IN (%s)" % ids(go_entries))}
+sql.append("\n-- 4. Modeles d objets squelettes (type 0, sans apparence) completes d'apres LegionCore")
+ngo = 0
+for r in q(LC, "SELECT * FROM gameobject_template WHERE displayId>0 AND entry IN (%s)" % ids(dgo)):
+    s = {"type": int(r["type"]), "displayId": int(r["displayId"]), "size": float(r["size"])}
+    s.update({"Data%d" % i: int(r["Data%d" % i]) for i in range(33)})
+    sql.append("UPDATE `gameobject_template` SET %s WHERE entry=%s AND type=0 AND displayId=0; -- %s" % (
+        ", ".join("`%s`=%s" % (k, lit(v)) for k, v in s.items()), r["entry"], dgo[int(r["entry"])]["name"]))
+    if int(r["faction"]) or int(r["flags"]):
+        sql.append("INSERT IGNORE INTO `gameobject_template_addon` (entry,faction,flags,mingold,maxgold,WorldEffectID) VALUES (%s,%s,%s,%s,%s,%s);" % (
+            r["entry"], r["faction"], r["flags"], r["MinGold"], r["MaxGold"], r["WorldEffectID"] or 0))
+    ngo += 1
+log.append("OBJETS : %d squelettes completes, %d sans donnee LegionCore" % (ngo, len(dgo) - ngo))
+
 open(name + ".sql", "w", encoding="utf-8").write("\n".join(sql) + "\n")
 open(name + ".log", "w", encoding="utf-8").write("\n".join(log) + "\n")
 print("%s.sql : %d lignes ; %s.log : %d remarques" % (name, len(sql), name, len(log)))

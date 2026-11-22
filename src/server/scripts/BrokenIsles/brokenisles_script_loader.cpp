@@ -147,6 +147,15 @@ void AddSC_boss_mephistroth();
 void AddSC_cathedral_of_eternal_night();
 void AddSC_instance_cathedral_of_eternal_night();
 
+// Trial of Valor
+void AddSC_instance_trial_of_valor();
+void AddSC_trial_of_valor();
+void AddSC_boss_odyn_tov();
+void AddSC_boss_hymdall_tov();
+void AddSC_boss_hyrja_tov();
+void AddSC_boss_guarm();
+void AddSC_boss_helya_tov();
+
 // TheArcway
 void AddSC_instance_the_arcway();
 void AddSC_boss_general_xakal();
@@ -357,6 +366,15 @@ void AddBrokenIslesScripts()
     AddSC_boss_mephistroth();
     AddSC_cathedral_of_eternal_night();
     AddSC_instance_cathedral_of_eternal_night();
+
+    // Trial of Valor
+    AddSC_instance_trial_of_valor();
+    AddSC_trial_of_valor();
+    AddSC_boss_odyn_tov();
+    AddSC_boss_hymdall_tov();
+    AddSC_boss_hyrja_tov();
+    AddSC_boss_guarm();
+    AddSC_boss_helya_tov();
 
     // TheArcway
     AddSC_instance_the_arcway();
