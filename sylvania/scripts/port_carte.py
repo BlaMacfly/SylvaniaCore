@@ -123,6 +123,25 @@ def difficulties(mask):
     return ",".join(str(i) for i in range(64) if int(mask) >> i & 1) or "0"
 
 
+# modeles d objets absents chez nous : repris de LegionCore (donnees du cache client), avec leur addon
+go_ids = {int(r["id"]) for r in q(LC, "SELECT DISTINCT id FROM gameobject WHERE map IN (%s)" % ids(maps))}
+miss = sorted(e for e in go_ids - our_go if e < 400000)
+GO_COLS = ["entry", "type", "displayId", "name", "IconName", "castBarCaption", "unk1", "size"] + ["Data%d" % i for i in range(33)]
+if miss:
+    sql.append("\n-- 0. Modeles d objets absents chez nous (LegionCore)")
+    for r in q(LC, "SELECT * FROM gameobject_template WHERE entry IN (%s)" % ids(miss)):
+        row = {k: r[k] for k in GO_COLS}
+        for k in row:
+            if k not in ("name", "IconName", "castBarCaption", "unk1"):
+                row[k] = float(row[k]) if k == "size" else int(row[k])
+        row.update({"RequiredLevel": 0, "AIName": "", "ScriptName": "", "VerifiedBuild": 0})
+        sql.append(ins("gameobject_template", row))
+        if int(r["faction"]) or int(r["flags"]) or int(r["MinGold"]) or int(r["MaxGold"]):
+            sql.append(ins("gameobject_template_addon", {"entry": int(r["entry"]), "faction": int(r["faction"]), "flags": int(r["flags"]),
+                                                         "mingold": int(r["MinGold"]), "maxgold": int(r["MaxGold"]), "WorldEffectID": int(r["WorldEffectID"] or 0)}))
+        our_go.add(int(r["entry"]))
+        L("MODELE gameobject %s (%s) repris de LegionCore" % (r["entry"], r["name"]))
+
 for table, known in (("creature", our_cr), ("gameobject", our_go)):
     rows = q(LC, "SELECT * FROM `%s` WHERE map IN (%s)" % (table, ids(maps)))
     ours = collections.defaultdict(list)

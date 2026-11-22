@@ -52,7 +52,7 @@ enum NKARACreaturesIds
     BOSS_GALINDRE                           = 114251,
 
     // Upper Karazhan
-    BOSS_CURATOR                            = 114462,
+    BOSS_CURATOR                            = 114247, // 114462 : double de mise en scene, sans drapeau de boss (Guide d aventure : 114247)
     BOSS_SHADE_OF_MEDIVH                    = 114350,
     BOSS_MANA_DEVOURER                      = 116494,
     BOSS_VIZADUUM                           = 114790,

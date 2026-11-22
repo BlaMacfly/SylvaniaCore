@@ -112,13 +112,13 @@ void AddSC_boss_naraxas();
 void AddSC_boss_dargrul_the_underking();
 
 // Vault of the Wardens
-//void AddSC_instance_vault_of_the_wardens();
-//void AddSC_vault_of_the_wardens();
-//void AddSC_boss_tirathon_saltheril();
-//void AddSC_boss_inquisitor_tormentorum();
-//void AddSC_boss_glazer();
-//void AddSC_boss_ashgolm();
-//void AddSC_boss_cordana_felsong();
+void AddSC_instance_vault_of_the_wardens();
+void AddSC_vault_of_the_wardens();
+void AddSC_boss_tirathon_saltheril();
+void AddSC_boss_inquisitor_tormentorum();
+void AddSC_boss_glazer();
+void AddSC_boss_ashgolm();
+void AddSC_boss_cordana_felsong();
 
 // Violet Hold
 void AddSC_instance_violet_hold_assault();
@@ -323,13 +323,13 @@ void AddBrokenIslesScripts()
     AddSC_boss_dargrul_the_underking();
 
     // Vault of the Wardens
-    //AddSC_instance_vault_of_the_wardens();
-    //AddSC_vault_of_the_wardens();
-    //AddSC_boss_tirathon_saltheril();
-    //AddSC_boss_inquisitor_tormentorum();
-    //AddSC_boss_glazer();
-    //AddSC_boss_ashgolm();
-    //AddSC_boss_cordana_felsong();
+    AddSC_instance_vault_of_the_wardens();
+    AddSC_vault_of_the_wardens();
+    AddSC_boss_tirathon_saltheril();
+    AddSC_boss_inquisitor_tormentorum();
+    AddSC_boss_glazer();
+    AddSC_boss_ashgolm();
+    AddSC_boss_cordana_felsong();
 
     // Violet Hold
     AddSC_instance_violet_hold_assault();
@@ -357,6 +357,13 @@ void AddBrokenIslesScripts()
     AddSC_boss_mephistroth();
     AddSC_cathedral_of_eternal_night();
     AddSC_instance_cathedral_of_eternal_night();
+
+    // TheArcway
+    AddSC_instance_the_arcway();
+    AddSC_boss_general_xakal();
+    AddSC_boss_naltira();
+    AddSC_boss_ivanyr();
+    AddSC_boss_advisor_vandros();
 
     // Seat of Triumvirate
     AddSC_boss_zuraal_the_ascended();
