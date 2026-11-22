@@ -32,6 +32,7 @@ DoorData const doorData[] =
 
     { GOB_DOOR_ODYN_ROOM,           DATA_GODKING_SKOVALD,   DOOR_TYPE_ROOM      },
     { GOB_DOOR_ODYN_ROOM,           DATA_ODYN,              DOOR_TYPE_ROOM      },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 struct instance_halls_of_valor : public InstanceScript

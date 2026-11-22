@@ -25,6 +25,7 @@ DoorData const doorData[] =
     { GO_OOK_EXIT_DOOR,   DATA_OOK_OOK,   DOOR_TYPE_PASSAGE },
     { GO_HOPTAL_ENTRANCE, DATA_HOPTALLUS, DOOR_TYPE_ROOM },
     { GO_YANJU_ENTRANCE,  DATA_YAN_ZHU,   DOOR_TYPE_ROOM },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 // sudsy brew wall of suds

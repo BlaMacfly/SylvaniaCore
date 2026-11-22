@@ -35,6 +35,7 @@ DoorData const doorData[] =
     {GOB_ELEGON_DOOR_ENTRANCE,               DATA_SPIRIT_KINGS,         DOOR_TYPE_PASSAGE   },
     {GOB_ELEGON_CELESTIAL_DOOR,              DATA_ELEGON,               DOOR_TYPE_ROOM      },
     {GOB_WILL_OF_EMPEROR_ENTRANCE,           DATA_ELEGON,               DOOR_TYPE_PASSAGE   },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 #define DIST_BETWEEN_TWO_Z      32.39f

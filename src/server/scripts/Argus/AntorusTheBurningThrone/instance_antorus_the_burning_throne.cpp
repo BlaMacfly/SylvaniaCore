@@ -44,12 +44,13 @@ DoorData const doorData[] =
     { GO_BOSS_VARIMATHRAS,       DATA_VARIMATHRAS,  DOOR_TYPE_ROOM },
     { GO_DOOR_PORTAL_KEEPER_HASABEL,       DATA_PORTAL_KEEPER_HASABEL,  DOOR_TYPE_ROOM },
     { GO_BOSS10,        DATA_AGGRAMAR,                DOOR_TYPE_ROOM },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 class instance_antorus_the_burning_throne: public InstanceMapScript
 {
     public:
-        instance_antorus_the_burning_throne() : InstanceMapScript(ABTScriptName, 757) { }
+        instance_antorus_the_burning_throne() : InstanceMapScript(ABTScriptName, 1712) { }
 
         struct instance_antorus_the_burning_throne_InstanceMapScript: public InstanceScript
         {

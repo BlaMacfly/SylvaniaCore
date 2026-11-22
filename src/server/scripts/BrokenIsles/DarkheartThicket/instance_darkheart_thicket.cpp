@@ -43,7 +43,8 @@ DoorData const doorData[] =
     { GO_DOOR_ROOM_GLAIDALIS_16,       DATA_ARCHDRUID_GLAIDALIS,   DOOR_TYPE_ROOM },
     { GO_DOOR_ROOM_DRESARON_1,         DATA_DRESARON,              DOOR_TYPE_ROOM },
     { GO_DOOR_ROOM_DRESARON_2,         DATA_DRESARON,              DOOR_TYPE_ROOM },
-    { GO_DOOR_ROOM_XAVIUS,             DATA_SHADE_OF_XAVIUS,       DOOR_TYPE_ROOM }
+    { GO_DOOR_ROOM_XAVIUS,             DATA_SHADE_OF_XAVIUS,       DOOR_TYPE_ROOM },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 struct instance_darkheart_thicket : public InstanceScript

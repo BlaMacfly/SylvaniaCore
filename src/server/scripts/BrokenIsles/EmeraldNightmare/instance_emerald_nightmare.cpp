@@ -36,6 +36,7 @@ DoorData const doorData[] =
     { GOB_ILGYNOTH_DOOR_1,          DATA_ILGYNOTH,      DOOR_TYPE_ROOM },
     { GOB_ILGYNOTH_DOOR_2,          DATA_ILGYNOTH,      DOOR_TYPE_ROOM },
     { GOB_ILGYNOTH_DOOR_3,          DATA_ILGYNOTH,      DOOR_TYPE_ROOM },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 struct instance_emerald_nightmare : public InstanceScript

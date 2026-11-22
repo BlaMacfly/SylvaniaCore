@@ -27,6 +27,7 @@ DoorData const doorData[] =
 {
     { GO_DOOR_1,                    DATA_KAATHAR,   DOOR_TYPE_PASSAGE },
     { GameobjectHolyBarrier,        DATA_KAATHAR,   DOOR_TYPE_ROOM },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
     
 };
 

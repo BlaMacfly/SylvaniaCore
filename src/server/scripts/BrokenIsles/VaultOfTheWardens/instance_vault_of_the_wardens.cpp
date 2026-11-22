@@ -28,6 +28,7 @@ DoorData const doorData[] =
     { GO_BOSS01_DOOR_2,             DATA_TIRATHON,   DOOR_TYPE_PASSAGE },
     //{ GO_AFTER_BOSS01_DOOR,         DATA_TIRATHON,   DOOR_TYPE_PASSAGE },
     { GO_DOOR_1,                    DATA_INQUISITOR,   DOOR_TYPE_PASSAGE },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 struct instance_vault_of_the_wardens : public InstanceScript

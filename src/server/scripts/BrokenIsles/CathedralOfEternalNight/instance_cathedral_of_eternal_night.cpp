@@ -30,6 +30,7 @@ DoorData const doorData[] =
     {GO_THRASHBITE_DOOR_ENTER,       DATA_THRASHBITE,         DOOR_TYPE_ROOM},
     {GO_LAST_DOORS,       DATA_DOMATRAX,         DOOR_TYPE_ROOM},
     {GO_LAST_DOORS,       DATA_MEPHISTROTH,         DOOR_TYPE_ROOM},
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 class instance_cathedral_of_eternal_night : public InstanceMapScript

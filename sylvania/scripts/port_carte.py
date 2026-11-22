@@ -15,6 +15,7 @@ Ne reecrit jamais ce qui existe deja chez nous.
 """
 import collections
 import math
+import os
 import re
 import subprocess
 import sys
@@ -114,8 +115,9 @@ REG = registered_scripts()
 # ---------------------------------------------------------------- 1. spawns
 our_cr = {int(r["entry"]) for r in q(DC, "SELECT entry FROM creature_template")}
 our_go = {int(r["entry"]) for r in q(DC, "SELECT entry FROM gameobject_template")}
-nextguid = {"creature": int(q(DC, "SELECT MAX(guid) m FROM creature")[0]["m"]) + 1000,
-            "gameobject": int(q(DC, "SELECT MAX(guid) m FROM gameobject")[0]["m"]) + 1000}
+# GUID_MIN_CREATURE / GUID_MIN_GAMEOBJECT : plancher, quand un portage precedent n est pas encore applique en base
+nextguid = {"creature": max(int(q(DC, "SELECT MAX(guid) m FROM creature")[0]["m"]) + 1000, int(os.environ.get("GUID_MIN_CREATURE", 0))),
+            "gameobject": max(int(q(DC, "SELECT MAX(guid) m FROM gameobject")[0]["m"]) + 1000, int(os.environ.get("GUID_MIN_GAMEOBJECT", 0)))}
 spawned = {"creature": set(), "gameobject": set()}
 
 

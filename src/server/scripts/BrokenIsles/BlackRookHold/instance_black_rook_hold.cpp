@@ -37,6 +37,7 @@ DoorData const doorData[] =
     { GOB_DOOR_SMASHSPITE_ROOM,         DATA_SMASHSPITE,            DOOR_TYPE_ROOM      },
     { GOB_DOOR_RAVENCREST_PASSAGE,      DATA_SMASHSPITE,            DOOR_TYPE_PASSAGE   },
     { GOB_DOOR_RAVENCREST_ROOM,         DATA_LORD_RAVENCREST,       DOOR_TYPE_ROOM      },
+    { 0,                              0,                          DOOR_TYPE_ROOM } // END
 };
 
 struct instance_black_rook_hold : public InstanceScript

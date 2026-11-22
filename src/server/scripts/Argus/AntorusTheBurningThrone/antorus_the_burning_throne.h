@@ -21,7 +21,7 @@
 #define DataHeader "ATBT"
 #define ABTScriptName "instance_antorus_the_burning_throne"
 
-uint32 const EncounterCount = 10;
+uint32 const EncounterCount = 17; // les BossAI utilisent DATA_ADMIRAL_SVIRAX (11) ... DATA_SHIWAR (16) : hors limites a 10
 
 enum AntorusDataTypes
 {
