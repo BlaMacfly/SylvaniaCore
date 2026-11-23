@@ -239,7 +239,7 @@ for g in gobjects:
     t = q(DC, "SELECT AIName, ScriptName FROM gameobject_template WHERE entry=%d" % g)
     if not t:
         log.append("objet %d absent chez nous" % g); continue
-    if t[0]["ScriptName"] or t[0]["AIName"] or q(DC, "SELECT 1 FROM smart_scripts WHERE source_type=1 AND entryorguid=%d LIMIT 1" % g):
+    if t[0]["ScriptName"] or q(DC, "SELECT 1 FROM smart_scripts WHERE source_type=1 AND entryorguid=%d LIMIT 1" % g):
         log.append("objet %d : deja scripte chez nous" % g); continue
     rows = q(LC, "SELECT * FROM smart_scripts WHERE source_type=1 AND entryorguid=%d ORDER BY id" % g)
     al = action_lists(rows)
@@ -260,14 +260,14 @@ for g in gobjects:
     sql.append("UPDATE gameobject_template SET AIName='SmartGameObjectAI' WHERE entry=%d AND ScriptName='';" % g)
 
 for at in triggers:
-    if q(DC, "SELECT 1 FROM areatrigger_scripts WHERE entry=%d" % at) or q(DC, "SELECT 1 FROM smart_scripts WHERE source_type=2 AND entryorguid=%d LIMIT 1" % at):
+    if q(DC, "SELECT 1 FROM areatrigger_scripts WHERE entry=%d AND ScriptName<>'SmartTrigger'" % at) or q(DC, "SELECT 1 FROM smart_scripts WHERE source_type=2 AND entryorguid=%d LIMIT 1" % at):
         log.append("zone %d : deja scriptee chez nous" % at); continue
     out, bad = convert(q(LC, "SELECT * FROM smart_scripts WHERE source_type=2 AND entryorguid=%d ORDER BY id" % at))
     if bad or not out:
         log.append("zone %d abandonnee : %s" % (at, bad or "rien chez LC")); continue
     sql.append("\n-- zone de declenchement %d" % at)
     sql += [ins("smart_scripts", row) for row in out]
-    sql.append("INSERT INTO areatrigger_scripts (entry, ScriptName) VALUES (%d, 'SmartTrigger');" % at)
+    sql.append("INSERT IGNORE INTO areatrigger_scripts (entry, ScriptName) VALUES (%d, 'SmartTrigger');" % at)
 
 open(name + ".sql", "w").write("\n".join(sql) + "\n")
 open(name + ".log", "w").write("\n".join(log) + "\n")
