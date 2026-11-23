@@ -58,8 +58,8 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
     for kind, c in re.findall(r"Register(Creature|GameObject)AI\((\w+)\)", s):
         cls[c] = (c, "go" if kind == "GameObject" else "cr")
     commented = set()
-    for c, ids_txt in re.findall(r"^\s*(?:new\s+(\w+)\(\)|Register(?:Creature|GameObject)AI\((\w+)\))\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M) and \
-            [(a or b, t) for a, b, t in re.findall(r"^\s*(?:new\s+(\w+)\(\)|Register(?:Creature|GameObject)AI\((\w+)\))\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M)]:
+    for c, ids_txt in re.findall(r"^\s*(?:new\s+(\w+)\(\)|Register(?:Creature|GameObject)AI\((\w+)\))[ \t]*;[ \t]*//[ \t]*([0-9][0-9 ,]*)", s, re.M) and \
+            [(a or b, t) for a, b, t in re.findall(r"^\s*(?:new\s+(\w+)\(\)|Register(?:Creature|GameObject)AI\((\w+)\))[ \t]*;[ \t]*//[ \t]*([0-9][0-9 ,]*)", s, re.M)]:
         if c not in cls:
             continue  # sort, aura, declencheur : hors sujet
         n, kind = cls[c]
@@ -112,7 +112,7 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
         named[c] = ("spell", c)
     for c, n in re.findall(r"class\s+(\w+)\s*:\s*public\s+AreaTriggerScript\b.*?\1\s*\(\s*\)\s*:\s*AreaTriggerScript\(\"(\w+)\"\)", s, re.S):
         named[c] = ("at", n)
-    for a, b, ids_txt in re.findall(r"^\s*(?:new\s+(\w+)\(\)|Register(?:Spell|Aura)Script\((\w+)\))\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M):
+    for a, b, ids_txt in re.findall(r"^\s*(?:new\s+(\w+)\(\)|Register(?:Spell|Aura)Script\((\w+)\))[ \t]*;[ \t]*//[ \t]*([0-9][0-9 ,]*)", s, re.M):
         c = a or b
         if c not in named:
             continue
@@ -120,11 +120,11 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
         for e in re.findall(r"\d+", ids_txt):
             (spell_rows if kind == "spell" else at_rows).add((int(e), n))
     # sorts parametres : new spell_x_aoe("nom_du_script", SPELL_...); // ids
-    for n, ids_txt in re.findall(r"^\s*new\s+\w+\(\s*\"(spell_\w+)\"[^;]*\)\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M):
+    for n, ids_txt in re.findall(r"^\s*new\s+\w+\(\s*\"(spell_\w+)\"[^;]*\)[ \t]*;[ \t]*//[ \t]*([0-9][0-9 ,]*)", s, re.M):
         for e in re.findall(r"\d+", ids_txt):
             spell_rows.add((int(e), n))
     # zones au sol : RegisterAreaTriggerAI(x); // sort qui cree la zone
-    for c, ids_txt in re.findall(r"^\s*RegisterAreaTriggerAI\((\w+)\)\s*;\s*//\s*([0-9][0-9 ,]*)", s, re.M):
+    for c, ids_txt in re.findall(r"^\s*RegisterAreaTriggerAI\((\w+)\)[ \t]*;[ \t]*//[ \t]*([0-9][0-9 ,]*)", s, re.M):
         for e in re.findall(r"\d+", ids_txt):
             areatrigger_ai.add((int(e), c))
 have_spell = {(int(i), n) for i, n in q("SELECT spell_id,ScriptName FROM spell_script_names")}
