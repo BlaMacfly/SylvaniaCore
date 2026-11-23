@@ -3,7 +3,7 @@
 
 Usage : rattacher_scripts.py <dossier de scripts> <nom>
 Source 1 : les enregistrements commentes de l'auteur (`new npc_x(); // 71603, 73197`).
-Source 2 : le numero en fin de nom (npc_taerar_102681), si un mot du nom du modele y figure.\nSource 3, en secours : les enumerations du fichier (npc_immerseus_sha_puddle -> NPC_SHA_PUDDLE),
+Source 2 : le numero en fin de nom (npc_taerar_102681), si un mot du nom du modele y figure.\nSource 4, dernier recours : le meme nom de script chez LegionCore (jusqu a 4 modeles).\nSource 3, en secours : les enumerations du fichier (npc_immerseus_sha_puddle -> NPC_SHA_PUDDLE),
 apres retrait du seul prefixe propre au fichier ; jamais de correspondance par nom de modele.
 Ne rattache que si le modele n'a pas deja de script ; le reste va dans <nom>.log.
 """
@@ -22,7 +22,7 @@ def q(sql):
     return [l.split("\t") for l in out.splitlines()]
 
 
-ENUM_RE = r"\b((?:NPC|GO|GOB|GAMEOBJECT|MOB|CREATURE)_[A-Z0-9_]+)\s*=\s*(\d+)"
+ENUM_RE = r"\b((?:NPC|GO|GOB|GAMEOBJECT|MOB|CREATURE|BOSS)_[A-Z0-9_]+)\s*=\s*(\d+)"
 
 
 def enums_of(paths):
@@ -40,6 +40,10 @@ used_names = {sn for sn in cur.values() if sn}
 
 tpl_names = {"cr": {int(r[0]): r[1] for r in q("SELECT entry,name FROM creature_template")},
              "go": {int(r[0]): r[1] for r in q("SELECT entry,name FROM gameobject_template")}}
+lc_names = {"cr": collections.defaultdict(set), "go": collections.defaultdict(set)}
+for k, t in (("cr", "creature_template"), ("go", "gameobject_template")):
+    for e, sn in (r for r in (l.split("\t") for l in subprocess.run(["mysql", "-N", "lc_world_ref", "-e", "SELECT entry,ScriptName FROM %s WHERE ScriptName<>" % t], capture_output=True, text=True).stdout.splitlines())):
+        lc_names[k][sn].add(int(e))
 log, assign = [], collections.defaultdict(set)  # (kind, entry) -> {(script, fichier, source)}
 for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
     f = os.path.basename(path)
@@ -74,18 +78,26 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
             if any(w in low for w in words):
                 assign[(kind, int(m.group(1)))].add((n, f, "numero du nom"))
                 continue
-        for pre in ("npc_%s_" % stem, "go_%s_" % stem, "boss_", "npc_", "go_"):
+        abbr = re.match(r"^(?:npc|go|boss)_[a-z]+_", low)  # prefixe de donjon : npc_mos_, npc_cots_, npc_vha_
+        for pre in ("npc_%s_" % stem, "go_%s_" % stem) + ((abbr.group(0),) if abbr else ()) + ("boss_", "npc_", "go_"):
             if low.startswith(pre):
                 token = low[len(pre):].upper()
-                prefixes = ("GO_", "GOB_", "GAMEOBJECT_") if kind == "go" else ("NPC_", "MOB_", "CREATURE_")
+                prefixes = ("GO_", "GOB_", "GAMEOBJECT_") if kind == "go" else ("NPC_", "MOB_", "CREATURE_", "BOSS_")
                 for table in (local, headers):
                     hits = set().union(*[table.get(p + token, set()) for p in prefixes])
                     if hits:
                         break
                 if hits:
                     break
-        if len(hits) == 1:
-            assign[(kind, next(iter(hits)))].add((n, f, "enumeration"))
+        if not hits:
+            # dernier recours : LegionCore porte exactement ce nom de script
+            hits = lc_names[kind].get(n, set())
+            src = "nom identique chez LegionCore"
+        else:
+            src = "enumeration"
+        if len(hits) == 1 or (hits and src != "enumeration" and len(hits) <= 4):
+            for h in hits:
+                assign[(kind, h)].add((n, f, src))
         else:
             log.append("%s %s : %s" % (f, n, "ambigu %s" % sorted(hits) if hits else "aucune entree"))
 
