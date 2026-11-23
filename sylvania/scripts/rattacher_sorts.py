@@ -2,7 +2,8 @@
 """Rattache les scripts de sorts non rattaches d'un dossier, en verifiant leurs crochets contre SpellEffect.db2.
 
 Usage : rattacher_sorts.py <dossier> <nom> [mots a ignorer,...]
-Candidats : les valeurs SPELL_* du dossier. Un candidat n'est retenu que si CHAQUE crochet du script
+Source prioritaire : le numero en commentaire au-dessus de la classe, crochets verifies.
+Candidats sinon : les valeurs SPELL_* du dossier. Un candidat n'est retenu que si CHAQUE crochet du script
 (SpellEffectFn / AuraEffect*Fn : indice d'effet + type d'effet ou d'aura ; *TargetSelectFn : cible)
 existe dans le sort. Parmi les candidats valides, ceux qui partagent le plus de mots avec le nom du script.
 Un script sans crochet verifiable n'est rattache que si un seul candidat a le meilleur score, et c'est note.
@@ -86,11 +87,27 @@ loaders = [(m.start(), m.group(1)) for m in re.finditer(r"class\s+(\w+)\s*:\s*pu
 lblock = {}
 for n, (pos, cls) in enumerate(loaders):
     lblock[cls] = src[pos:loaders[n + 1][0] if n + 1 < len(loaders) else len(src)]
-names = {}
+# commentaire de l'auteur juste au-dessus de la classe : « // 191975 - Impaling Spear », « // 191975, 191976 »
+above = {}
+for m in re.finditer(r"class\s+(\w+)\s*:\s*public\s+(?:SpellScriptLoader|SpellScript|AuraScript)\b", src):
+    prev = src[max(0, m.start() - 400):m.start()].rstrip().split("\n")[-3:]
+    ids = []
+    for line in reversed(prev):
+        c = re.match(r"\s*//\s*(?:Spell\s*:?\s*|ID\s*:?\s*)?((?:\d{3,6}\s*(?:,|/|and)?\s*)+)(?:\s*-|\s*$|\s*\()", line, re.I)
+        if c:
+            ids = [int(x) for x in re.findall(r"\d{3,6}", c.group(1))]
+            break
+        if line.strip() and not line.strip().startswith("//"):
+            break
+    if ids:
+        above[m.group(1)] = ids
+names, cls_of = {}, {}
 for cls, n in re.findall(r"class\s+(\w+)\s*:\s*public\s+SpellScriptLoader\b.*?\1\s*\(\s*\)\s*:\s*SpellScriptLoader\(\"(\w+)\"\)", src, re.S):
     names[n] = lblock.get(cls, "")
+    cls_of[n] = cls
 for cls in re.findall(r"Register(?:Spell|Aura)Script\((\w+)\)", src):
     names[cls] = blocks.get(cls, "")
+    cls_of[cls] = cls
 for cls in re.findall(r"RegisterSpellAndAuraScriptPair\((\w+),\s*\w+\)", src):
     names[cls] = blocks.get(cls, "")
 
@@ -115,6 +132,23 @@ for n, body in sorted(names.items()):
         hooks.append(("aura", idx(e), None if v == "SPELL_AURA_ANY" else AUR.get(v, -1)))
     for e, v in re.findall(r"Object(?:Area)?TargetSelectFn\(\s*[\w:]+\s*,\s*(EFFECT_\w+)\s*,\s*(TARGET_\w+)\s*\)", body):
         hooks.append(("tgt", idx(e), TGT.get(v, -1)))
+    ids = above.get(cls_of.get(n, n), [])
+    if not ids:
+        # chargeur a l'ancienne : le commentaire est souvent au-dessus de la classe interne
+        for c, v in above.items():
+            if c.startswith(n + "_") or c == n + "_SpellScript" or c == n + "_AuraScript":
+                ids = v
+                break
+    if ids:
+        ok = [sp for sp in ids if sp in effects and all(hook_ok(sp, h) for h in hooks)]
+        bad = [sp for sp in ids if sp not in ok]
+        for sp in ok:
+            sql.append("INSERT IGNORE INTO `spell_script_names` (spell_id, ScriptName) VALUES (%d, '%s'); -- commentaire de l'auteur%s" % (
+                sp, n, "" if hooks else " (sans crochet verifiable)"))
+        if bad:
+            log.append("%s : numeros du commentaire refuses (crochets ou sort absent) %s" % (n, bad))
+        if ok:
+            continue
     t = toks(n)
     scored = []
     for sp, ks in spells.items():
