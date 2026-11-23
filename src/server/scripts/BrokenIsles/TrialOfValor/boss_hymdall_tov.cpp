@@ -95,6 +95,14 @@ public:
             //Talk(SAY_DIED);
         }
 
+        // Hymdall et Hyrja ne meurent pas : a 25 % ils se retirent et Odyn descend (comme chez LegionCore).
+        // Tues, ils bloquaient Odyn sur son trone.
+        void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+        {
+            if (damage >= me->GetHealth())
+                damage = me->GetHealth() - 1;
+        }
+
         void KilledUnit(Unit* victim) override
         {
             //if (victim->GetTypeId() == TYPEID_PLAYER)
