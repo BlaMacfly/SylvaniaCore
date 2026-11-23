@@ -813,6 +813,10 @@ bool AuraScript::_Validate(SpellInfo const* entry)
         if (!itr->GetAffectedEffectsMask(entry))
             TC_LOG_ERROR("scripts", "Spell `%u` Effect `%s` of script `%s` did not match dbc effect data - handler bound to hook `AfterEffectAbsorb` of AuraScript won't be executed", entry->Id, itr->ToString().c_str(), m_scriptName->c_str());
 
+    for (auto itr = OnEffectAbsorbHeal.begin(); itr != OnEffectAbsorbHeal.end(); ++itr)
+        if (!itr->GetAffectedEffectsMask(entry))
+            TC_LOG_ERROR("scripts", "Spell `%u` Effect `%s` of script `%s` did not match dbc effect data - handler bound to hook `OnEffectAbsorbHeal` of AuraScript won't be executed", entry->Id, itr->ToString().c_str(), m_scriptName->c_str());
+
     for (auto itr = OnEffectManaShield.begin(); itr != OnEffectManaShield.end(); ++itr)
         if (!itr->GetAffectedEffectsMask(entry))
             TC_LOG_ERROR("scripts", "Spell `%u` Effect `%s` of script `%s` did not match dbc effect data - handler bound to hook `OnEffectManaShield` of AuraScript won't be executed", entry->Id, itr->ToString().c_str(), m_scriptName->c_str());
@@ -987,6 +991,17 @@ AuraScript::EffectAbsorbHandler::EffectAbsorbHandler(AuraEffectAbsorbFnType _pEf
 void AuraScript::EffectAbsorbHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, DamageInfo& dmgInfo, uint32& absorbAmount)
 {
     (auraScript->*pEffectHandlerScript)(aurEff, dmgInfo, absorbAmount);
+}
+
+AuraScript::EffectAbsorbHealHandler::EffectAbsorbHealHandler(AuraEffectAbsorbHealFnType _pEffectHandlerScript, uint8 _effIndex)
+    : AuraScript::EffectBase(_effIndex, SPELL_AURA_SCHOOL_HEAL_ABSORB)
+{
+    pEffectHandlerScript = _pEffectHandlerScript;
+}
+
+void AuraScript::EffectAbsorbHealHandler::Call(AuraScript* auraScript, AuraEffect* aurEff, HealInfo& healInfo, uint32& absorbAmount)
+{
+    (auraScript->*pEffectHandlerScript)(aurEff, healInfo, absorbAmount);
 }
 
 AuraScript::EffectManaShieldHandler::EffectManaShieldHandler(AuraEffectAbsorbFnType _pEffectHandlerScript, uint8 _effIndex)

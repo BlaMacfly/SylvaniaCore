@@ -2045,6 +2045,15 @@ void Unit::CalcHealAbsorb(HealInfo& healInfo) const
         // If need absorb less damage
         currentAbsorb = std::min<int32>(healInfo.GetHeal(), currentAbsorb);
 
+        // scripts may change the absorbed amount or prevent the absorb (TrinityCore master)
+        if (AuraApplication const* aurApp = (*i)->GetBase()->GetApplicationOfTarget(healInfo.GetTarget()->GetGUID()))
+        {
+            uint32 tempAbsorb = uint32(currentAbsorb);
+            bool defaultPrevented = false;
+            (*i)->GetBase()->CallScriptEffectAbsorbHealHandlers(*i, aurApp, healInfo, tempAbsorb, defaultPrevented);
+            currentAbsorb = defaultPrevented ? 0 : std::min<int32>(healInfo.GetHeal(), int32(tempAbsorb));
+        }
+
         healInfo.AbsorbHeal(currentAbsorb);
 
         // Reduce shield amount

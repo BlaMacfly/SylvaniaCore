@@ -1333,7 +1333,7 @@ public:
             amount = 1;
         }
 
-        void Absorb(AuraEffect* /*AuraEffect**/, DamageInfo& dmgInfo, uint32& absorbAmount)
+        void Absorb(AuraEffect* /*AuraEffect**/, HealInfo& /*healInfo*/, uint32& absorbAmount)
         {
             absorbAmount = 0;
         }
@@ -1342,7 +1342,7 @@ public:
         {
             OnEffectPeriodic += AuraEffectPeriodicFn(spell_xavius_nightmare_torment_alt_power_AuraScript::OnTick, EFFECT_1, SPELL_AURA_PERIODIC_DUMMY);
             DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_xavius_nightmare_torment_alt_power_AuraScript::CalculateAmount, EFFECT_2, SPELL_AURA_SCHOOL_HEAL_ABSORB);
-            OnEffectAbsorb += AuraEffectAbsorbFn(spell_xavius_nightmare_torment_alt_power_AuraScript::Absorb, EFFECT_2);
+            OnEffectAbsorbHeal += AuraEffectAbsorbHealFn(spell_xavius_nightmare_torment_alt_power_AuraScript::Absorb, EFFECT_2);
         }
     };
 

@@ -2138,6 +2138,23 @@ void Aura::CallScriptEffectAfterAbsorbHandlers(AuraEffect* aurEff, AuraApplicati
     }
 }
 
+void Aura::CallScriptEffectAbsorbHealHandlers(AuraEffect* aurEff, AuraApplication const* aurApp, HealInfo & healInfo, uint32 & absorbAmount, bool& defaultPrevented)
+{
+    for (auto scritr = m_loadedScripts.begin(); scritr != m_loadedScripts.end(); ++scritr)
+    {
+        (*scritr)->_PrepareScriptCall(AURA_SCRIPT_HOOK_EFFECT_ABSORB, aurApp);
+        auto effEndItr = (*scritr)->OnEffectAbsorbHeal.end(), effItr = (*scritr)->OnEffectAbsorbHeal.begin();
+        for (; effItr != effEndItr; ++effItr)
+            if (effItr->IsEffectAffected(m_spellInfo, aurEff->GetEffIndex()))
+                effItr->Call(*scritr, aurEff, healInfo, absorbAmount);
+
+        if (!defaultPrevented)
+            defaultPrevented = (*scritr)->_IsDefaultActionPrevented();
+
+        (*scritr)->_FinishScriptCall();
+    }
+}
+
 void Aura::CallScriptEffectManaShieldHandlers(AuraEffect* aurEff, AuraApplication const* aurApp, DamageInfo & dmgInfo, uint32 & absorbAmount, bool & /*defaultPrevented*/)
 {
     for (auto scritr = m_loadedScripts.begin(); scritr != m_loadedScripts.end(); ++scritr)
