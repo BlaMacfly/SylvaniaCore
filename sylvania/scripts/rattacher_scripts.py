@@ -3,7 +3,7 @@
 
 Usage : rattacher_scripts.py <dossier de scripts> <nom>
 Source 1 : les enregistrements commentes de l'auteur (`new npc_x(); // 71603, 73197`).
-Source 2, en secours : les enumerations du fichier (npc_immerseus_sha_puddle -> NPC_SHA_PUDDLE),
+Source 2 : le numero en fin de nom (npc_taerar_102681), si un mot du nom du modele y figure.\nSource 3, en secours : les enumerations du fichier (npc_immerseus_sha_puddle -> NPC_SHA_PUDDLE),
 apres retrait du seul prefixe propre au fichier ; jamais de correspondance par nom de modele.
 Ne rattache que si le modele n'a pas deja de script ; le reste va dans <nom>.log.
 """
@@ -38,6 +38,8 @@ cur = {("cr", int(e)): sn for e, sn in q("SELECT entry,ScriptName FROM creature_
 cur.update({("go", int(e)): sn for e, sn in q("SELECT entry,ScriptName FROM gameobject_template")})
 used_names = {sn for sn in cur.values() if sn}
 
+tpl_names = {"cr": {int(r[0]): r[1] for r in q("SELECT entry,name FROM creature_template")},
+             "go": {int(r[0]): r[1] for r in q("SELECT entry,name FROM gameobject_template")}}
 log, assign = [], collections.defaultdict(set)  # (kind, entry) -> {(script, fichier, source)}
 for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
     f = os.path.basename(path)
@@ -65,6 +67,13 @@ for path in sorted(glob.glob(os.path.join(folder, "*.cpp"))):
         if c in commented or n in used_names:
             continue
         low, hits = n.lower(), set()
+        m = re.search(r"_(\d{5,6})$", n)
+        if m and int(m.group(1)) in tpl_names[kind]:
+            # numero dans le nom (npc_taerar_102681) : retenu si un mot du nom du modele figure dans le nom du script
+            words = [w for w in re.findall(r"[a-z]{4,}", tpl_names[kind][int(m.group(1))].lower())]
+            if any(w in low for w in words):
+                assign[(kind, int(m.group(1)))].add((n, f, "numero du nom"))
+                continue
         for pre in ("npc_%s_" % stem, "go_%s_" % stem, "boss_", "npc_", "go_"):
             if low.startswith(pre):
                 token = low[len(pre):].upper()

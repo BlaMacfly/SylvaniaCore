@@ -11,7 +11,7 @@ Pour les instances vides chez nous (aucune apparition) dont LegionCore a les don
   (liste « does not have a script name assigned » du dernier demarrage + noms deja utilises).
 - SmartAI : porte (enums traduits par nom) pour les PNJ sans script C++ ni SmartAI chez nous.
 - creature_text manquants, clics de sort manquants.
-Ne reecrit jamais ce qui existe deja chez nous.
+Ne reecrit jamais ce qui existe deja chez nous.\nCOMPLETER=1 : carte deja peuplee, par modele seul l ecart d effectif avec LegionCore est ajoute.
 """
 import collections
 import math
@@ -150,6 +150,18 @@ for table, known in (("creature", our_cr), ("gameobject", our_go)):
     for r in q(DC, "SELECT guid,id,position_x x,position_y y,position_z z FROM `%s` WHERE map IN (%s)" % (table, ids(maps))):
         ours[int(r["id"])].append(r)
     sql.append("\n-- 1. Apparitions %s (%d chez LegionCore)" % (table, len(rows)))
+    # COMPLETER=1 (carte deja peuplee) : par modele, n ajouter que l ecart d effectif avec LegionCore,
+    # en prenant les apparitions LC les plus eloignees des notres
+    keep = None
+    if os.environ.get("COMPLETER"):
+        keep, by_id = set(), collections.defaultdict(list)
+        for r in rows:
+            p0 = (float(r["position_x"]), float(r["position_y"]), float(r["position_z"]))
+            d = min((math.dist(p0, (float(o["x"]), float(o["y"]), float(o["z"]))) for o in ours[int(r["id"])]), default=1e9)
+            by_id[int(r["id"])].append((d, r["guid"]))
+        for e, lst in by_id.items():
+            n = max(0, len(lst) - len(ours[e]))
+            keep.update(g for _, g in sorted(lst, reverse=True)[:n])
     added = 0
     for r in rows:
         e = int(r["id"])
@@ -162,9 +174,12 @@ for table, known in (("creature", our_cr), ("gameobject", our_go)):
         if r.get("PhaseId"):
             L("SPAWN %s LC %s id %d : phases %s, ecarte (a traiter a la main)" % (table, r["guid"], e, r["PhaseId"]))
             continue
+        if keep is not None and r["guid"] not in keep:
+            L("SPAWN %s LC %s id %d : effectif deja atteint chez nous" % (table, r["guid"], e))
+            continue
         pos = (float(r["position_x"]), float(r["position_y"]), float(r["position_z"]))
         if any(math.dist(pos, (float(o["x"]), float(o["y"]), float(o["z"]))) < 5 for o in ours[e]):
-            L("SPAWN %s LC %s id %d : deja chez nous", table, r["guid"], e)
+            L("SPAWN %s LC %s id %d : deja chez nous" % (table, r["guid"], e))
             continue
         g = nextguid[table]
         nextguid[table] += 1
