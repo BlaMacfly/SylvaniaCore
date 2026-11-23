@@ -1,0 +1,20 @@
+-- Groupes de phases maison pour le phasage de la zone 6662 (ensembles LC sans groupe client)
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200653,2559,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200654,2641,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200655,2877,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200656,2884,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200657,2988,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200658,3054,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200659,3055,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200660,3122,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200661,3184,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200662,3238,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200663,3244,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200664,3253,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200665,3290,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200666,3435,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200667,3926,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200668,3932,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200669,3934,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200670,4086,10083,0);
+INSERT INTO `phase_x_phase_group` (`ID`,`PhaseID`,`PhaseGroupID`,`VerifiedBuild`) VALUES (200671,4352,10083,0);
