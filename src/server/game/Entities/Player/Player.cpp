@@ -28155,6 +28155,13 @@ void Player::HandleFall(MovementInfo const& movementInfo)
     float z_diff = m_lastFallZ - movementInfo.pos.GetPositionZ();
     //TC_LOG_DEBUG("misc", "zDiff = %f", z_diff);
 
+    // Diagnostic temporaire (24/11/2026) : morts par chute a l'arrivee des zeppelins (Chutes.log).
+    if (z_diff >= 14.57f)
+        TC_LOG_INFO("entities.player.fall", "CHUTE %s (%s) carte %u zone %u pos %.2f %.2f %.2f | depart %.2f diff %.2f | fallTime client %u, dernier %u | transport %s, transport client %s | vivant %u vol %u plume %u flags 0x%X",
+            GetName().c_str(), GetGUID().ToString().c_str(), GetMapId(), GetZoneId(), movementInfo.pos.GetPositionX(), movementInfo.pos.GetPositionY(), movementInfo.pos.GetPositionZ(),
+            m_lastFallZ, z_diff, movementInfo.jump.fallTime, m_lastFallTime, GetTransport() ? GetTransport()->GetGUID().ToString().c_str() : "aucun",
+            movementInfo.transport.guid.ToString().c_str(), uint32(IsAlive()), uint32(IsInFlight()), uint32(HasAuraType(SPELL_AURA_FEATHER_FALL)), movementInfo.flags);
+
     //Players with low fall distance, Feather Fall or physical immunity (charges used) are ignored
     // 14.57 can be calculated by resolving damageperc formula below to 0
     if (z_diff >= 14.57f && !isDead() && !IsGameMaster() &&

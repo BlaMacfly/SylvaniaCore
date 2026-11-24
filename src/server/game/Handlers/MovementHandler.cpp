@@ -117,6 +117,12 @@ void WorldSession::HandleMoveWorldportAck()
         return;
     }
 
+    // Diagnostic temporaire (24/11/2026) : morts par chute a l'arrivee des zeppelins (Chutes.log).
+    TC_LOG_INFO("entities.player.fall", "ARRIVEE %s (%s) carte %u -> %u pos %.2f %.2f %.2f | transport %s, transport mouvement %s (offset %.2f %.2f %.2f)",
+        GetPlayer()->GetName().c_str(), GetPlayer()->GetGUID().ToString().c_str(), oldMap ? oldMap->GetId() : 0, loc.GetMapId(), GetPlayer()->GetPositionX(), GetPlayer()->GetPositionY(), GetPlayer()->GetPositionZ(),
+        GetPlayer()->GetTransport() ? GetPlayer()->GetTransport()->GetGUID().ToString().c_str() : "aucun", GetPlayer()->m_movementInfo.transport.guid.ToString().c_str(),
+        GetPlayer()->m_movementInfo.transport.pos.GetPositionX(), GetPlayer()->m_movementInfo.transport.pos.GetPositionY(), GetPlayer()->m_movementInfo.transport.pos.GetPositionZ());
+
     // battleground state prepare (in case join to BG), at relogin/tele player not invited
     // only add to bg group and object, if the player was invited (else he entered through command)
     if (_player->InBattleground())
