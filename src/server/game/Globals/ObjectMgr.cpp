@@ -2584,6 +2584,14 @@ void ObjectMgr::LoadGameobjects()
             TC_LOG_ERROR("sql.sql", "Table `gameobject` has gameobject (GUID: " UI64FMTD " Entry: %u) with `spawntimesecs` (0) value, but the gameobejct is marked as despawnable at action.", guid, data.id);
         }
 
+        // TrinityCore master : un quaternion de norme differente de 1 est ramene a la norme 1 a la creation,
+        // ce qui tourne l'objet ((0,0,1,1) donne 90 degres au lieu de 180). On reprend l'orientation sur Z.
+        if (!data.rotation.isUnit())
+        {
+            TC_LOG_ERROR("sql.sql", "Table `gameobject` has gameobject (GUID: " UI64FMTD " Entry: %u) with invalid rotation quaternion (non-unit), defaulting to orientation on Z axis only", guid, data.id);
+            data.rotation = QuaternionData::fromEulerAnglesZYX(data.orientation, 0.0f, 0.0f);
+        }
+
         data.animprogress   = fields[13].GetUInt8();
         data.artKit         = 0;
 
